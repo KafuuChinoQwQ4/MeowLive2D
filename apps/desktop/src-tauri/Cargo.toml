@@ -1,0 +1,25 @@
+[package]
+name = "meowlive-desktop"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+meowlive-desktop-runtime.workspace = true
+serde = { version = "1", features = ["derive"] }
+url = "2"
+
+[features]
+default = []
+custom-protocol = ["tauri/custom-protocol"]
+
+[target.'cfg(windows)'.dependencies]
+tauri = { version = "2", features = [] }
+
+[target.'cfg(windows)'.build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[lints]
+workspace = true

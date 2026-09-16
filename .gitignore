@@ -1,0 +1,32 @@
+# Local architecture and planning documents
+/docs/
+
+# Rust build output
+target/
+**/src-tauri/gen/
+
+# TypeScript dependencies and generated output
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+coverage/
+
+# Local configuration and runtime data
+.env
+.env.*
+!.env.example
+/data/
+/logs/
+*.log
+/config/local/
+/config/*.local.*
+
+# Local editors and operating system files
+.DS_Store
+Thumbs.db
+
+# Python engine bridge environments and caches
+.venv/
+__pycache__/
+*.py[cod]

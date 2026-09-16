@@ -1,0 +1,77 @@
+# 可直接启动主服务；复制为 server.local.toml，可在面板上传音色或配置默认参考素材。
+[server]
+listen_address = "127.0.0.1:19600"
+queue_capacity = 8
+history_limit = 50
+allowed_origins = ["http://127.0.0.1:1420", "http://localhost:1420", "http://tauri.localhost"]
+
+[speech]
+base_url = "http://127.0.0.1:9880"
+# 引擎可读取的 Linux 参考音频绝对路径；空值会让播报明确失败，不生成假音频。
+reference_audio = ""
+prompt_text = ""
+prompt_language = "zh"
+text_language = "zh"
+max_concurrency = 1
+timeout_seconds = 120
+max_audio_bytes = 8388608
+
+# Agent 启动时始终暂停；在面板中配置并恢复后才会调用模型。
+[agent]
+persona = "你是一位友好、自然的 Live2D 主播，用简短中文与观众互动。"
+topic = ""
+proactive_enabled = false
+cooldown_ms = 30000
+pending_capacity = 128
+history_limit = 200
+dedup_capacity = 512
+event_ttl_ms = 60000
+gift_merge_ms = 3000
+batch_size = 8
+conversation_limit = 6
+
+[llm]
+mode = "cloud"
+# API 根地址与模型名同时填写；适配器会追加 /chat/completions。
+# 兼容服务可填写 https://提供商/API根路径 或 http://本地服务:端口/v1。
+base_url = ""
+model = ""
+# 这里只写环境变量名，不写密钥。无认证的本地模型须显式设为 ""。
+api_key_env = "MEOWLIVE_LLM_API_KEY"
+timeout_seconds = 30
+max_response_bytes = 65536
+max_tokens = 1024
+json_mode = true
+max_retries = 1
+
+# 官方直播开放平台；默认禁用，配置完成后仍需在面板手动连接。
+[live]
+enabled = false
+app_id = 0
+# 仅填写环境变量名，凭据本身由启动主服务的终端提供。
+access_key_id_env = "MEOWLIVE_BILIBILI_ACCESS_KEY_ID"
+access_key_secret_env = "MEOWLIVE_BILIBILI_ACCESS_KEY_SECRET"
+identity_code_env = "MEOWLIVE_BILIBILI_IDENTITY_CODE"
+reconnect_initial_ms = 1000
+reconnect_max_ms = 30000
+
+[resources]
+# 相对本配置文件目录；与 GPT-SoVITS 同机时可直接读取。
+directory = "../data/resources"
+# 引擎在容器或其他主机时，填共享资源目录在引擎中的 Linux 绝对路径。
+# 空字符串使用上面目录的绝对路径；需要共享整个目录及 references 子目录。
+engine_directory = ""
+
+# 微调默认关闭。仅在非直播状态、TTS/本地 LLM 停止后运行；训练预设尚需硬件验收。
+[training]
+enabled = false
+directory = "../data/training"
+# 启用时填写本机 GPT-SoVITS Python 环境的实际绝对路径。
+python = ""
+engine_root = ""
+timeout_seconds = 7200
+# 只对 scripts/start-managed-inference.py 的独立配置实例设 true。
+# 共享的其他 GPT-SoVITS 实例不应启用此项，因为权重接口会写推理配置。
+managed_inference = false
+default_gpt_weights = ""
+default_sovits_weights = ""

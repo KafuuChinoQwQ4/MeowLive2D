@@ -1,0 +1,6 @@
+[
+  { "id": "demo-chat-1", "source": "simulator", "viewer": "小鱼", "kind": { "type": "chat", "text": "今天想聊什么游戏？" } },
+  { "id": "demo-gift-1", "source": "simulator", "viewer": "小猫", "kind": { "type": "gift", "name": "小鱼干", "count": 1 } },
+  { "id": "demo-gift-2", "source": "simulator", "viewer": "小猫", "kind": { "type": "gift", "name": "小鱼干", "count": 2 } },
+  { "id": "demo-gift-1", "source": "simulator", "viewer": "小猫", "kind": { "type": "gift", "name": "小鱼干", "count": 1 } }
+]

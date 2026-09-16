@@ -1,0 +1,42 @@
+{
+  "name": "meowlive2d",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/desktop",
+    "packages/contracts"
+  ],
+  "engines": {
+    "node": ">=22.12.0",
+    "npm": ">=10"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspace @meowlive/desktop",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run typecheck && npm run build --workspace @meowlive/desktop",
+    "check:rust": "cargo fmt --all -- --check && cargo check --workspace --all-targets --locked",
+    "tree:update": "node scripts/directory-tree.mjs --write",
+    "tree:check": "node scripts/directory-tree.mjs --check",
+    "test:tooling": "node --test scripts/directory-tree.test.mjs",
+    "check": "npm run tree:check && npm run test:tooling && npm run test:launcher && npm run test:acceptance && npm run test:training && npm run check:rust && npm run contracts:check && npm run test:rust && npm run typecheck && npm run test:frontend",
+    "start:server": "cargo run -p meowlive-server --",
+    "start:client": "cargo run -p meowlive-desktop-runtime --bin meowlive-client --",
+    "contracts:generate": "cargo run -p meowlive-protocol --bin export-types --locked",
+    "contracts:check": "cargo run -p meowlive-protocol --bin export-types --locked -- --check",
+    "test:rust": "cargo test --workspace --locked",
+    "test:frontend": "npm test --workspace @meowlive/desktop",
+    "test": "npm run test:tooling && npm run test:launcher && npm run test:acceptance && npm run test:training && npm run test:rust && npm run test:frontend",
+    "test:training": "PYTHONDONTWRITEBYTECODE=1 python3 scripts/training_test.py",
+    "desktop:dev": "npm run desktop:dev --workspace @meowlive/desktop --",
+    "acceptance:observe": "node scripts/acceptance.mjs",
+    "test:acceptance": "node --test scripts/acceptance.test.mjs",
+    "start": "node scripts/start-control-panel.mjs",
+    "test:launcher": "node --test scripts/launcher/*.test.mjs"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "undici": "^7.29.1"
+  },
+  "license": "MIT"
+}

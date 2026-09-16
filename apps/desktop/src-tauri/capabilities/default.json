@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-window",
+  "description": "主面板仅使用应用内状态命令，不授予文件、进程或系统插件权限",
+  "windows": ["main"],
+  "permissions": []
+}

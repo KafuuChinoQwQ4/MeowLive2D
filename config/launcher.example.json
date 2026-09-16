@@ -1,0 +1,7 @@
+{
+  "serverConfig": "config/server.local.toml",
+  "ttsPython": "data/environments/gpt-sovits/bin/python",
+  "ttsEngineRoot": "data/engines/GPT-SoVITS",
+  "ttsDevice": "cuda",
+  "llmKeyFile": "config/local/llm-api-key.txt"
+}

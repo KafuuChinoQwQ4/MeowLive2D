@@ -1,0 +1,33 @@
+[workspace]
+resolver = "3"
+members = [
+    "apps/server",
+    "apps/desktop/src-tauri",
+    "crates/domain",
+    "crates/application",
+    "crates/protocol",
+    "crates/adapters",
+    "crates/desktop-runtime",
+]
+default-members = ["apps/server"]
+
+[workspace.package]
+license = "MIT"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+publish = false
+
+[workspace.dependencies]
+meowlive-domain = { path = "crates/domain" }
+meowlive-application = { path = "crates/application" }
+meowlive-protocol = { path = "crates/protocol" }
+meowlive-adapters = { path = "crates/adapters" }
+meowlive-desktop-runtime = { path = "crates/desktop-runtime" }
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+todo = "warn"

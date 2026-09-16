@@ -1,0 +1,19 @@
+# model-library 目录索引
+
+环境检查、本地语音模型选择与官方模型下载管理界面
+
+本文件由 `npm run tree:update` 生成，覆盖当前目录的全部受维护子目录。每项右侧为大致用途。
+
+```text
+model-library/  # 环境检查、本地语音模型选择与官方模型下载管理界面
+├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+├── ModelLibraryPanel.test.tsx  # 环境门控、模型选择、分页检索、会话失效和下载取消交互测试
+├── ModelLibraryPanel.tsx  # 始终可用的环境与模型页面、分页模型库、下载进度及首次使用引导
+└── useModelLibrary.ts  # 模型状态轮询与串行操作控制，防止过期响应覆盖和重复提交
+```
+
+用途说明源：`scripts/directory-descriptions.json`。新增、删除、移动文件或调整职责时先同步说明源，再运行生成命令。
+
+已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
+
+<!-- directory-tree-sha256: 060436613628e83da19e66e98344bcc8984434b2822bbd72b10c090d49f9f353 -->

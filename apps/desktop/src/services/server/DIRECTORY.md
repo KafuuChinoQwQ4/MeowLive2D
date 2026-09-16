@@ -1,0 +1,34 @@
+# server 目录索引
+
+Rust 主服务 HTTP / WebSocket 客户端入口
+
+本文件由 `npm run tree:update` 生成，覆盖当前目录的全部受维护子目录。每项右侧为大致用途。
+
+```text
+server/  # Rust 主服务 HTTP / WebSocket 客户端入口
+├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+├── agent.bounds.test.ts  # Agent 合法最大快照、冷却与礼物数量边界回归测试
+├── agent.failures.test.ts  # Agent 畸形响应、HTTP 错误、超时与取消测试
+├── agent.requests.test.ts  # Agent 查询、设置、暂停恢复与事件批量请求契约测试
+├── agent.ts  # 独立 Agent HTTP 客户端、超时取消与运行时响应校验
+├── failures.test.ts  # HTTP 错误、协议校验、取消和超时测试
+├── index.ts  # 带超时和取消的主服务 HTTP 客户端
+├── live.failures.test.ts  # 直播快照边界、HTTP 错误、网络失败、超时及取消测试
+├── live.requests.test.ts  # 直播连接查询、连接及断开请求契约测试
+├── live.ts  # 直播连接 HTTP 客户端、超时取消与运行时快照校验
+├── obs.test.ts  # OBS HTTP 响应校验、失败和超时且不重放控制请求的测试
+├── obs.ts  # OBS 主服务请求、超时处理和状态契约校验
+├── requests.test.ts  # HTTP 请求与成功响应测试
+├── resources.failures.test.ts  # 资源响应边界、请求失败、超时与取消测试
+├── resources.requests.test.ts  # 资源接口路径、JSON 与音频上传负载测试
+├── resources.ts  # 资源 HTTP 与桌面操作客户端及运行时响应校验
+├── responses.ts  # 生成契约的运行时响应校验与错误映射
+├── training.test.ts  # 训练契约、音色保存请求、测量证据、超时取消及试听响应测试
+└── training.ts  # 训练音色保存与运行预设 HTTP 客户端、严格响应校验和取消超时
+```
+
+用途说明源：`scripts/directory-descriptions.json`。新增、删除、移动文件或调整职责时先同步说明源，再运行生成命令。
+
+已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
+
+<!-- directory-tree-sha256: 70510959e02b13914818679243aac827b0e805f7325f7da02e8883f4ffd7246c -->

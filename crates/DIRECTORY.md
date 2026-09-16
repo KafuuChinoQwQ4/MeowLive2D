@@ -1,0 +1,291 @@
+# crates 目录索引
+
+按职责与单向依赖隔离的 Rust 库
+
+本文件由 `npm run tree:update` 生成，覆盖当前目录的全部受维护子目录。每项右侧为大致用途。
+
+```text
+crates/  # 按职责与单向依赖隔离的 Rust 库
+├── adapters/  # 外部服务和存储实现，适配 application 定义的能力
+│   ├── src/  # 按外部能力组织的适配器源码
+│   │   ├── live/  # 直播源连接、事件标准化与模拟输入
+│   │   │   ├── bilibili/  # 哔哩哔哩官方直播开放平台的授权、签名、连接与事件适配
+│   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   │   ├── config.rs  # 哔哩哔哩接入凭据、网络地址与资源上限配置校验
+│   │   │   │   ├── connection.rs  # 官方直播长连接鉴权、接收、心跳与显式会话清理
+│   │   │   │   ├── http.rs  # 开放平台签名 HTTP 项目开始、心跳、结束与错误处理
+│   │   │   │   ├── mod.rs  # 哔哩哔哩直播适配器的模块与配置公开出口
+│   │   │   │   ├── protocol.rs  # 官方直播二进制包解析、有界解压、鉴权回复与领域事件转换
+│   │   │   │   └── signing.rs  # 开放平台请求体 MD5 与规范请求头 HMAC-SHA256 签名
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   ├── mod.rs  # 直播源接入和事件标准化；去重、话题筛选与礼物合并属于 application。
+│   │   │   └── simulator.rs  # 模拟弹幕、礼物和连接变化的事件来源，用于首个互动闭环与事件回放。
+│   │   ├── llm/  # 云端及本地 LLM 的协议适配
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   ├── config.rs  # LLM 地址、模型、密钥脱敏及超时和响应上限校验
+│   │   │   ├── mod.rs  # 模型协议适配。兼容同一协议的云端与本地服务复用实现，其他协议独立添加。
+│   │   │   ├── openai_compatible.rs  # 非流式 Chat Completions 传输、认证、响应大小与临时错误分类
+│   │   │   ├── prompt.rs  # Chat Completions 系统提示与结构化用户事件和历史请求构建
+│   │   │   └── response.rs  # 模型响应封装、严格决策 JSON、事件子集及语音文本校验
+│   │   ├── speech/  # GPT-SoVITS 等语音引擎的请求和音频格式适配
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   ├── gpt_sovits.rs  # GPT-SoVITS HTTP 适配入口：参考素材路径解析、合成参数映射与音频解码。
+│   │   │   ├── mod.rs  # 语音引擎适配与音频格式转换。推理服务和模型权重位于项目目录之外。
+│   │   │   ├── model_synthesizer.rs  # 音色成对权重加载、取消期间忙碌保护与共享推理事务
+│   │   │   ├── resource_synthesizer.rs  # 根据音色档案解析参考音频并调用 GPT-SoVITS
+│   │   │   └── wav.rs  # 完整 RIFF/WAV 边界与 PCM16 格式校验解码
+│   │   ├── storage/  # SQLite 记录与 Linux 素材文件存储
+│   │   │   ├── resources/  # 资源快照转换与参考音频校验实现
+│   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   │   ├── snapshot.rs  # 持久化资源快照的版本化 DTO 与领域转换
+│   │   │   │   └── wav.rs  # 参考音频 PCM 格式、时长和静音校验
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   ├── files.rs  # Linux 素材文件存储，负责文件落盘及引擎可访问路径；Windows 模型导入另属 desktop-runtime。
+│   │   │   ├── mod.rs  # 持久化和本地素材存储实现；应用层只看存取接口。
+│   │   │   ├── resources.rs  # 版本化原子资源快照与不可变参考 WAV 文件存储
+│   │   │   └── sqlite.rs  # SQLite 记录存储适配入口。表结构和迁移随首个持久化用例加入。
+│   │   ├── training/  # 独立训练进程、进度及产物的适配
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   ├── mod.rs  # 独立训练进程适配，处理进程状态与训练产物；调度策略属于 application。
+│   │   │   ├── process.rs  # 独立训练进程组启动、超时取消和有界日志进度
+│   │   │   ├── store.rs  # 训练任务原子快照、保存音色兼容加载、不可变素材及成对权重指纹校验
+│   │   │   └── tests.rs  # 任务与音色保存持久化、旧存档兼容、存储故障、模型校验和真实子进程清理测试
+│   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   ├── lib.rs  # 外部能力实现：依赖业务层定义的 ports，不反向定义业务规则。
+│   │   └── runtime.rs  # 本地 NVIDIA 显存采样与输出边界校验
+│   ├── tests/  # GPT-SoVITS、WAV 与 LLM 适配器的集成和输入输出边界测试
+│   │   ├── bilibili_support/  # 受控官方直播 HTTP 和 WebSocket 协议测试服务
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   └── mod.rs  # 官方直播模拟响应、鉴权帧、事件和生命周期观测夹具
+│   │   ├── llm_support/  # LLM 适配器测试公共夹具
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   └── mod.rs  # 受控 LLM HTTP 服务、配置、事件和完成响应夹具
+│   │   ├── support/  # 语音适配测试的 WAV 和 HTTP 公共夹具
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   ├── http.rs  # 受控 TTS HTTP 服务与请求配置夹具
+│   │   │   ├── mod.rs  # 内存 WAV 生成与公共夹具模块导出
+│   │   │   └── raw_http.rs  # 分块响应测试所用原始 HTTP 请求读取夹具
+│   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   ├── bilibili_connection.rs  # 官方直播源签名请求、长连接授权、事件与清理行为测试
+│   │   ├── bilibili_messages.rs  # 直播消息包头、压缩边界、事件映射与无效输入测试
+│   │   ├── bilibili_resilience.rs  # 直播心跳互不阻塞、鉴权同包事件、失败清理、事件标识和总解压预算回归测试
+│   │   ├── bilibili_signing.rs  # 哔哩哔哩签名固定向量、请求体字节与输入验证测试
+│   │   ├── gpt_sovits_http.rs  # GPT-SoVITS 请求参数映射、音频响应和引擎失败测试
+│   │   ├── gpt_sovits_limits.rs  # 引擎响应体上限、分块传输、总超时和重定向测试
+│   │   ├── gpt_sovits_validation.rs  # 引擎配置、默认音色和播报文本输入校验测试
+│   │   ├── llm_cancellation.rs  # 取消模型决策 future 后关闭在途 HTTP 连接测试
+│   │   ├── llm_limits.rs  # 配置请求响应上限、总超时、错误分类与敏感信息脱敏测试
+│   │   ├── llm_output_validation.rs  # 严格决策字段、事件子集、工具调用、截断及内容约束测试
+│   │   ├── llm_transport.rs  # 路径、认证、JSON 模式、消息角色、礼物分组提示与重定向测试
+│   │   ├── model_synthesizer.rs  # 取消后的权重合成互斥与默认模型恢复链路测试
+│   │   ├── resource_store.rs  # 资源持久化恢复、音频边界与文件异常测试
+│   │   ├── resource_synthesizer.rs  # 上传音色的引擎路径解析与默认音色回退测试
+│   │   ├── wav_decoding.rs  # 完整 WAV 的基础 PCM 解码与无效输入测试
+│   │   └── wav_validation.rs  # WAV 采样率、位深、帧完整性和容器畸形校验测试
+│   ├── Cargo.toml  # 该 Rust 包的名称、workspace 配置与模块依赖声明
+│   └── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+├── application/  # 业务用例编排及外部能力接口定义
+│   ├── src/  # Agent、事件调度、语音与资源任务用例
+│   │   ├── agent/  # Agent 配置、输出校验、播放关联及状态类型
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   ├── decisions.rs  # 模型输出校验、工作编号隔离和语音准备
+│   │   │   ├── playback.rs  # 播放状态同步和已完成对话记忆
+│   │   │   ├── settings.rs  # 人设配置和调度资源上限校验
+│   │   │   └── types.rs  # Agent 阶段、事件状态及应用调用结果
+│   │   ├── ports/  # 业务方定义的模型、语音、存储和执行能力边界
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   ├── execution.rs  # Windows 执行指令下发、取消和执行回执接收的能力边界；实现不在业务层。
+│   │   │   ├── live_source.rs  # 平台无关直播源、连接生命周期和错误语义接口
+│   │   │   ├── llm.rs  # 模型决策、已完成对话与可取消异步模型接口
+│   │   │   ├── mod.rs  # 由业务方定义的外部能力接口。实现位于 adapters 或应用入口的传输适配层。
+│   │   │   ├── speech.rs  # 可动态注入的异步语音合成接口与 PCM 输出类型
+│   │   │   ├── storage.rs  # 资源快照、参考音频与引擎路径存储接口
+│   │   │   └── training.rs  # 训练素材存储、成对模型解析与受控进程执行接口
+│   │   ├── scheduler/  # 候选事件优先级与礼物分组策略
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   └── selection.rs  # 礼物优先选择和有界原始事件分组
+│   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   ├── agent.rs  # Agent 生命周期、决策调度和状态快照
+│   │   ├── lib.rs  # 业务用例与外部能力接口。通过注入 ports 的实现调用外部能力。
+│   │   ├── performance.rs  # 协调发言、动作、下发与执行回执；处理代次、取消及重连后未知状态。
+│   │   ├── resources.rs  # 角色与音色档案用例、持久化事务和映射验证一致性
+│   │   ├── scheduler.rs  # 有界事件存储、独立去重和终态历史裁剪
+│   │   ├── session.rs  # 会话启动、暂停、恢复与关闭用例，协调在途任务的生命周期。
+│   │   ├── speech.rs  # 单执行者语音 FIFO 队列、容量历史限制与取消回执状态机
+│   │   └── training.rs  # 单任务训练生命周期、失败恢复、取消、试听、音色保存与版本启用用例
+│   ├── tests/  # 应用用例的队列与状态流转集成测试
+│   │   ├── agent_support/  # Agent 测试公共夹具
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   └── mod.rs  # 事件、决策、会话和播放任务测试构造
+│   │   ├── support/  # 应用层测试共用队列夹具
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   └── mod.rs  # 已连接队列、下发和完成流程测试夹具
+│   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   ├── agent_decisions.rs  # 输出校验、暂停隔离及决策冷却测试
+│   │   ├── agent_lifecycle.rs  # 配置、暂停、停止和播放生命周期测试
+│   │   ├── agent_memory.rs  # 已完成对话数量及内容长度边界测试
+│   │   ├── agent_settings.rs  # 人设配置与运行资源上限测试
+│   │   ├── resource_library.rs  # 资源保存一致性、容量与映射验证并发规则测试
+│   │   ├── scheduler_bounds.rs  # 历史裁剪、去重淘汰、批次容量和克隆隔离测试
+│   │   ├── scheduler_events.rs  # 事件去重、过期、容量及礼物分组测试
+│   │   ├── speech_cancellation.rs  # 语音停止代次、迟到结果和断线取消测试
+│   │   ├── speech_queue.rs  # 语音队列 FIFO、容量、接收门控和终态历史测试
+│   │   └── speech_receipts.rs  # 执行回执顺序、重复回执与失败状态测试
+│   ├── Cargo.toml  # 该 Rust 包的名称、workspace 配置与模块依赖声明
+│   └── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+├── desktop-runtime/  # 独立于界面的 Windows 播放与设备执行库
+│   ├── src/  # 播放、连接、口型、VTS、OBS 与模型导入的执行源码
+│   │   ├── assets/  # Live2D 导出模型包的本地校验与安装
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   └── model.rs  # 模型清单和 VTS 引用检查、限制与无覆盖安装
+│   │   ├── audio/  # 音频设备后端、采样转换与设备播放时钟
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   ├── conversion.rs  # 相位连续的 PCM 重采样与声道映射
+│   │   │   ├── meter.rs  # 固定容量的设备播放能量时间线与 RMS 累加器
+│   │   │   ├── simulated.rs  # 显式静音模拟后端，按模拟播放时间退役样本并观测能量
+│   │   │   ├── timing.rs  # 设备计划播放时间与完成回执时钟
+│   │   │   └── windows.rs  # Windows CPAL 默认设备、缓冲消费、播放时钟与 RMS 能量观测
+│   │   ├── avatar/  # VTube Studio 私有协议、配置校验、授权存储与口型连接状态机
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   ├── client.rs  # 有界 VTS WebSocket 请求响应、请求关联、API 错误和口型参数注入
+│   │   │   ├── config.rs  # VTS 默认关闭配置与地址、参数名称、超时范围校验
+│   │   │   ├── resources.rs  # VTS 已授权模型查询加载与热键核对预览
+│   │   │   ├── switching.rs  # 切换角色口型输入并等待 VTS 应用确认
+│   │   │   ├── token.rs  # 阻塞线程池中的私有授权令牌读写、权限校验及可取消等待
+│   │   │   └── worker.rs  # 最新口型值消费、授权复用、归零、样本过期与自动重连状态机
+│   │   ├── bin/  # 独立桌面执行客户端命令入口
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   ├── meowlive-client.rs  # 独立桌面执行客户端程序入口
+│   │   │   └── meowlive-model.rs  # 独立模型包校验与显式目录安装命令行
+│   │   ├── lip_sync/  # 设备能量到口型的纯规则、配置与音频后端包装器
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   ├── backend.rs  # 音频后端观察包装器，定时发布最新口型并在终态同步复位
+│   │   │   ├── config.rs  # 口型阈值、增益、平滑时间和更新频率的默认值与校验
+│   │   │   └── envelope.rs  # 按经过时间执行开闭口平滑与静音复位的纯计算器
+│   │   ├── obs/  # OBS 本地连接配置与校验
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   └── config.rs  # OBS 本机地址、密码环境变量名与整次操作超时校验
+│   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   ├── assets.rs  # Live2D 模型校验与本地安装公共接口
+│   │   ├── audio.rs  # 音频设备边界、播放事件与设备输出能量观测接口
+│   │   ├── avatar.rs  # VTube Studio 独立连接入口、配置与可观察状态导出
+│   │   ├── cli.rs  # 桌面客户端配置加载、服务重连、VTS 组装与限时退出入口
+│   │   ├── config.rs  # 执行客户端连接、缓冲、VTS 与口型配置校验及路径解析
+│   │   ├── connection.rs  # 主动双 WebSocket 配对、控制优先接收与断线清理
+│   │   ├── host.rs  # Tauri 与 CLI 共用的可取消执行宿主及退出清理
+│   │   ├── lib.rs  # Windows 执行库：与 Tauri 和 React 解耦，生命周期由桌面进程管理。
+│   │   ├── lip_sync.rs  # 设备输出口型的配置、平滑器与观察后端导出
+│   │   ├── obs.rs  # OBS v5 鉴权、有界状态查询、场景录制控制与状态读回
+│   │   ├── playback.rs  # 播放状态机、代次取消、乱序校验与设备回执
+│   │   ├── presentation.rs  # 桌面口型驱动生命周期与角色参数切换组装
+│   │   └── resource_control.rs  # 桌面资源命令执行、Windows 目录选择和能力调用
+│   ├── tests/  # 桌面执行运行时独立集成测试
+│   │   ├── avatar_support/  # VTS 本地 WebSocket 场景测试的隔离文件与协议辅助设施
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   └── mod.rs  # 受控 VTS 服务器、授权交互与参数断言共用辅助
+│   │   ├── connection/  # 使用虚拟时间和真实 WebSocket 的连接期限测试
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   ├── flush.rs  # 阻塞 Pong 写回的超时测试
+│   │   │   └── liveness.rs  # 双通道独立心跳期限、续期及设备清理测试
+│   │   ├── lip_sync_support/  # 口型观察测试的共享可控设备夹具
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   └── mod.rs  # 可设置能量、事件与操作错误的测试音频设备
+│   │   ├── support/  # 运行时测试共用手动设备与消息夹具
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   └── mod.rs  # 可控设备事件及播报消息测试夹具
+│   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   ├── avatar_authorization.rs  # VTS 首次授权、令牌复用、拒绝撤销、授权中退出与断线测试
+│   │   ├── avatar_cli.rs  # 真实客户端进程的 VTS 连接、配置加载与断线归零联调
+│   │   ├── avatar_config_validation.rs  # VTS 默认关闭、未知键与配置边界校验测试
+│   │   ├── avatar_configuration.rs  # 客户端 VTS 和口型配置的兼容、校验与相对路径测试
+│   │   ├── avatar_lifecycle.rs  # VTS 表现输出组装在禁用与等待授权时的关闭测试
+│   │   ├── avatar_parameters.rs  # VTS 最新值映射、参数范围、注入心跳、限频和过期归零测试
+│   │   ├── avatar_protocol.rs  # VTS 响应类型与请求关联校验、总超时和错误信息脱敏测试
+│   │   ├── avatar_reconnect.rs  # VTS 重连先归零、服务不可用和未响应请求中的退出测试
+│   │   ├── avatar_resources.rs  # VTS 模型与热键请求和错配边界测试
+│   │   ├── avatar_stop.rs  # VTS 请求未回复时主服务停止回执与口型归零的隔离测试
+│   │   ├── avatar_switching.rs  # 角色口型切换归零、应用确认与禁用驱动测试
+│   │   ├── avatar_token_storage.rs  # VTS 本地令牌长度、字符、文件权限、符号链接和磁盘等待取消测试
+│   │   ├── client_cli.rs  # 客户端帮助与缺失配置退出行为测试
+│   │   ├── client_configuration.rs  # TOML、配对 URL 与平台设备边界测试
+│   │   ├── device_conversion.rs  # PCM 声道映射与跨分片重采样测试
+│   │   ├── device_timing.rs  # 设备延迟、播放开始与完成时钟测试
+│   │   ├── host_lifecycle.rs  # 宿主启动失败、离线取消和双通道退出清理测试
+│   │   ├── lip_sync_delivery.rs  # 口型发布频率、静音保鲜、最新值覆盖与停止抢占测试
+│   │   ├── lip_sync_failures.rs  # 设备启动、写入和结束失败时的停止与口型复位测试
+│   │   ├── lip_sync_levels.rs  # 口型能量阈值、增益、时间平滑及非法输入测试
+│   │   ├── lip_sync_lifecycle.rs  # 设备驱动口型、停止、完成、失败和析构复位测试
+│   │   ├── model_assets.rs  # 模型引用、路径限制、安装与覆盖保护测试
+│   │   ├── obs_configuration.rs  # OBS 本机配置、URL 归一化及超时边界测试
+│   │   ├── obs_websocket.rs  # OBS 受控鉴权、状态读回、协议边界与禁止重放写请求测试
+│   │   ├── output_meter.rs  # 设备能量的播放延迟、静音、过期、容量与复位测试
+│   │   ├── playback_completion.rs  # 播放完成与设备失败回执测试
+│   │   ├── playback_ordering.rs  # 控制音频竞态、乱序及有界待播缓存测试
+│   │   ├── playback_stop.rs  # 停止代次、迟到音频及断线清理测试
+│   │   ├── simulated_levels.rs  # 模拟播放电平的时间位置、停止、完成与缓冲上限测试
+│   │   ├── websocket_disconnect.rs  # 音频连接中断时停止设备与关闭控制连接测试
+│   │   └── websocket_session.rs  # 双 WebSocket 配对与实际客户端回执闭环测试
+│   ├── Cargo.toml  # 该 Rust 包的名称、workspace 配置与模块依赖声明
+│   └── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+├── domain/  # 业务对象、状态和不变量，保持无外部依赖
+│   ├── src/  # 事件、会话、角色、音色和执行状态的领域定义
+│   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   ├── character.rs  # 角色能力映射、验证状态与口型参数规则
+│   │   ├── event.rs  # 统一直播事件及输入长度、身份、礼物数量校验
+│   │   ├── lib.rs  # 业务领域：只表达业务对象、状态和不变量，不依赖通信、框架或外部服务。
+│   │   ├── performance.rs  # 发言与角色动作的执行意图和状态；播放回执决定实际执行结果。
+│   │   ├── resources.rs  # 音色、参考素材、资源目录及纯业务不变量
+│   │   ├── session.rs  # 直播会话的状态与合法状态转换；与每条发言的生命周期分别建模。
+│   │   ├── speech.rs  # 播报文本校验、任务快照、生成代次与执行状态语义
+│   │   ├── training.rs  # 训练状态、受限素材、成对权重与音色绑定的领域不变量
+│   │   └── voice.rs  # 配置音色标识校验
+│   ├── tests/  # 领域对象与输入不变量集成测试
+│   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   ├── event_validation.rs  # 直播事件输入边界测试
+│   │   ├── resource_validation.rs  # 资源名称、语言、素材元数据与能力映射校验测试
+│   │   └── speech_validation.rs  # 播报文本长度、空白、控制字符与音色标识校验测试
+│   ├── Cargo.toml  # 该 Rust 包的名称、workspace 配置与模块依赖声明
+│   └── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+├── protocol/  # 跨进程控制、事件、音频和执行消息的契约源
+│   ├── src/  # 与业务领域分离的通信 DTO 模块
+│   │   ├── bin/  # 协议开发命令入口
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   └── export-types.rs  # 从 Rust DTO 生成并检查 TypeScript 契约
+│   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   ├── agent.rs  # Agent 设置、直播事件、阶段、处理状态与公开快照 DTO
+│   │   ├── audio.rs  # PCM 格式约定及有界二进制音频帧编解码
+│   │   ├── control.rs  # 文字播报请求、状态快照与桌面控制消息契约
+│   │   ├── event.rs  # 提供给控制面板的状态通知和事件封装；不透传平台私有事件。
+│   │   ├── execution.rs  # 桌面执行状态与播放回执契约
+│   │   ├── launcher.rs  # 本机主服务、TTS 和 Windows 执行端三开关的启动管理契约
+│   │   ├── lib.rs  # 跨进程通信契约的唯一来源。与业务领域对象分离，按协议版本演进。
+│   │   ├── live.rs  # 直播连接阶段、公开状态与诊断计数的跨端契约
+│   │   ├── model_library.rs  # 本机环境、模型目录、安装结果及下载任务的跨进程契约
+│   │   ├── obs.rs  # OBS 状态、场景与录制操作公开契约及严格反序列化
+│   │   ├── resources.rs  # 跨端角色音色档案及桌面资源操作契约
+│   │   └── training.rs  # 训练任务、模型版本与保存状态、试听和本地资源测量跨端契约
+│   ├── tests/  # 通信协议独立集成测试
+│   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   ├── agent_contracts.rs  # Agent 输入严格反序列化及公开 JSON 形状测试
+│   │   ├── audio_frames.rs  # PCM 二进制帧编码、边界与损坏输入测试
+│   │   ├── compatibility.rs  # 协议必填字段、标签与音频格式兼容测试
+│   │   ├── control_serialization.rs  # 控制消息与执行回执序列化测试
+│   │   └── obs_contracts.rs  # OBS 指令未知字段拒绝与资源通道契约测试
+│   ├── Cargo.toml  # 该 Rust 包的名称、workspace 配置与模块依赖声明
+│   └── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+└── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+```
+
+可继续查看各子目录的索引：
+
+- [adapters/](adapters/DIRECTORY.md)：外部服务和存储实现，适配 application 定义的能力
+- [application/](application/DIRECTORY.md)：业务用例编排及外部能力接口定义
+- [desktop-runtime/](desktop-runtime/DIRECTORY.md)：独立于界面的 Windows 播放与设备执行库
+- [domain/](domain/DIRECTORY.md)：业务对象、状态和不变量，保持无外部依赖
+- [protocol/](protocol/DIRECTORY.md)：跨进程控制、事件、音频和执行消息的契约源
+
+用途说明源：`scripts/directory-descriptions.json`。新增、删除、移动文件或调整职责时先同步说明源，再运行生成命令。
+
+已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
+
+<!-- directory-tree-sha256: ae00a40cf4508706473154516325559d9c8eb4e11137c94111ca0b8be3cc870e -->

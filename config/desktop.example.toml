@@ -1,0 +1,38 @@
+# 由 meowlive-client 读取；Windows 到 WSL 的地址依据本机网络调整。
+server_url = "http://127.0.0.1:19600"
+max_buffer_samples = 5760000
+handshake_timeout_ms = 5000
+reconnect_delay_ms = 2000
+# Windows 使用默认音频设备；Linux 调试必须显式 --simulate，模拟不产生声音。
+
+# 模型导入：取消注释并填写 VTS 安装中的现存 Live2DModels 目录。
+# model_directory 必须放在第一个 [section] 之前。
+# model_directory = 'D:\Steam\steamapps\common\VTube Studio\VTube Studio_Data\StreamingAssets\Live2DModels'
+
+[vtube_studio]
+# 先在 VTube Studio 开启插件 API，再将 enabled 改为 true。
+enabled = false
+websocket_url = "ws://127.0.0.1:8001"
+# 相对于本配置文件所在目录；授权文件保存在已忽略的 config/local/。
+token_path = "local/vts-token.json"
+# 在 VTS 模型配置中将此输入映射到模型的嘴部开合参数，范围 0..1。
+mouth_parameter = "MeowMouthOpen"
+request_timeout_ms = 1000
+auth_timeout_ms = 60000
+reconnect_delay_ms = 2000
+
+[lip_sync]
+gain = 4.0
+noise_floor = 0.01
+attack_ms = 30
+release_ms = 100
+update_hz = 30
+
+[obs]
+# 在 OBS 中开启 WebSocket v5 服务；此控制器只查询状态、切换场景和启停录制。
+enabled = false
+websocket_url = "ws://127.0.0.1:4455"
+# 只填写环境变量名；密码由桌面进程临时读取，不写入配置、日志或公开状态。
+password_env = "MEOWLIVE_OBS_PASSWORD"
+# 整次操作（连接、鉴权、查询、控制）合计超时，允许 100..10000 毫秒。
+timeout_ms = 5000
