@@ -34,6 +34,8 @@ pub trait ResourceStore: Send + Sync {
     fn load(&self) -> Result<ResourceCatalog, ResourceStoreError>;
     fn save(&self, catalog: &ResourceCatalog) -> Result<(), ResourceStoreError>;
     fn new_voice_id(&self) -> Result<String, ResourceStoreError>;
+    /// References use the owning voice ID, allowing cleanup retries after a
+    /// catalog deletion. Persisted catalogs must preserve this correspondence.
     fn store_reference(
         &self,
         voice_id: &str,

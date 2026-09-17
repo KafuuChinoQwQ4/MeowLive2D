@@ -38,18 +38,20 @@ tests/  # 主服务配置、HTTP、桥接与完整播报集成测试
 ├── live_lifecycle.rs  # 单直播连接、取消迟到结果、事件去重与重连终止测试
 ├── live_process.rs  # 真实主服务进程的直播凭据组装、默认不连接与公开响应脱敏测试
 ├── live_runtime.rs  # 受控平台礼物与重复帧经真实适配器、Agent、语音和静音设备完成回执的联调测试
+├── llm_profile.rs  # LLM 协议组装、私有配置持久化、重启加载及 HTTP 验证
 ├── m5_config.rs  # 本地预设地址资源上限及训练配置约束测试
 ├── obs_http.rs  # OBS HTTP 参数、桌面连接要求及模拟执行端贯通测试
 ├── request_origin.rs  # HTTP 来源拒绝和无副作用保障测试
-├── resources_bridge.rs  # 桌面资源请求关联、停止、断连及响应边界测试
+├── resources_bridge.rs  # 桌面资源关联、模型删除引用与并发保护、断连响应边界测试
 ├── resources_characters.rs  # 角色加载确认、预览验证及映射变更失效测试
-├── resources_http.rs  # 资源初始状态、当前音色别名与离线操作测试
-├── resources_process.rs  # 真实服务进程上传、恢复、试听、Agent 与缺失资源链路测试
+├── resources_http.rs  # 初始空音色、角色删除、非法资源及音色别名 HTTP 测试
+├── resources_process.rs  # 真实服务进程上传恢复试听、Agent、资源删除持久化链路测试
 ├── resources_runtime.rs  # 面板经真实桌面执行库到受控 VTS 的角色、热键与停止链路测试
 ├── runtime_loop.rs  # 真实服务与独立桌面运行时的静音播放集成测试
 ├── speech_delivery.rs  # PCM 下发、设备回执门控及独立停止通道测试
 ├── synthesis_cancellation.rs  # 合成停止、断线未知与重连不重播集成测试
-├── training_http.rs  # 训练未配置、音色保存接口和离线未验证的公开 HTTP 行为测试
+├── training_http.rs  # 训练配置、音色版本删除与当前选择清理、存储故障的 HTTP 测试
+├── training_models.rs  # 受控 HTTP 验证模型开关及无需开启训练的默认推理流程
 └── training_process.rs  # 真实主服务训练上传、音色保存重启、版本试听启用、取消及 SIGTERM 子树清理测试
 ```
 
@@ -64,4 +66,4 @@ tests/  # 主服务配置、HTTP、桥接与完整播报集成测试
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: ffb18c18f17eef25477341cc9e615f3a58176d6ee3a0479e71ed43011877a1bb -->
+<!-- directory-tree-sha256: 9ca60c1b0f0cd5bc1cf20662148c954f74a5663adcaeeccda79db5bebb2a903f -->

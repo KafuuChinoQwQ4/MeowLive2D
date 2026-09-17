@@ -9,6 +9,7 @@ pub struct TrainingConfig {
     pub directory: PathBuf,
     pub python: PathBuf,
     pub engine_root: PathBuf,
+    pub asr_model: PathBuf,
     pub timeout_seconds: u64,
     /// 仅在独立受管配置启动的推理实例上启用模型权重管理。
     pub managed_inference: bool,
@@ -22,6 +23,7 @@ impl Default for TrainingConfig {
             directory: "../data/training".into(),
             python: PathBuf::new(),
             engine_root: PathBuf::new(),
+            asr_model: PathBuf::new(),
             timeout_seconds: 7200,
             managed_inference: false,
             default_gpt_weights: PathBuf::new(),
@@ -36,6 +38,9 @@ impl TrainingConfig {
         }
         if self.enabled && (!self.python.is_absolute() || !self.engine_root.is_absolute()) {
             return Err("启用训练须设置 Python 和 GPT-SoVITS 安装的绝对路径".into());
+        }
+        if !self.asr_model.as_os_str().is_empty() && !self.asr_model.is_absolute() {
+            return Err("自动识别模型须为绝对路径，留空使用引擎默认模型目录".into());
         }
         if self.managed_inference
             && (!self.default_gpt_weights.is_absolute()

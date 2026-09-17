@@ -88,7 +88,12 @@ impl TrainingStore for FileTrainingStore {
     fn new_job_id(&self) -> String {
         uuid::Uuid::new_v4().to_string()
     }
-    fn prepare(&self, job: &TrainingJob, clips: &[TrainingClip]) -> Result<(), TrainingError> {
+    fn prepare(
+        &self,
+        job: &TrainingJob,
+        clips: &[TrainingClip],
+        base: Option<&TrainingJob>,
+    ) -> Result<(), TrainingError> {
         // Validate every byte before creating any durable directory.
         if clips.len() != job.clip_count
             || clips.iter().map(|clip| clip.wav.len()).sum::<usize>() != job.total_bytes
@@ -99,6 +104,13 @@ impl TrainingStore for FileTrainingStore {
             clip.validate()?;
             validate_wav(&clip.wav)?;
         }
+        let base_pair = base.map(|previous| {
+            if previous.parameters.voice_id != job.parameters.voice_id || previous.id == job.id || previous.state != TrainingState::Succeeded {
+                return Err(TrainingError::Invalid("续训只能使用同一音色的成功版本".into()));
+            }
+            self.resolve_pair(&previous.id, previous.artifacts.as_ref().ok_or_else(failure)?)
+                .map_err(|_| TrainingError::Store("上一训练版本的权重缺失或损坏，无法继续训练；请检查模型文件或删除损坏版本后重试".into()))
+        }).transpose()?;
         let destination = self.job_dir(&job.id)?;
         let staging = self
             .root
@@ -114,7 +126,32 @@ impl TrainingStore for FileTrainingStore {
                 write_new(&staging.join(&relative), &clip.wav)?;
                 manifest_clips.push(serde_json::json!({ "path":relative, "text":clip.text, "language":clip.language }));
             }
-            let manifest = serde_json::json!({ "schema":1, "id":job.id, "voice_id":job.parameters.voice_id, "name":job.parameters.name, "model_version":"v2", "sovits_epochs":job.parameters.sovits_epochs, "gpt_epochs":job.parameters.gpt_epochs, "batch_size":1, "fp16":true, "clips":manifest_clips, "artifacts": { "gpt":"artifacts/gpt.ckpt", "sovits":"artifacts/sovits.pth" } });
+            let text_mode = if clips.iter().all(|clip| clip.text.is_empty()) {
+                "audio_only"
+            } else {
+                "reviewed_text"
+            };
+            let performance = &job.parameters.performance;
+            let mut manifest = serde_json::json!({ "schema":1, "text_mode":text_mode, "id":job.id, "voice_id":job.parameters.voice_id, "name":job.parameters.name, "model_version":"v2", "sovits_epochs":job.parameters.sovits_epochs, "gpt_epochs":job.parameters.gpt_epochs, "performance": { "batch_size":performance.batch_size, "data_workers":performance.data_workers, "cpu_threads":performance.cpu_threads, "gpu_index":performance.gpu_index, "low_memory":performance.low_memory }, "fp16":true, "clips":manifest_clips, "artifacts": { "gpt":"artifacts/gpt.ckpt", "sovits":"artifacts/sovits.pth" } });
+            if let (Some(previous), Some(pair)) = (base, base_pair.as_ref()) {
+                fs::create_dir(staging.join("base")).map_err(|_| failure())?;
+                let expected: ArtifactManifest = serde_json::from_slice(&read_bounded(
+                    &self.job_dir(&previous.id)?.join("artifacts/manifest.json"),
+                    4096,
+                )?)
+                .map_err(|_| failure())?;
+                for (source, filename, key) in [
+                    (&pair.gpt, "gpt.ckpt", "gpt"),
+                    (&pair.sovits, "sovits.pth", "sovits"),
+                ] {
+                    copy_verified(
+                        source,
+                        &staging.join("base").join(filename),
+                        expected.sha256.get(key).ok_or_else(failure)?,
+                    )?;
+                }
+                manifest["base"] = serde_json::json!({ "job_id":previous.id, "voice_id":previous.parameters.voice_id, "gpt":"base/gpt.ckpt", "sovits":"base/sovits.pth", "sha256":expected.sha256 });
+            }
             write_new(
                 &staging.join("job.json"),
                 &serde_json::to_vec_pretty(&manifest).map_err(|_| failure())?,
@@ -135,6 +172,19 @@ impl TrainingStore for FileTrainingStore {
         let path = self.job_dir(id)?;
         checked_directory(&path)?;
         fs::remove_dir_all(path).map_err(|_| failure())
+    }
+    fn remove_published(&self, id: &str) -> Result<(), TrainingError> {
+        let path = self.job_dir(id)?;
+        match fs::symlink_metadata(&path) {
+            Ok(metadata) => {
+                if !metadata.is_dir() || metadata.file_type().is_symlink() {
+                    return Err(failure());
+                }
+                fs::remove_dir_all(path).map_err(|_| failure())
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(_) => Err(failure()),
+        }
     }
     fn prepared(&self, id: &str) -> Result<PreparedTrainingJob, TrainingError> {
         let work_dir = self.job_dir(id)?;
@@ -234,7 +284,7 @@ impl TrainingStore for FileTrainingStore {
         })
     }
 }
-fn validate_wav(bytes: &[u8]) -> Result<(), TrainingError> {
+pub(super) fn validate_wav(bytes: &[u8]) -> Result<(), TrainingError> {
     let audio = crate::speech::wav::decode_wav(bytes)
         .map_err(|_| TrainingError::Invalid("训练片段必须是完整 PCM16 WAV".into()))?;
     let frames = audio.samples.len() as u64 / u64::from(audio.channels);
@@ -287,6 +337,43 @@ fn write_new(path: &Path, bytes: &[u8]) -> Result<(), TrainingError> {
         .and_then(|()| file.sync_all())
         .map_err(|_| failure())
 }
+fn copy_verified(source: &Path, destination: &Path, expected: &str) -> Result<(), TrainingError> {
+    use sha2::{Digest, Sha256};
+    let metadata = fs::symlink_metadata(source).map_err(|_| failure())?;
+    if !metadata.is_file()
+        || metadata.file_type().is_symlink()
+        || metadata.len() > MAX_ARTIFACT_BYTES
+    {
+        return Err(failure());
+    }
+    let mut input = fs::File::open(source)
+        .map_err(|_| failure())?
+        .take(MAX_ARTIFACT_BYTES + 1);
+    let mut output = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(destination)
+        .map_err(|_| failure())?;
+    let mut hash = Sha256::new();
+    let mut bytes = 0u64;
+    let mut buffer = [0u8; 65536];
+    loop {
+        let count = input.read(&mut buffer).map_err(|_| failure())?;
+        if count == 0 {
+            break;
+        }
+        bytes += count as u64;
+        if bytes > MAX_ARTIFACT_BYTES {
+            return Err(failure());
+        }
+        hash.update(&buffer[..count]);
+        output.write_all(&buffer[..count]).map_err(|_| failure())?;
+    }
+    if bytes == 0 || format!("{:x}", hash.finalize()) != expected {
+        return Err(failure());
+    }
+    output.sync_all().map_err(|_| failure())
+}
 fn atomic_write(root: &Path, name: &str, bytes: &[u8]) -> Result<(), TrainingError> {
     let destination = root.join(name);
     if let Ok(metadata) = fs::symlink_metadata(&destination) {
@@ -333,6 +420,8 @@ struct JobDto {
     voice_id: String,
     sovits_epochs: u16,
     gpt_epochs: u16,
+    #[serde(default)]
+    performance: PerformanceDto,
     state: String,
     clip_count: usize,
     total_bytes: usize,
@@ -344,6 +433,40 @@ struct JobDto {
     auditioned: bool,
     #[serde(default)]
     saved: Option<bool>,
+}
+#[derive(Clone, Copy, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PerformanceDto {
+    batch_size: u16,
+    data_workers: u16,
+    cpu_threads: u16,
+    gpu_index: u16,
+    low_memory: bool,
+}
+impl Default for PerformanceDto {
+    fn default() -> Self {
+        Self::from_domain(TrainingPerformance::default())
+    }
+}
+impl PerformanceDto {
+    fn from_domain(value: TrainingPerformance) -> Self {
+        Self {
+            batch_size: value.batch_size,
+            data_workers: value.data_workers,
+            cpu_threads: value.cpu_threads,
+            gpu_index: value.gpu_index,
+            low_memory: value.low_memory,
+        }
+    }
+    fn into_domain(self) -> TrainingPerformance {
+        TrainingPerformance {
+            batch_size: self.batch_size,
+            data_workers: self.data_workers,
+            cpu_threads: self.cpu_threads,
+            gpu_index: self.gpu_index,
+            low_memory: self.low_memory,
+        }
+    }
 }
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -360,6 +483,7 @@ impl JobDto {
             voice_id: job.parameters.voice_id.clone(),
             sovits_epochs: job.parameters.sovits_epochs,
             gpt_epochs: job.parameters.gpt_epochs,
+            performance: PerformanceDto::from_domain(job.parameters.performance),
             state: job.state.as_str().into(),
             clip_count: job.clip_count,
             total_bytes: job.total_bytes,
@@ -384,6 +508,7 @@ impl JobDto {
                 voice_id: self.voice_id,
                 sovits_epochs: self.sovits_epochs,
                 gpt_epochs: self.gpt_epochs,
+                performance: self.performance.into_domain(),
             },
             state: TrainingState::parse(&self.state).ok_or_else(failure)?,
             clip_count: self.clip_count,

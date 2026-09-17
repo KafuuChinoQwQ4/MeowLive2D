@@ -95,6 +95,7 @@ async fn active_alias_is_resolved_before_queueing() {
     let (state, base, task) = support::server().await;
     let (_control, _audio, _) = support::pair(&base).await;
     support::await_connected(&state, true).await;
+    state.resources.select_voice("default").unwrap();
     let (code, body) = support::request(
         router(state),
         "POST",
@@ -105,4 +106,67 @@ async fn active_alias_is_resolved_before_queueing() {
     assert_eq!(code, 202);
     assert_eq!(body["voice_id"], "default");
     task.abort();
+}
+
+#[tokio::test]
+async fn active_voice_starts_empty_and_cannot_queue_a_hidden_default() {
+    let (state, base, task) = support::server().await;
+    let (_control, _audio, _) = support::pair(&base).await;
+    support::await_connected(&state, true).await;
+    let (code, body) = support::request(
+        router(state),
+        "POST",
+        "/api/speech",
+        json!({"text":"没有音色时不会合成","voice_id":"active"}),
+    )
+    .await;
+    assert_eq!(code, 400);
+    assert_eq!(body["code"], "unknown_voice");
+    task.abort();
+}
+
+#[tokio::test]
+async fn deleting_character_clears_active_character_and_retains_voice() {
+    let state = support::state();
+    let role = meowlive_domain::character::CharacterProfile::new(
+        "role-1",
+        "角色",
+        "model-1",
+        "default",
+        "MeowMouthOpen",
+        vec![],
+    )
+    .unwrap();
+    state.resources.create_character(role).unwrap();
+    state.resources.select_character("role-1").unwrap();
+    let (code, body) = support::request(
+        router(state),
+        "POST",
+        "/api/characters/delete",
+        json!({"id":"role-1"}),
+    )
+    .await;
+    assert_eq!(code, 200);
+    assert_eq!(body["characters"], json!([]));
+    assert!(body["active_character_id"].is_null());
+}
+
+#[tokio::test]
+async fn deletion_rejects_default_unknown_ids_and_invalid_model_paths() {
+    for (path, body) in [
+        ("/api/voices/delete", json!({"id":"default"})),
+        ("/api/voices/delete", json!({"id":"missing"})),
+        ("/api/characters/delete", json!({"id":"missing"})),
+        (
+            "/api/desktop/resources",
+            json!({"type":"delete_imported_model","id":"../outside"}),
+        ),
+    ] {
+        assert_eq!(
+            support::request(router(support::state()), "POST", path, body)
+                .await
+                .0,
+            400
+        );
+    }
 }

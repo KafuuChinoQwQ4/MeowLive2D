@@ -102,3 +102,77 @@ async fn invalid_desktop_result_is_rejected_without_publishing_it() {
     assert_eq!(code, 502);
     server.abort();
 }
+
+#[tokio::test]
+async fn model_deletion_checks_role_references_and_fences_speech_until_confirmation() {
+    let (state, base, server) = support::server().await;
+    let (mut control, _audio, _) = support::pair(&base).await;
+    support::await_connected(&state, true).await;
+    state
+        .resources
+        .create_character(
+            meowlive_domain::character::CharacterProfile::new(
+                "role",
+                "猫咪",
+                "model-cat",
+                "default",
+                "MeowMouthOpen",
+                vec![],
+            )
+            .unwrap(),
+        )
+        .unwrap();
+    let id = "a".repeat(64);
+    for linked in [true, false] {
+        if !linked {
+            state.resources.delete_character("role").unwrap();
+        }
+        let requester = state.clone();
+        let request_id = id.clone();
+        let pending = tokio::spawn(async move {
+            support::request(
+                router(requester),
+                "POST",
+                "/api/desktop/resources",
+                json!({"type":"delete_imported_model","id":request_id}),
+            )
+            .await
+        });
+        let list = support::next_json(&mut control).await;
+        assert_eq!(list["operation"]["type"], "list_imported_models");
+        control.send(Message::Text(json!({"type":"resource_result","request_id":list["request_id"],
+            "result":{"type":"imported_models","models":[{"id":id,"name":"猫咪","model_id":"model-cat"}]}}).to_string().into())).await.unwrap();
+        if linked {
+            let (code, error) = pending.await.unwrap();
+            assert_eq!(code, 400);
+            assert!(error["message"].as_str().unwrap().contains("角色配置"));
+        } else {
+            let command = support::next_json(&mut control).await;
+            assert_eq!(
+                command["operation"],
+                json!({"type":"delete_imported_model","id":id})
+            );
+            let (code, _) = support::request(
+                router(state.clone()),
+                "POST",
+                "/api/speech",
+                json!({"text":"删除期间不能播报","voice_id":"default"}),
+            )
+            .await;
+            assert_eq!(code, 409);
+            control
+                .send(Message::Text(
+                    json!({"type":"resource_result","request_id":command["request_id"],
+                "result":{"type":"model_deleted","id":id,"restart_required":true}})
+                    .to_string()
+                    .into(),
+                ))
+                .await
+                .unwrap();
+            let (code, result) = pending.await.unwrap();
+            assert_eq!(code, 200);
+            assert_eq!(result["id"], id);
+        }
+    }
+    server.abort();
+}

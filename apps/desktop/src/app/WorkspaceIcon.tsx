@@ -1,6 +1,4 @@
-import type { WorkspacePage } from "./navigation";
-
-const paths: Record<WorkspacePage | "arrow" | "cat", string> = {
+const paths = {
   overview: "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z",
   setup: "M3 4h18v12H3z M8 21h8 M12 16v5 M7 8l2 2-2 2 M12 12h5",
   speech: "M5 9v6 M9 5v14 M13 3v18 M17 7v10 M21 10v4",
@@ -11,7 +9,7 @@ const paths: Record<WorkspacePage | "arrow" | "cat", string> = {
   training: "M4 19V9 M10 19V5 M16 19V12 M22 19V2 M2 22h20",
   arrow: "M5 12h14 M13 6l6 6-6 6",
   cat: "M4 11V3l6 4h4l6-4v8c2 7-1 10-8 10S2 18 4 11z M8 12v2 M16 12v2 M10 17l2 1 2-1",
-};
+} as const;
 export function WorkspaceIcon({ name, className }: { name: keyof typeof paths; className?: string }) {
   return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]} /></svg>;
 }

@@ -27,10 +27,12 @@ tests/  # GPT-SoVITS、WAV 与 LLM 适配器的集成和输入输出边界测试
 ├── gpt_sovits_validation.rs  # 引擎配置、默认音色和播报文本输入校验测试
 ├── llm_cancellation.rs  # 取消模型决策 future 后关闭在途 HTTP 连接测试
 ├── llm_limits.rs  # 配置请求响应上限、总超时、错误分类与敏感信息脱敏测试
+├── llm_multi_provider.rs  # 多 LLM 协议的请求认证、输出校验和边界测试
 ├── llm_output_validation.rs  # 严格决策字段、事件子集、工具调用、截断及内容约束测试
 ├── llm_transport.rs  # 路径、认证、JSON 模式、消息角色、礼物分组提示与重定向测试
+├── model_runtime.rs  # 模型关闭拒绝合成、启停后恢复及不污染权重状态的 HTTP 测试
 ├── model_synthesizer.rs  # 取消后的权重合成互斥与默认模型恢复链路测试
-├── resource_store.rs  # 资源持久化恢复、音频边界与文件异常测试
+├── resource_store.rs  # 参考音频存储持久化、删除重启、路径及标识一致性测试
 ├── resource_synthesizer.rs  # 上传音色的引擎路径解析与默认音色回退测试
 ├── wav_decoding.rs  # 完整 WAV 的基础 PCM 解码与无效输入测试
 └── wav_validation.rs  # WAV 采样率、位深、帧完整性和容器畸形校验测试
@@ -46,4 +48,4 @@ tests/  # GPT-SoVITS、WAV 与 LLM 适配器的集成和输入输出边界测试
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 89a0fdaa1ab76473d7a5dd4147b608c979b45ead036f0ad39bdb5d0a29f58bef -->
+<!-- directory-tree-sha256: 1270c0c33061f1d864cb99ce4bddf7688587f3cd04cfcb892935ca99fe17efe3 -->

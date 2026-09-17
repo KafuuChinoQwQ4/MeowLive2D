@@ -12,7 +12,8 @@ mod tests {
                     name: "测试".into(),
                     voice_id: "default".into(),
                     sovits_epochs: 1,
-                    gpt_epochs: 1
+                    gpt_epochs: 1,
+                    performance: TrainingPerformance::default(),
                 },
                 vec![]
             ),
@@ -41,6 +42,7 @@ pub struct TrainingSnapshot {
 struct State {
     catalog: TrainingCatalog,
     running: Option<String>,
+    transcribing: bool,
     closing: bool,
 }
 enum VersionChange {
@@ -63,6 +65,7 @@ impl TrainingManager {
             state: Mutex::new(State {
                 catalog: TrainingCatalog::default(),
                 running: None,
+                transcribing: false,
                 closing: false,
             }),
             completed: Condvar::new(),
@@ -93,6 +96,7 @@ impl TrainingManager {
             state: Mutex::new(State {
                 catalog,
                 running: None,
+                transcribing: false,
                 closing: false,
             }),
             completed: Condvar::new(),
@@ -103,7 +107,7 @@ impl TrainingManager {
         let state = self.state.lock().unwrap_or_else(|p| p.into_inner());
         TrainingSnapshot {
             configured: self.store.is_some(),
-            busy: state.running.is_some()
+            busy: (state.running.is_some() || state.transcribing)
                 || state
                     .catalog
                     .jobs
@@ -112,6 +116,54 @@ impl TrainingManager {
             jobs: state.catalog.jobs.clone(),
             active_versions: state.catalog.active_versions.clone(),
         }
+    }
+    /// Call from a blocking worker; the slot remains owned if the HTTP request ends.
+    pub fn transcribe(&self, clip: TrainingClip) -> Result<String, TrainingError> {
+        let engine = self.engine.as_ref().ok_or(TrainingError::Disabled)?;
+        clip.validate()?;
+        if !clip.text.is_empty() {
+            return Err(TrainingError::Invalid(
+                "自动提取文本只接收音频和语言".into(),
+            ));
+        }
+        {
+            let mut state = self.state.lock().unwrap_or_else(|p| p.into_inner());
+            if state.closing
+                || state.running.is_some()
+                || state.transcribing
+                || state
+                    .catalog
+                    .jobs
+                    .iter()
+                    .any(|job| !job.state.is_terminal())
+            {
+                return Err(TrainingError::Busy);
+            }
+            state.transcribing = true;
+            self.cancelled.store(false, Ordering::SeqCst);
+        }
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let text = engine.transcribe(&clip, &self.cancelled)?;
+            if self.cancelled.load(Ordering::SeqCst) {
+                return Err(TrainingError::Cancelled);
+            }
+            let checked = TrainingClip { text, ..clip };
+            if checked.text.is_empty() || checked.validate().is_err() {
+                return Err(TrainingError::Engine(
+                    "自动提取未得到有效文本，请重新选择音频或手动填写文本".into(),
+                ));
+            }
+            Ok(checked.text)
+        }))
+        .unwrap_or_else(|_| {
+            Err(TrainingError::Engine(
+                "自动提取文本失败，请手动填写文本后重试".into(),
+            ))
+        });
+        let mut state = self.state.lock().unwrap_or_else(|p| p.into_inner());
+        state.transcribing = false;
+        self.completed.notify_all();
+        result
     }
     pub fn create(
         &self,
@@ -123,6 +175,12 @@ impl TrainingManager {
         if !(2..=MAX_TRAINING_CLIPS).contains(&clips.len()) {
             return Err(TrainingError::Invalid("请提供 2 至 32 个人工切片".into()));
         }
+        let automatic = clips[0].text.is_empty();
+        if clips.iter().any(|clip| clip.text.is_empty() != automatic) {
+            return Err(TrainingError::Invalid(
+                "请为全部片段提供文本，或全部留空自动识别".into(),
+            ));
+        }
         let mut total_bytes = 0usize;
         for clip in &clips {
             clip.validate()?;
@@ -133,7 +191,7 @@ impl TrainingManager {
         }
         let mut state = self.state.lock().unwrap_or_else(|p| p.into_inner());
         if state.closing
-            || state.running.is_some()
+            || (state.running.is_some() || state.transcribing)
             || state
                 .catalog
                 .jobs
@@ -163,7 +221,16 @@ impl TrainingManager {
         let mut next = state.catalog.clone();
         next.jobs.push(job.clone());
         next.validate()?;
-        store.prepare(&job, &clips)?;
+        let base = state
+            .catalog
+            .jobs
+            .iter()
+            .filter(|previous| {
+                previous.parameters.voice_id == job.parameters.voice_id
+                    && previous.state == TrainingState::Succeeded
+            })
+            .max_by_key(|previous| previous.created_at_ms);
+        store.prepare(&job, &clips, base)?;
         if let Err(error) = store.save(&next) {
             store.remove_unpublished(&job.id)?;
             return Err(error);
@@ -177,7 +244,7 @@ impl TrainingManager {
         let engine = self.engine.as_ref().ok_or(TrainingError::Disabled)?;
         {
             let mut state = self.state.lock().unwrap_or_else(|p| p.into_inner());
-            if state.running.is_some() || state.closing {
+            if (state.running.is_some() || state.transcribing) || state.closing {
                 return Err(TrainingError::Busy);
             }
             let mut next = state.catalog.clone();
@@ -249,6 +316,10 @@ impl TrainingManager {
                     job.progress = 100;
                     job.message = "训练完成，请试听后保存音色".into();
                 }
+                Err(TrainingError::Engine(message)) => {
+                    job.state = TrainingState::Failed;
+                    job.message = message;
+                }
                 Err(_) => {
                     job.state = TrainingState::Failed;
                     job.message = "训练失败，请检查本地引擎配置及运行日志".into();
@@ -301,6 +372,50 @@ impl TrainingManager {
     pub fn activate(&self, id: &str) -> Result<TrainingJob, TrainingError> {
         self.change_version(id, VersionChange::Activate)
     }
+    /// Check deletion admission before committing related resource changes.
+    pub fn check_delete(&self, id: &str) -> Result<(), TrainingError> {
+        self.store.as_ref().ok_or(TrainingError::Disabled)?;
+        let state = self.state.lock().unwrap_or_else(|p| p.into_inner());
+        Self::validate_deletion(&state, id)
+    }
+    fn validate_deletion(state: &State, id: &str) -> Result<(), TrainingError> {
+        if !valid_job_id(id) {
+            return Err(TrainingError::Invalid("训练任务标识无效".into()));
+        }
+        if (state.running.is_some() || state.transcribing)
+            || state.closing
+            || state
+                .catalog
+                .jobs
+                .iter()
+                .any(|job| !job.state.is_terminal())
+        {
+            return Err(TrainingError::Busy);
+        }
+        Ok(())
+    }
+    /// Delete a terminal training task and its owned model directory.
+    /// Catalog state is committed first, so a cleanup failure cannot leave a
+    /// visible version pointing at a removed or partially removed catalog entry.
+    pub fn delete(&self, id: &str) -> Result<(), TrainingError> {
+        let store = self.store.as_ref().ok_or(TrainingError::Disabled)?;
+        let mut state = self.state.lock().unwrap_or_else(|p| p.into_inner());
+        Self::validate_deletion(&state, id)?;
+        if !state.catalog.jobs.iter().any(|job| job.id == id) {
+            // A previous call may have committed the catalog and failed only
+            // during filesystem cleanup. Retrying is intentionally idempotent.
+            return store.remove_published(id);
+        }
+        let mut next = state.catalog.clone();
+        next.jobs.retain(|candidate| candidate.id != id);
+        next.active_versions.retain(|_, active| active != id);
+        next.validate()?;
+        store.save(&next)?;
+        state.catalog = next;
+        store
+            .remove_published(id)
+            .map_err(|_| TrainingError::Store("记录已删除，但文件清理失败，请重试删除".into()))
+    }
     fn change_version(
         &self,
         id: &str,
@@ -309,7 +424,7 @@ impl TrainingManager {
         let store = self.store.as_ref().ok_or(TrainingError::Disabled)?;
         let mut state = self.state.lock().unwrap_or_else(|p| p.into_inner());
         if state.closing
-            || state.running.is_some()
+            || (state.running.is_some() || state.transcribing)
             || state
                 .catalog
                 .jobs
@@ -384,7 +499,7 @@ impl TrainingManager {
         let mut state = self.state.lock().unwrap_or_else(|p| p.into_inner());
         state.closing = true;
         self.cancelled.store(true, Ordering::SeqCst);
-        while state.running.is_some() {
+        while state.running.is_some() || state.transcribing {
             state = self
                 .completed
                 .wait(state)

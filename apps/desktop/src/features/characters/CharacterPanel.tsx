@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import type { CharacterMapping, CharacterProfile, CharacterSaveRequest } from "@meowlive/contracts";
 import type { CharacterController } from "./types";
+import { useFeedback } from "../../app/feedback/OperationFeedback";
 
 const emptyCharacter = (): CharacterSaveRequest => ({
   id: null,
@@ -17,6 +18,7 @@ function editable(character: CharacterProfile): CharacterSaveRequest {
 }
 
 export function CharacterPanel({ controller }: { controller: CharacterController }) {
+  const feedback = useFeedback();
   const [form, setForm] = useState<CharacterSaveRequest>(emptyCharacter);
   const [dirty, setDirty] = useState(false);
   const snapshot = controller.snapshot;
@@ -45,7 +47,8 @@ export function CharacterPanel({ controller }: { controller: CharacterController
 
   async function save(event: FormEvent) {
     event.preventDefault();
-    if (!valid || busy) return;
+    if (busy) return;
+    if (!valid) { feedback.error("角色检查失败", "请填写角色名称，选择模型与可用音色，并检查嘴型参数和热键映射；映射意图不能重复。"); return; }
     const previousIds = new Set(snapshot?.characters.map((character) => character.id));
     const value = await controller.saveCharacter({
       ...form,
@@ -90,10 +93,17 @@ export function CharacterPanel({ controller }: { controller: CharacterController
           {snapshot.active_character_id === character.id && <span className="task-status task-completed">当前角色</span>}</div>
         <div className="compact-actions">
           <button type="button" disabled={busy} onClick={() => { setForm(editable(character)); setDirty(false); }}>编辑</button>
-          <button type="button" className="primary-button" disabled={busy}
+          <button type="button" className="primary-button" disabled={busy || !character.voice_id}
             onClick={() => { void controller.selectCharacter(character.id); }}>
             {snapshot.active_character_id === character.id ? "重新加载" : "选择并加载"}
           </button>
+          <button type="button" className="stop-button" disabled={busy} aria-label={`删除角色 ${character.name}`}
+            onClick={() => {
+              if (!window.confirm(`删除角色配置“${character.name}”？模型文件和声音资源会保留。`)) return;
+              void controller.deleteCharacter(character.id).then(value => {
+                if (value && form.id === character.id) { setForm(emptyCharacter()); setDirty(false); }
+              });
+            }}>删除</button>
         </div>
       </li>)}
     </ul>
@@ -103,10 +113,28 @@ export function CharacterPanel({ controller }: { controller: CharacterController
       <button type="button" disabled={busy} onClick={() => { void controller.importModel(); }}>
         {controller.pendingAction === "model-import" ? "正在导入…" : "从本机导入模型"}
       </button>
+      <button type="button" disabled={busy} onClick={() => { void controller.refreshInstalledModels(); }}>
+        {controller.installedModels === null ? "管理已安装模型" : "刷新已安装模型"}
+      </button>
     </div>
     {controller.importResult && <p className="availability-note" role="status">
       已导入 {controller.importResult.model_name}（{controller.importResult.files} 个文件），请重启 VTube Studio 后刷新模型列表。
     </p>}
+    {controller.modelNotice && <p className="success-banner" role="status">{controller.modelNotice}</p>}
+    {controller.installedModels !== null && <>
+      <p className="field-hint">此列表来自 VTS 模型目录。删除会移除已安装的模型副本，请先在 VTS 中卸载当前模型；删除后重启 VTS。</p>
+      <ul className="resource-list" aria-label="已安装模型">{controller.installedModels.map(model => <li className="resource-row" key={model.id}>
+        <div className="resource-row-heading"><strong>{model.name}</strong>
+          <button type="button" className="stop-button" disabled={busy} aria-label={`删除模型 ${model.name}`} onClick={() => {
+            if (!window.confirm(`删除模型“${model.name}”？将删除 VTS 安装目录内该模型的全部文件，目录外的原文件不受影响。此操作无法撤销。`)) return;
+            void controller.deleteModel(model).then(result => {
+              if (result?.type === "model_deleted" && form.model_id === model.model_id) change({ model_id: "", mappings: [] });
+            });
+          }}>删除</button>
+        </div>
+      </li>)}</ul>
+      {controller.installedModels.length === 0 && <p className="muted">没有可管理的已安装模型。</p>}
+    </>}
 
     <div className="panel-divider" />
     <h3>{form.id ? "编辑角色" : "新建角色"}</h3>

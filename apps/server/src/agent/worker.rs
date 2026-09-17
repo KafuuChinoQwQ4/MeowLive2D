@@ -50,7 +50,7 @@ pub async fn run_agent(state: AppState) {
         let voice_id =
             match tokio::task::spawn_blocking(move || resources.snapshot().active_voice_id).await {
                 Ok(id) => id,
-                Err(_) => "default".into(),
+                Err(_) => String::new(),
             };
         let mut inner = state.inner.lock().await;
         if cancel.is_cancelled() || generation != inner.queue.generation() {

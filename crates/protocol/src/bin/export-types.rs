@@ -1,6 +1,6 @@
 use meowlive_protocol::{
-    agent::*, audio::*, control::*, execution::*, launcher::*, live::*, model_library::*, obs::*,
-    resources::*, training::*,
+    agent::*, audio::*, control::*, execution::*, launcher::*, live::*, llm::*, model_library::*,
+    obs::*, resources::*, training::*, training_runtime::*,
 };
 use std::{env, fs, path::PathBuf, process::ExitCode};
 use ts_rs::TS;
@@ -9,6 +9,10 @@ fn main() -> ExitCode {
     let path =
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../packages/contracts/src/index.ts");
     let types = [
+        LlmSettings::decl(),
+        LlmSettingsSnapshot::decl(),
+        LlmSettingsRequest::decl(),
+        LlmTestResult::decl(),
         ModelEnvironment::decl(),
         ModelRuntime::decl(),
         CatalogModel::decl(),
@@ -21,10 +25,16 @@ fn main() -> ExitCode {
         LauncherSetup::decl(),
         LauncherSnapshot::decl(),
         TrainingJob::decl(),
+        TrainingPerformance::decl(),
         ModelVersion::decl(),
         TrainingSnapshot::decl(),
+        TrainingModelRuntimeSnapshot::decl(),
+        TrainingModelRuntimeRequest::decl(),
         TrainingClipMetadata::decl(),
+        TrainingTextMode::decl(),
         TrainingCreateRequest::decl(),
+        TrainingTranscribeRequest::decl(),
+        TrainingTranscription::decl(),
         TrainingAuditionRequest::decl(),
         RuntimeMeasurement::decl(),
         RuntimePresetSnapshot::decl(),
@@ -38,6 +48,7 @@ fn main() -> ExitCode {
         CharacterSaveRequest::decl(),
         CharacterPreviewRequest::decl(),
         VtsModel::decl(),
+        ImportedModel::decl(),
         VtsHotkey::decl(),
         ObsOperation::decl(),
         ObsSnapshot::decl(),

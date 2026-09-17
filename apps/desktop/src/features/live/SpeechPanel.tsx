@@ -4,6 +4,7 @@ import type { SpeechStatus } from "@meowlive/contracts";
 import { createServerClient } from "../../services/server";
 import type { ServerClient } from "../../services/server";
 import { isActiveSpeech, useSpeechController } from "./useSpeechController";
+import { useFeedback } from "../../app/feedback/OperationFeedback";
 
 const defaultClient = createServerClient();
 const statusLabels: Record<SpeechStatus, string> = {
@@ -12,6 +13,7 @@ const statusLabels: Record<SpeechStatus, string> = {
 };
 
 export function SpeechPanel({ client = defaultClient, pollIntervalMs = 1_000 }: { client?: ServerClient; pollIntervalMs?: number }) {
+  const feedback = useFeedback();
   const [text, setText] = useState("");
   const [voiceId, setVoiceId] = useState("active");
   const controller = useSpeechController(client, pollIntervalMs);
@@ -25,7 +27,10 @@ export function SpeechPanel({ client = defaultClient, pollIntervalMs = 1_000 }: 
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit) {
+      if (!pendingAction) feedback.error("播报检查失败", !available ? "请先连接桌面执行端。" : !validVoice ? "声音 ID 须为 1–64 位字母、数字、下划线或连字符。" : "播报文本须为 1–500 字。");
+      return;
+    }
     const accepted = await controller.submit({ text: text.trim(), voice_id: voiceId.trim() });
     if (accepted) setText("");
   }

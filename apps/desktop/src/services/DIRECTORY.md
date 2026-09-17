@@ -6,6 +6,12 @@
 
 ```text
 services/  # 前端访问主服务、Linux 启动管理与 Windows 桌面能力的统一边界
+├── audio/  # 参考音频与训练片段的浏览器解码、格式转换和音频校验
+│   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   ├── index.test.ts  # 多格式音频转换、PCM 编码、文件大小、时长与解码失败测试
+│   ├── index.ts  # MP3 等多格式音频导入、离线解码与兼容 PCM16 WAV 转换
+│   ├── wav.test.ts  # 参考与训练音频的 WAV 格式、时长、容量与静音边界测试
+│   └── wav.ts  # 参考音频与训练片段的 PCM16 WAV 结构及有效性校验
 ├── desktop/  # Tauri 命令客户端与桌面能力边界
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   ├── index.test.ts  # 桌面 IPC 状态校验、来源约束和超时回归测试
@@ -29,20 +35,23 @@ services/  # 前端访问主服务、Linux 启动管理与 Windows 桌面能力�
 │   ├── live.failures.test.ts  # 直播快照边界、HTTP 错误、网络失败、超时及取消测试
 │   ├── live.requests.test.ts  # 直播连接查询、连接及断开请求契约测试
 │   ├── live.ts  # 直播连接 HTTP 客户端、超时取消与运行时快照校验
+│   ├── llm.test.ts  # LLM 客户端路由、校验、错误与超时测试
+│   ├── llm.ts  # LLM 设置与连接测试 HTTP 客户端及响应校验
 │   ├── obs.test.ts  # OBS HTTP 响应校验、失败和超时且不重放控制请求的测试
 │   ├── obs.ts  # OBS 主服务请求、超时处理和状态契约校验
 │   ├── requests.test.ts  # HTTP 请求与成功响应测试
 │   ├── resources.failures.test.ts  # 资源响应边界、请求失败、超时与取消测试
-│   ├── resources.requests.test.ts  # 资源接口路径、JSON 与音频上传负载测试
+│   ├── resources.requests.test.ts  # 资源增删接口负载、空绑定及安装模型响应关联测试
 │   ├── resources.ts  # 资源 HTTP 与桌面操作客户端及运行时响应校验
 │   ├── responses.ts  # 生成契约的运行时响应校验与错误映射
-│   ├── training.test.ts  # 训练契约、音色保存请求、测量证据、超时取消及试听响应测试
-│   └── training.ts  # 训练音色保存与运行预设 HTTP 客户端、严格响应校验和取消超时
+│   ├── training.test.ts  # 训练与转写契约、请求校验、保存删除及取消超时测试
+│   └── training.ts  # 训练性能、任务版本、模型启停与离线测量客户端及响应校验
 └── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 ```
 
 可继续查看各子目录的索引：
 
+- [audio/](audio/DIRECTORY.md)：参考音频与训练片段的浏览器解码、格式转换和音频校验
 - [desktop/](desktop/DIRECTORY.md)：Tauri 命令客户端与桌面能力边界
 - [launcher/](launcher/DIRECTORY.md)：前端访问本机启动管理器的服务适配层
 - [model-library/](model-library/DIRECTORY.md)：前端访问启动管理器语音模型能力的服务适配层
@@ -52,4 +61,4 @@ services/  # 前端访问主服务、Linux 启动管理与 Windows 桌面能力�
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 6e43ceb92b47a45451500722ecd661e2e9be4ff22e3f54fbff0eee2ac8921764 -->
+<!-- directory-tree-sha256: 0bb6acc1cd1be55ff08f7478ac3b7c9ef4999464044eacb12878b1f27a6e36c0 -->

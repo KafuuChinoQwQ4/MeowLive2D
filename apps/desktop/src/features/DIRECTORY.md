@@ -20,11 +20,11 @@ features/  # 面向用户的功能模块，各自封装组件与状态
 │   ├── index.ts  # Agent 自动互动面板的功能出口
 │   └── useAgentController.ts  # 修订号防回滚及卸载取消的串行 Agent 轮询与动作控制器
 ├── characters/  # 角色模型选择、导入与动作映射界面
-│   ├── CharacterPanel.test.tsx  # 角色导入、保存、加载与能力预览交互测试
-│   ├── CharacterPanel.tsx  # 角色模型、音色、口型与热键映射管理界面
+│   ├── CharacterPanel.test.tsx  # 角色与安装模型删除确认、导入保存加载及能力预览交互测试
+│   ├── CharacterPanel.tsx  # 角色配置及安装模型增删、音色绑定、口型和热键管理界面
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   ├── index.ts  # 角色管理：VTS 模型选择、表情动作映射及导入操作的界面。
-│   └── types.ts  # 角色面板需要的状态与操作接口
+│   └── types.ts  # 角色档案与本机模型增删管理界面的状态和能力契约
 ├── connections/  # 直播平台连接状态、事件计数和人工连接控制
 │   ├── ConnectionPanel.test.tsx  # 直播连接面板状态展示、按钮规则与错误交互测试
 │   ├── ConnectionPanel.tsx  # 直播平台连接状态、事件统计与手动连接控制面板
@@ -47,6 +47,11 @@ features/  # 面向用户的功能模块，各自封装组件与状态
 │   ├── index.ts  # 直播工作台：会话状态、弹幕观察、播放状态与人工控制。
 │   ├── polling.test.tsx  # 状态刷新、取消清理与迟到响应场景测试
 │   └── useSpeechController.ts  # 可取消的串行状态刷新与播报操作状态
+├── llm/  # LLM 接入配置功能
+│   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   ├── LlmPanel.test.tsx  # LLM 面板草稿、密钥与生命周期测试
+│   ├── LlmPanel.tsx  # LLM 服务商、协议、模型、密钥与连接测试面板
+│   └── index.ts  # LLM 功能公共入口
 ├── model-library/  # 环境检查、本地语音模型选择与官方模型下载管理界面
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   ├── ModelLibraryPanel.test.tsx  # 环境门控、模型选择、分页检索、会话失效和下载取消交互测试
@@ -57,22 +62,27 @@ features/  # 面向用户的功能模块，各自封装组件与状态
 │   ├── ObsPanel.test.tsx  # OBS 显式控制、状态读回和失败后禁用操作的组件测试
 │   ├── ObsPanel.tsx  # OBS 状态刷新、场景选择和人工录制控制界面
 │   └── index.ts  # OBS 功能模块的公开组件出口
-├── training/  # 音色训练素材审核、任务版本和离线测量界面
+├── training/  # 仅音频与可选文本训练、转写校对、任务版本和离线测量界面
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   ├── TrainingPanel.saved.test.tsx  # 音色保存、重开复用、跨音色版本切换和失败重试交互回归测试
-│   ├── TrainingPanel.test.tsx  # 训练提交审核、任务取消、试听确认和音频释放交互测试
-│   ├── TrainingPanel.tsx  # 训练素材审核、任务取消、版本试听保存、音色选择切换及离线预设面板
+│   ├── TrainingPanel.audio.test.tsx  # 训练片段多格式转换上传、异步重选、容量与导入失败回归测试
+│   ├── TrainingPanel.feedback.test.tsx  # 验证 GPU 失败提示、训练与测量结果弹窗、终态竞态去重及过期请求隔离
+│   ├── TrainingPanel.saved.test.tsx  # 音色保存重开切换、删除确认及清理失败重试交互测试
+│   ├── TrainingPanel.test.tsx  # 训练配置独立选择、服务忙碌时编辑、提交审核与试听取消交互测试
+│   ├── TrainingPanel.transcription.test.tsx  # 训练声音与文本模式、空白转写汇总弹窗、审核及过期请求回归测试
+│   ├── TrainingPanel.tsx  # 训练性能设置、记录分页、音色版本、模型开关及结果弹窗工作区
+│   ├── TrainingPanel.workspace.test.tsx  # 训练页签与素材分页、音色归组、性能参数及独立模型启停测试
+│   ├── TrainingResultDialog.tsx  # 训练成功失败结果弹窗、建议提示及键盘焦点恢复
+│   ├── TrainingVoiceLibrary.tsx  # 按参考音色归组的训练音色库、版本选择与单版本操作
 │   ├── index.ts  # 训练面板公开组件导出
+│   ├── trainingFeedback.ts  # 训练操作结果、任务终态通知及失败原因对应的改正建议
 │   ├── useTraining.test.tsx  # 训练轮询独立更新、故障恢复与取消迟到结果测试
-│   └── useTraining.ts  # 训练资源预设独立轮询、音色保存切换及取消生命周期
+│   └── useTraining.ts  # 训练资源与模型状态轮询、操作反馈、终态通知及异步取消保护
 ├── voices/  # 参考素材、音色试听和训练任务界面
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   ├── VoicePanel.test.tsx  # 音色上传、选择、试听与缺失资源交互测试
-│   ├── VoicePanel.tsx  # 音色列表、参考音频上传校验、试听及已保存训练音色入口
+│   ├── VoicePanel.test.tsx  # 多格式音色上传选择试听、删除确认失败及空状态交互测试
+│   ├── VoicePanel.tsx  # 音色导入校验、选择试听和删除管理及训练音色入口
 │   ├── index.ts  # 音色管理：参考素材、试听与训练任务展示；不在浏览器执行模型推理。
-│   ├── types.ts  # 音色面板需要的状态与操作接口
-│   ├── wav.test.ts  # 参考音频格式、时长、容量与静音边界测试
-│   └── wav.ts  # 浏览器端参考 PCM16 WAV 结构与有效性校验
+│   └── types.ts  # 音色列表选择试听、上传删除及文件清理重试能力契约
 └── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 ```
 
@@ -83,13 +93,14 @@ features/  # 面向用户的功能模块，各自封装组件与状态
 - [connections/](connections/DIRECTORY.md)：直播平台连接状态、事件计数和人工连接控制
 - [launcher/](launcher/DIRECTORY.md)：控制面板服务开关、启动状态及新人引导
 - [live/](live/DIRECTORY.md)：直播工作台、弹幕观察与播报控制
+- [llm/](llm/DIRECTORY.md)：LLM 接入配置功能
 - [model-library/](model-library/DIRECTORY.md)：环境检查、本地语音模型选择与官方模型下载管理界面
 - [obs/](obs/DIRECTORY.md)：OBS 场景与录制控制面板
-- [training/](training/DIRECTORY.md)：音色训练素材审核、任务版本和离线测量界面
+- [training/](training/DIRECTORY.md)：仅音频与可选文本训练、转写校对、任务版本和离线测量界面
 - [voices/](voices/DIRECTORY.md)：参考素材、音色试听和训练任务界面
 
 用途说明源：`scripts/directory-descriptions.json`。新增、删除、移动文件或调整职责时先同步说明源，再运行生成命令。
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: ef69759062ef3827d2c6e0a53c7df3478b94e2a857c08f8fe4f5718fa77f96cc -->
+<!-- directory-tree-sha256: 34e293f07eb55b8d72fd9c4dab7760625b938887dc6e93dd4395be698c50c0ec -->

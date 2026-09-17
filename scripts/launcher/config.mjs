@@ -9,7 +9,7 @@ import { displayPath, resolveConfiguredPath } from './paths.mjs';
 
 const execute = promisify(execFile);
 const defaults = { serverConfig: 'config/server.local.toml', ttsPython: 'data/environments/gpt-sovits/bin/python',
-  ttsEngineRoot: 'data/engines/GPT-SoVITS', ttsDevice: 'cuda', llmKeyFile: 'config/local/llm-api-key.txt' };
+  ttsEngineRoot: 'data/engines/GPT-SoVITS', ttsDevice: 'cuda', ttsMemoryMode: 'low', llmKeyFile: 'config/local/llm-api-key.txt' };
 
 async function exists(path, mode = constants.R_OK) {
   try { await access(path, mode); return true; } catch { return false; }
@@ -25,11 +25,21 @@ async function initialize(root, destination, template) {
 async function readServerConfig(path) {
   // Keep TOML parsing in Python's standard library; no cloud key or full config is printed.
   const script = `import json,sys,tomllib
+from pathlib import Path
 with open(sys.argv[1], 'rb') as f: data=tomllib.load(f)
+profile=Path(sys.argv[1]).parent/'local'/(Path(sys.argv[1]).stem+'-llm.json')
+llm=data.get('llm',{})
+key_saved=False
+if profile.exists():
+ if profile.is_symlink() or profile.stat().st_size>16384: raise ValueError('invalid profile')
+ saved=json.loads(profile.read_text())
+ if saved.get('schema')!=1: raise ValueError('invalid profile')
+ llm=saved['config']
+ key_saved=bool(saved.get('api_key'))
 print(json.dumps({
  'listen':data.get('server',{}).get('listen_address','127.0.0.1:19600'),
  'tts':data.get('speech',{}).get('base_url','http://127.0.0.1:9880'),
- 'llm':{k:data.get('llm',{}).get(k,'') for k in ['base_url','model','api_key_env']}
+ 'llm':{**{k:llm.get(k,'') for k in ['base_url','model','api_key_env']},'key_saved':key_saved}
 }))`;
   const { stdout } = await execute('python3', ['-c', script, path], { timeout: 5000, maxBuffer: 65536 });
   return JSON.parse(stdout);
@@ -57,6 +67,7 @@ export async function loadConfiguration(root, { env = process.env } = {}) {
         || Object.values(data).some(value => typeof value !== 'string' || !value.trim() || value.length > 4096)) throw new Error('invalid settings');
     settings = { ...defaults, ...data };
     if (!['cuda', 'cpu'].includes(settings.ttsDevice)) throw new Error('invalid device');
+    if (!['low', 'standard'].includes(settings.ttsMemoryMode)) throw new Error('invalid memory mode');
   } catch { commonIssue = '启动配置 JSON 无效或无法读取。请检查 config/local/launcher.json，然后重启控制面板。'; }
   const environment = detectEnvironment(undefined, env);
   if (!environment.ready) commonIssue = environment.message;
@@ -89,23 +100,20 @@ export async function loadConfiguration(root, { env = process.env } = {}) {
       if (key) serverEnv[keyName] = key;
     } catch { /* Manual speech remains available without a cloud key. */ }
   }
-  const llmConfigured = Boolean(metadata?.llm?.base_url && metadata?.llm?.model && (!keyName || serverEnv[keyName]));
-  if (!serverIssue && (metadata?.llm?.base_url || metadata?.llm?.model) && !llmConfigured) {
-    serverIssue = 'LLM 已启用但模型配置或密钥缺失。请补齐配置；暂时只测试文字播报时，可将主服务 [llm] 的 base_url 和 model 都设为空，再重启面板。';
-  }
+  const llmConfigured = Boolean(metadata?.llm?.base_url && metadata?.llm?.model && (metadata.llm.key_saved || !keyName || serverEnv[keyName]));
   const ttsEnv = Object.fromEntries(Object.entries(env).filter(([name]) => name !== keyName && !/KEY|TOKEN|PASSWORD|SECRET/i.test(name)));
   return {
     modelSettings: { root, home, engine, python, environment, hfHome: env.HF_HOME },
     setup: { configuration_path: publicPath(configurationPath), server_config: publicPath(serverConfig), llm_configured: llmConfigured,
-      llm_message: llmConfigured ? 'LLM 配置已读取，密钥仅用于主服务。' : 'LLM 未就绪。仅测试文字播报时，可将 [llm] 的 base_url 和 model 都留空；Agent 互动需要完整模型配置与密钥。',
+      llm_message: llmConfigured ? 'LLM 配置已读取，密钥仅用于主服务。' : 'LLM 尚未就绪。启动主服务后进入“LLM 接入”，填写接口格式、地址、模型和密钥。',
       windows_client_path: './target/windows-client' },
     definitions: [
       { id: 'server', url: serverUrl, issue: serverIssue, cwd: root, command: 'cargo',
         args: ['run', '--locked', '-p', 'meowlive-server', '--', '--config', serverConfig], env: serverEnv,
         logPath: join(root, 'logs/control-panel/server.log') },
-      { id: 'tts', url: ttsUrl, issue: ttsIssue, cwd: root, command: python,
+      { id: 'tts', url: ttsUrl, issue: ttsIssue, cwd: root, command: python, memoryGuard: true,
         args: [join(root, 'scripts/start-managed-inference.py'), '--engine-root', engine, '--data-dir', join(root, 'data/control-panel-inference'),
-          '--port', new URL(ttsUrl).port, '--device', settings.ttsDevice], env: { ...ttsEnv, PYTHONDONTWRITEBYTECODE: '1', PYTHONUNBUFFERED: '1' },
+          '--port', new URL(ttsUrl).port, '--device', settings.ttsDevice, '--memory-mode', settings.ttsMemoryMode], env: { ...ttsEnv, PYTHONDONTWRITEBYTECODE: '1', PYTHONUNBUFFERED: '1' },
         logPath: join(root, 'logs/control-panel/tts.log') },
     ],
   };

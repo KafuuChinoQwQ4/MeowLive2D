@@ -39,8 +39,20 @@ pub(super) struct ValidatedConfig {
     pub json_mode: bool,
 }
 
+#[derive(Clone, Copy)]
+pub(super) enum EndpointKind {
+    OpenaiChat,
+    OpenaiResponses,
+    AnthropicMessages,
+    GeminiGenerateContent,
+}
+
 impl ValidatedConfig {
     pub fn new(config: LlmConfig) -> Result<Self, LlmError> {
+        Self::new_for(config, EndpointKind::OpenaiChat)
+    }
+
+    pub fn new_for(config: LlmConfig, kind: EndpointKind) -> Result<Self, LlmError> {
         if config.base_url.len() > 4096 {
             return Err(config_error("LLM base URL exceeds the size limit"));
         }
@@ -62,15 +74,11 @@ impl ValidatedConfig {
                 "LLM base URL must not contain credentials, a query, or a fragment",
             ));
         }
-        endpoint.set_path(&format!(
-            "{}/chat/completions",
-            endpoint.path().trim_end_matches('/')
-        ));
-
         let model = config.model.trim();
         if model.is_empty() || model.len() > 128 || model.chars().any(char::is_control) {
             return Err(config_error("LLM model is invalid"));
         }
+        normalize_endpoint(&mut endpoint, kind, model)?;
         if !(Duration::from_secs(1)..=Duration::from_secs(120)).contains(&config.timeout) {
             return Err(config_error(
                 "LLM timeout must be between 1 and 120 seconds",
@@ -90,8 +98,7 @@ impl ValidatedConfig {
                 if key.trim().is_empty() || key.chars().any(char::is_control) {
                     return Err(config_error("LLM API key is invalid"));
                 }
-                HeaderValue::from_str(&format!("Bearer {key}"))
-                    .map_err(|_| config_error("LLM API key is invalid"))
+                HeaderValue::from_str(&key).map_err(|_| config_error("LLM API key is invalid"))
             })
             .transpose()?;
 
@@ -105,6 +112,46 @@ impl ValidatedConfig {
             json_mode: config.json_mode,
         })
     }
+}
+
+fn normalize_endpoint(endpoint: &mut Url, kind: EndpointKind, model: &str) -> Result<(), LlmError> {
+    let path = endpoint.path().trim_end_matches('/').to_owned();
+    let is_full_endpoint = match kind {
+        EndpointKind::OpenaiChat => path.ends_with("/chat/completions"),
+        EndpointKind::OpenaiResponses => path.ends_with("/responses"),
+        EndpointKind::AnthropicMessages => path.ends_with("/messages"),
+        EndpointKind::GeminiGenerateContent => path.ends_with(":generateContent"),
+    };
+    if is_full_endpoint {
+        if matches!(kind, EndpointKind::GeminiGenerateContent) {
+            endpoint.set_path(&path);
+            let mut segments = endpoint
+                .path_segments_mut()
+                .map_err(|_| config_error("LLM base URL is invalid"))?;
+            segments.pop();
+            segments.push(&format!("{model}:generateContent"));
+            return Ok(());
+        }
+        endpoint.set_path(&path);
+        return Ok(());
+    }
+
+    let suffix = match kind {
+        EndpointKind::OpenaiChat => "chat/completions",
+        EndpointKind::OpenaiResponses => "responses",
+        EndpointKind::AnthropicMessages => "messages",
+        EndpointKind::GeminiGenerateContent => {
+            let mut segments = endpoint
+                .path_segments_mut()
+                .map_err(|_| config_error("LLM base URL is invalid"))?;
+            segments.pop_if_empty();
+            segments.push("models");
+            segments.push(&format!("{model}:generateContent"));
+            return Ok(());
+        }
+    };
+    endpoint.set_path(&format!("{path}/{suffix}"));
+    Ok(())
 }
 
 fn config_error(message: &'static str) -> LlmError {

@@ -9,7 +9,7 @@ desktop-runtime/  # 独立于界面的 Windows 播放与设备执行库
 ├── src/  # 播放、连接、口型、VTS、OBS 与模型导入的执行源码
 │   ├── assets/  # Live2D 导出模型包的本地校验与安装
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   └── model.rs  # 模型清单和 VTS 引用检查、限制与无覆盖安装
+│   │   └── model.rs  # 模型清单与路径校验、无覆盖安装、模型身份枚举及持久化删除重试
 │   ├── audio/  # 音频设备后端、采样转换与设备播放时钟
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   ├── conversion.rs  # 相位连续的 PCM 重采样与声道映射
@@ -38,7 +38,7 @@ desktop-runtime/  # 独立于界面的 Windows 播放与设备执行库
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   └── config.rs  # OBS 本机地址、密码环境变量名与整次操作超时校验
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   ├── assets.rs  # Live2D 模型校验与本地安装公共接口
+│   ├── assets.rs  # 本机 Live2D 模型包校验、安装、枚举及删除能力导出
 │   ├── audio.rs  # 音频设备边界、播放事件与设备输出能量观测接口
 │   ├── avatar.rs  # VTube Studio 独立连接入口、配置与可观察状态导出
 │   ├── cli.rs  # 桌面客户端配置加载、服务重连、VTS 组装与限时退出入口
@@ -50,7 +50,7 @@ desktop-runtime/  # 独立于界面的 Windows 播放与设备执行库
 │   ├── obs.rs  # OBS v5 鉴权、有界状态查询、场景录制控制与状态读回
 │   ├── playback.rs  # 播放状态机、代次取消、乱序校验与设备回执
 │   ├── presentation.rs  # 桌面口型驱动生命周期与角色参数切换组装
-│   └── resource_control.rs  # 桌面资源命令执行、Windows 目录选择和能力调用
+│   └── resource_control.rs  # 桌面模型导入列举删除、VTS 加载热键与 OBS 控制执行
 ├── tests/  # 桌面执行运行时独立集成测试
 │   ├── avatar_support/  # VTS 本地 WebSocket 场景测试的隔离文件与协议辅助设施
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
@@ -88,6 +88,7 @@ desktop-runtime/  # 独立于界面的 Windows 播放与设备执行库
 │   ├── lip_sync_levels.rs  # 口型能量阈值、增益、时间平滑及非法输入测试
 │   ├── lip_sync_lifecycle.rs  # 设备驱动口型、停止、完成、失败和析构复位测试
 │   ├── model_assets.rs  # 模型引用、路径限制、安装与覆盖保护测试
+│   ├── model_management.rs  # 已安装 Live2D 模型列表、删除、路径边界及跨端协议测试
 │   ├── obs_configuration.rs  # OBS 本机配置、URL 归一化及超时边界测试
 │   ├── obs_websocket.rs  # OBS 受控鉴权、状态读回、协议边界与禁止重放写请求测试
 │   ├── output_meter.rs  # 设备能量的播放延迟、静音、过期、容量与复位测试
@@ -110,4 +111,4 @@ desktop-runtime/  # 独立于界面的 Windows 播放与设备执行库
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: f9261cc7e9c90896673dffd1aa7873df67182f2ea662caa430e1685f0346ccfa -->
+<!-- directory-tree-sha256: 376c76823420deb256d64c7e86e06c2500466f8b9eca95a78b5372ca5c7e7309 -->

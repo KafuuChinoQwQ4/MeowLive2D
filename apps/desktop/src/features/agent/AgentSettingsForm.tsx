@@ -1,12 +1,14 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import type { AgentSettings } from "@meowlive/contracts";
+import { useFeedback } from "../../app/feedback/OperationFeedback";
 
 export function AgentSettingsForm({ settings, disabled, onSave }: {
   settings: AgentSettings;
   disabled: boolean;
   onSave: (settings: AgentSettings) => Promise<boolean>;
 }) {
+  const feedback = useFeedback();
   const [persona, setPersona] = useState(settings.persona);
   const [topic, setTopic] = useState(settings.topic);
   const [proactive, setProactive] = useState(settings.proactive_enabled);
@@ -22,6 +24,7 @@ export function AgentSettingsForm({ settings, disabled, onSave }: {
     if (!Number.isInteger(seconds) || seconds < 1 || seconds > 3_600) messages.push("冷却时间必须是 1 到 3600 秒的整数。");
     if (messages.length > 0) {
       setValidationError(messages.join(" "));
+      feedback.error("Agent 设置检查失败", messages.join(" "));
       return;
     }
     setValidationError(null);

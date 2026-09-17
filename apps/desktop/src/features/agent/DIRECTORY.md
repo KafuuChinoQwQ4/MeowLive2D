@@ -24,4 +24,4 @@ agent/  # Agent 人设、话题和互动策略设置
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 08acfcf6e9d0ebe7f8b9f4f6e57923410a6135a323baf5181d8767ed6eb6023b -->
+<!-- directory-tree-sha256: 33cd88cd28df935bb813a35b503110ff0df7ebcbc565fc4236e265f30bfafe97 -->

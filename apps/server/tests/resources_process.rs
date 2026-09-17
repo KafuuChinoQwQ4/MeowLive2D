@@ -223,6 +223,16 @@ async fn uploaded_voice_survives_restart_and_reaches_tts_device_and_agent() {
     )
     .await;
     assert_eq!(calls.lock().await.len(), 2);
+    let deleted = post_json(
+        &client,
+        &process.base,
+        "/api/voices/delete",
+        json!({"id":id}),
+        200,
+    )
+    .await;
+    assert_eq!(deleted["voices"], json!([]));
+    assert_eq!(deleted["active_voice_id"], "");
     drop(process);
     assert!(
         tokio::time::timeout(Duration::from_secs(2), desktop)
@@ -232,4 +242,8 @@ async fn uploaded_voice_survives_restart_and_reaches_tts_device_and_agent() {
             .is_err()
     );
     engine.abort();
+    let reopened = ServerProcess::start(&config).await;
+    let snapshot = get(&client, &reopened.base, "/api/resources").await;
+    assert_eq!(snapshot["voices"], json!([]));
+    assert_eq!(snapshot["active_voice_id"], "");
 }

@@ -24,8 +24,17 @@ pub trait TrainingStore: Send + Sync {
     fn load(&self) -> Result<TrainingCatalog, TrainingError>;
     fn save(&self, catalog: &TrainingCatalog) -> Result<(), TrainingError>;
     fn new_job_id(&self) -> String;
-    fn prepare(&self, job: &TrainingJob, clips: &[TrainingClip]) -> Result<(), TrainingError>;
+    /// Snapshot the previous successful version into the new job before publishing it.
+    fn prepare(
+        &self,
+        job: &TrainingJob,
+        clips: &[TrainingClip],
+        base: Option<&TrainingJob>,
+    ) -> Result<(), TrainingError>;
     fn remove_unpublished(&self, id: &str) -> Result<(), TrainingError>;
+    /// Remove a task-owned directory after its catalog entry has been committed.
+    /// Missing directories are treated as already-cleaned so callers can retry safely.
+    fn remove_published(&self, id: &str) -> Result<(), TrainingError>;
     fn prepared(&self, id: &str) -> Result<PreparedTrainingJob, TrainingError>;
     fn resolve_pair(
         &self,
@@ -34,6 +43,15 @@ pub trait TrainingStore: Send + Sync {
     ) -> Result<ResolvedArtifactPair, TrainingError>;
 }
 pub trait TrainingEngine: Send + Sync {
+    /// A single bounded preview; cancellation keeps ownership until all children exit.
+    fn transcribe(
+        &self,
+        _clip: &TrainingClip,
+        _cancelled: &AtomicBool,
+    ) -> Result<String, TrainingError> {
+        Err(TrainingError::Disabled)
+    }
+
     /// Returns only after the entire owned child tree has exited.
     fn run(
         &self,

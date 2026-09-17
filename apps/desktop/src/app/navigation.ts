@@ -4,6 +4,7 @@ export const workspacePages = [
   { id: "speech", label: "语音播报", title: "语音播报", description: "写下一句话，交给你的角色表达。", group: "内容与互动", icon: "speech" },
   { id: "resources", label: "角色与音色", title: "角色与音色", description: "选择角色、调好声音，赋予每次出场独特的个性。", group: "内容与互动", icon: "resources" },
   { id: "agent", label: "Agent 互动", title: "Agent 互动", description: "设定人设与话题，让角色自然回应观众。", group: "内容与互动", icon: "agent" },
+  { id: "llm", label: "LLM 接入", title: "LLM 接入", description: "连接云端或本地语言模型，管理协议与运行参数。", group: "内容与互动", icon: "setup" },
   { id: "live", label: "直播连接", title: "直播连接", description: "连接直播间，接收弹幕与礼物。", group: "直播制作", icon: "live" },
   { id: "obs", label: "OBS 控制", title: "OBS 控制", description: "在这里切换场景，记录精彩时刻。", group: "直播制作", icon: "obs" },
   { id: "training", label: "训练与离线", title: "训练与离线", description: "微调专属音色，管理模型版本与离线运行。", group: "进阶工具", icon: "training" },

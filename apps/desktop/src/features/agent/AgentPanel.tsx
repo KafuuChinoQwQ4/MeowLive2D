@@ -49,7 +49,7 @@ export function AgentPanel({ client = defaultClient, pollIntervalMs = 1_000 }: {
         {actionError && <p>{actionError}</p>}
         {status?.last_error && <p>{status.last_error}</p>}
       </div>}
-      {status && !status.llm_configured && <p className="availability-note">请先在本地主服务配置中填写 LLM 连接参数，重启服务后再恢复 Agent。</p>}
+      {status && !status.llm_configured && <p className="availability-note">请先<a href="#llm">前往 LLM 接入</a>填写连接参数，按提示重启主服务后再恢复 Agent。</p>}
       {status && status.llm_configured && !status.bridge_connected && <p className="availability-note">请先启动桌面执行客户端；连接恢复后仍需手动恢复 Agent。</p>}
 
       {status ? <>

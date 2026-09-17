@@ -5,14 +5,16 @@ import { randomBytes } from 'node:crypto';
 import { inspectEndpoint } from './health.mjs';
 import { captureOutput } from './log.mjs';
 import { displayPath } from './paths.mjs';
+import { createMemoryReader, memoryPressure } from './memory.mjs';
 
 export class Supervisor {
-  constructor({ definitions, setup, startupMs = 300_000, stopMs = 8000, pollMs = 1500 }) {
+  constructor({ definitions, setup, startupMs = 300_000, stopMs = 8000, pollMs = 1500, readMemory = createMemoryReader() }) {
     this.setup = setup;
     this.token = randomBytes(32).toString('hex');
     this.startupMs = startupMs;
     this.stopMs = stopMs;
     this.closed = false;
+    this.readMemory = readMemory;
     this.records = new Map(definitions.map(def => [def.id, { def, state: 'stopped', message: def.issue ?? '尚未启动。',
       child: null, occupied: false, queue: Promise.resolve(), completion: Promise.resolve(), timer: null }]));
     this.timer = setInterval(() => void this.refresh(), pollMs);
@@ -30,6 +32,21 @@ export class Supervisor {
     this.refreshing = Promise.all([...this.records.values()].map(record => this.locked(record, async () => {
       if (this.closed || record.state === 'stopping' || record.def.issue) return;
       const child = record.child;
+      if (child && record.def.memoryGuard) {
+        try {
+          const issue = memoryPressure(await this.readMemory(), false);
+          if (record.child !== child || this.closed) return;
+          if (issue) { this.terminate(record, 'failed', issue); return; }
+        } catch {
+          if (record.child !== child || this.closed) return;
+          if (record.state === 'starting' && Date.now() - record.startedAt > this.startupMs) {
+            this.terminate(record, 'failed', '启动超时且无法读取系统内存，已停止 TTS；请检查 WSL 的 Windows 互操作。');
+            return;
+          }
+          record.message = '暂时无法读取系统内存，请留意 Windows 任务管理器；可关闭 TTS 释放资源。';
+          return;
+        }
+      }
       const health = await inspectEndpoint(record.def);
       if (record.child !== child || this.closed) return;
       record.occupied = health.occupied;
@@ -72,6 +89,12 @@ export class Supervisor {
       record.occupied = health.occupied;
       if (health.healthy) { record.state = 'external'; record.message = '已由其他终端启动，请回原终端管理。'; return; }
       if (health.occupied) { record.state = 'failed'; record.message = '服务端口已被占用，请检查端口或原终端。'; throw new Error(record.message); }
+      if (record.def.memoryGuard) {
+        let issue;
+        try { issue = memoryPressure(await this.readMemory(), true); }
+        catch { issue = '无法读取系统内存，暂不启动 TTS。请检查 WSL 的 Windows 互操作后重试。'; }
+        if (issue) { record.state = 'failed'; record.message = issue; throw new Error(issue); }
+      }
       if (this.closed) throw new Error('控制面板正在退出。');
       await mkdir(dirname(record.def.logPath), { recursive: true, mode: 0o700 });
       const child = spawn(record.def.command, record.def.args, { cwd: record.def.cwd, env: record.def.env,
@@ -79,7 +102,7 @@ export class Supervisor {
       record.child = child;
       record.startedAt = Date.now();
       record.state = 'starting';
-      record.message = record.def.id === 'tts' ? '正在加载语音模型，首次启动可能需要数分钟。' : '正在检查编译并启动主服务，请稍候。';
+      record.message = record.def.id === 'tts' ? '正在启动 TTS 服务；就绪后请到训练与离线启用语音模型。' : '正在检查编译并启动主服务，请稍候。';
       record.finalState = null;
       record.diagnostic = null;
       captureOutput(child, record.def, value => { record.diagnostic = value; });

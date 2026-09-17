@@ -1,8 +1,9 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { VoiceCreateRequest, VoiceProfile } from "@meowlive/contracts";
 import type { VoiceController } from "./types";
-import { validateVoiceWav } from "./wav";
+import { useFeedback } from "../../app/feedback/OperationFeedback";
+import { AUDIO_FILE_ACCEPT, AUDIO_FORMAT_LABEL, prepareAudioFile } from "../../services/audio";
 
 const languages = [
   ["zh", "中文"], ["en", "英语"], ["ja", "日语"], ["ko", "韩语"], ["yue", "粤语"], ["auto", "自动识别"],
@@ -37,17 +38,24 @@ function VoiceRow({ voice, active, busy, controller }: {
         onClick={() => { void controller.selectVoice(voice.id); }}>设为当前音色</button>
       <button type="button" disabled={busy || !voice.available}
         onClick={() => { void controller.previewVoice(voice.id, voice.reference_text); }}>试听</button>
+      <button type="button" className="stop-button" disabled={busy} aria-label={`删除音色 ${voice.name}`}
+        onClick={() => {
+          if (window.confirm(`删除音色“${voice.name}”及参考音频？关联角色的音色将清空。此操作无法撤销。`)) void controller.deleteVoice(voice.id);
+        }}>删除</button>
     </div>
   </li>;
 }
 
 export function VoicePanel({ controller }: { controller: VoiceController }) {
+  const feedback = useFeedback();
   const [metadata, setMetadata] = useState<VoiceCreateRequest>({ name: "", language: "zh", reference_text: "" });
   const audioGeneration = useRef(0);
+  useEffect(() => () => { audioGeneration.current += 1; }, []);
   const input = useRef<HTMLInputElement>(null);
   const [audio, setAudio] = useState<File | null>(null);
   const [audioSummary, setAudioSummary] = useState<string | null>(null);
   const [audioError, setAudioError] = useState<string | null>(null);
+  const [preparingAudio, setPreparingAudio] = useState(false);
   const snapshot = controller.snapshot;
   const busy = controller.pendingAction !== null;
   const validMetadata = metadata.name.trim().length > 0
@@ -60,21 +68,27 @@ export function VoicePanel({ controller }: { controller: VoiceController }) {
     setAudio(null);
     setAudioSummary(null);
     setAudioError(null);
+    setPreparingAudio(Boolean(file));
     if (!file) return;
     try {
-      const info = await validateVoiceWav(file);
+      const { file: prepared, info } = await prepareAudioFile(file);
       if (generation !== audioGeneration.current) return;
-      setAudio(file);
+      setAudio(prepared);
       setAudioSummary(`${(info.durationMs / 1_000).toFixed(1)} 秒 · ${info.sampleRate / 1_000} kHz · ${info.channels === 1 ? "单声道" : "双声道"}`);
+      feedback.success("参考音频已准备", `${file.name} 已通过音频检查，请填写音色名称与对应参考文本后上传。`);
     } catch (error) {
       if (generation !== audioGeneration.current) return;
-      setAudioError(error instanceof Error ? error.message : "无法读取 WAV 文件");
+      setAudioError(error instanceof Error ? error.message : "无法读取音频文件");
+      feedback.error("参考音频处理失败", error, "无法读取音频文件");
+    } finally {
+      if (generation === audioGeneration.current) setPreparingAudio(false);
     }
   }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!audio || !validMetadata || busy) return;
+    if (busy) return;
+    if (!audio || !validMetadata) { feedback.error("音色检查失败", !audio ? "请先选择并通过检查的参考音频。" : "请填写 1–80 字的音色名称和 1–500 字的参考文本。"); return; }
     const value = await controller.uploadVoice({
       name: metadata.name.trim(), language: metadata.language, reference_text: metadata.reference_text.trim(),
     }, audio);
@@ -93,7 +107,7 @@ export function VoicePanel({ controller }: { controller: VoiceController }) {
     <p className="muted">上传参考声音，选择直播使用的音色。</p>
     <p className="field-hint">训练过的声音可前往<a href="#training">已保存音色</a>直接选择和切换，无需重新训练。</p>
     {snapshot && !snapshot.default_voice_available && snapshot.voices.length === 0 && <p className="availability-note" role="status">
-      尚未设置音色。请先在下方上传自己的参考音频并填写对应文本，再前往<a href="#training">训练初始音色</a>，上传训练片段、试听并保存。
+      尚未设置音色。请先在下方上传自己的参考音频并填写对应文本，再选择使用；也可前往<a href="#training">训练初始音色</a>，上传训练片段、试听并保存。
     </p>}
 
     <ul className="resource-list" aria-label="可用音色">
@@ -107,7 +121,12 @@ export function VoicePanel({ controller }: { controller: VoiceController }) {
         active={snapshot.active_voice_id === voice.id} busy={busy} controller={controller} />)}
     </ul>
 
-    {controller.voicePreview && <p className={controller.voicePreview.status === "failed" ? "field-error" : "success-banner"} role="status">
+    {controller.voiceDeleteRetries.map(id => <div key={id} className="availability-note" role="status">
+      音色配置已删除，参考文件尚未清理完成。
+      <button type="button" disabled={busy} onClick={() => { void controller.deleteVoice(id); }}>重试清理参考音频</button>
+    </div>)}
+
+    {controller.voicePreview && <p className={["failed", "unknown"].includes(controller.voicePreview.status) ? "field-error" : "success-banner"} role="status">
       {previewLabels[controller.voicePreview.status]}
       {controller.voicePreview.error ? `：${controller.voicePreview.error}` : ""} <a href="#history-heading">查看播报状态</a>
     </p>}
@@ -128,9 +147,10 @@ export function VoicePanel({ controller }: { controller: VoiceController }) {
         onChange={(event) => setMetadata((current) => ({ ...current, reference_text: event.target.value }))} />
       <p className="field-hint">请选择与录音内容和语言一致的文本。</p>
       <label htmlFor="voice-audio">参考音频</label>
-      <input ref={input} id="voice-audio" type="file" accept=".wav,audio/wav" disabled={busy}
+      <input ref={input} id="voice-audio" type="file" accept={AUDIO_FILE_ACCEPT} disabled={busy}
         onChange={(event) => { void chooseAudio(event.target.files?.[0]); }} />
-      <p className="field-hint">PCM16 WAV，3–10 秒，8–48 kHz，不能静音，最大 2 MiB。</p>
+      <p className="field-hint">支持 {AUDIO_FORMAT_LABEL}，自动转换为兼容音频。3–10 秒，单声道或双声道，不能静音；原文件最大 20 MiB，转换后最大 2 MiB。部分编码取决于浏览器支持。</p>
+      {preparingAudio && <p className="field-hint" role="status">正在处理音频…</p>}
       {audioSummary && <p className="success-banner" role="status">音频有效：{audioSummary}</p>}
       {audioError && <p className="field-error" role="alert">{audioError}</p>}
       <div className="form-actions"><button className="primary-button" type="submit" disabled={!audio || !validMetadata || busy}>

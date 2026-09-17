@@ -3,5 +3,6 @@
   "ttsPython": "data/environments/gpt-sovits/bin/python",
   "ttsEngineRoot": "data/engines/GPT-SoVITS",
   "ttsDevice": "cuda",
+  "ttsMemoryMode": "low",
   "llmKeyFile": "config/local/llm-api-key.txt"
 }

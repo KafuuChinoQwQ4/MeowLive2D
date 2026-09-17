@@ -50,7 +50,17 @@ pub(super) fn parse_decision(
     if content.trim().is_empty() {
         return Err(invalid_response());
     }
-    let decision: Decision = serde_json::from_str(&content).map_err(|_| invalid_response())?;
+    parse_decision_content(&content, request)
+}
+
+pub(super) fn parse_decision_content(
+    content: &str,
+    request: &DecisionRequest,
+) -> Result<AgentDecision, LlmError> {
+    if content.trim().is_empty() {
+        return Err(invalid_response());
+    }
+    let decision: Decision = serde_json::from_str(content).map_err(|_| invalid_response())?;
     validate_decision(decision, request)
 }
 

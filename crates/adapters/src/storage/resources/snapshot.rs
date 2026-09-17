@@ -91,6 +91,13 @@ impl CatalogSnapshot {
             active_voice_id: self.active_voice_id,
             active_character_id: self.active_character_id,
         };
+        if catalog
+            .voices
+            .iter()
+            .any(|voice| voice.reference.as_str() != voice.id)
+        {
+            return Err(store_error("参考音频标识必须与音色标识一致"));
+        }
         catalog
             .validate()
             .map_err(|_| store_error("资源目录内容无效"))?;

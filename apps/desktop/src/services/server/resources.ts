@@ -4,6 +4,7 @@ import type {
   CharacterSaveRequest,
   DesktopResourceOperation,
   DesktopResourceResult,
+  ImportedModel,
   ResourceSelection,
   ResourceSnapshot,
   VoiceCreateRequest,
@@ -38,6 +39,8 @@ export interface ResourcesClient {
     signal?: AbortSignal,
   ): Promise<ResourceSnapshot>;
   selectVoice(selection: ResourceSelection, signal?: AbortSignal): Promise<ResourceSnapshot>;
+  deleteVoice(selection: ResourceSelection, signal?: AbortSignal): Promise<ResourceSnapshot>;
+  deleteCharacter(selection: ResourceSelection, signal?: AbortSignal): Promise<ResourceSnapshot>;
   saveCharacter(request: CharacterSaveRequest, signal?: AbortSignal): Promise<ResourceSnapshot>;
   selectCharacter(selection: ResourceSelection, signal?: AbortSignal): Promise<ResourceSnapshot>;
   previewCharacter(
@@ -103,7 +106,7 @@ function parseCharacter(value: unknown, voiceIds: Set<string>): CharacterProfile
     !isPortableId(value.id) ||
     !isText(value.name, 80) ||
     !isText(value.model_id, 128) ||
-    !voiceIds.has(value.voice_id as string) ||
+    !(value.voice_id === "" || voiceIds.has(value.voice_id as string)) ||
     typeof value.mouth_parameter !== "string" ||
     !/^[A-Za-z0-9]{4,32}$/u.test(value.mouth_parameter)
   ) {
@@ -216,6 +219,19 @@ function parseDesktopResult(value: unknown): DesktopResourceResult {
       if (models) return { type: "models", models };
       break;
     }
+    case "imported_models": {
+      if (parseModels(value.models) && Array.isArray(value.models)
+        && value.models.every((model: unknown) => isObject(model)
+          && typeof model.id === "string" && /^[a-f0-9]{64}$/u.test(model.id)
+          && (model.model_id === null || isText(model.model_id, 128)))) {
+        return { type: "imported_models", models: value.models as ImportedModel[] };
+      }
+      break;
+    }
+    case "model_deleted":
+      if (typeof value.id === "string" && /^[a-f0-9]{64}$/u.test(value.id)
+        && typeof value.restart_required === "boolean") return value as unknown as DesktopResourceResult;
+      break;
     case "model_loaded":
       if (isText(value.model_id, 128)) return value as unknown as DesktopResourceResult;
       break;
@@ -340,6 +356,12 @@ export function createResourceClient(options: ResourcesClientOptions = {}): Reso
     async selectVoice(selection, signal) {
       return parseSnapshot(await request("/api/voices/select", jsonRequest(selection), signal));
     },
+    async deleteVoice(selection, signal) {
+      return parseSnapshot(await request("/api/voices/delete", jsonRequest(selection), signal));
+    },
+    async deleteCharacter(selection, signal) {
+      return parseSnapshot(await request("/api/characters/delete", jsonRequest(selection), signal));
+    },
     async saveCharacter(character, signal) {
       return parseSnapshot(await request("/api/characters/save", jsonRequest(character), signal));
     },
@@ -354,6 +376,8 @@ export function createResourceClient(options: ResourcesClientOptions = {}): Reso
         await request("/api/desktop/resources", jsonRequest(operation), signal),
       );
       const matches = result.type === "error"
+        || (operation.type === "list_imported_models" && result.type === "imported_models")
+        || (operation.type === "delete_imported_model" && result.type === "model_deleted" && operation.id === result.id)
         || (operation.type === "list_models" && result.type === "models")
         || (operation.type === "list_hotkeys" && result.type === "hotkeys" && operation.model_id === result.model_id)
         || (operation.type === "load_model" && result.type === "model_loaded" && operation.model_id === result.model_id)

@@ -10,7 +10,8 @@ reconnect_delay_ms = 2000
 # model_directory = 'D:\Steam\steamapps\common\VTube Studio\VTube Studio_Data\StreamingAssets\Live2DModels'
 
 [vtube_studio]
-# 先在 VTube Studio 开启插件 API，再将 enabled 改为 true。
+# 面板打开 Windows 执行端时会自动启用此项；直接运行客户端时手动改为 true。
+# VTube Studio 内仍须开启插件 API，并允许首次授权。
 enabled = false
 websocket_url = "ws://127.0.0.1:8001"
 # 相对于本配置文件所在目录；授权文件保存在已忽略的 config/local/。

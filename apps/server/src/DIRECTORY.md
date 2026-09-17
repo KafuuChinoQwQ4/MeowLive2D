@@ -15,9 +15,9 @@ src/  # 主服务启动、配置解析及 HTTP / WebSocket 适配源码
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   ├── agent.rs  # Agent 人设和有界调度参数的 TOML 配置
 │   ├── live.rs  # 官方直播接入开关、应用编号、凭据变量名和重连参数校验
-│   ├── llm.rs  # 模型地址、密钥环境变量名与调用资源上限校验
+│   ├── llm.rs  # LLM 提供商协议、地址、模型及资源限额校验与密钥脱敏
 │   ├── resources.rs  # Linux 资源保存目录和引擎共享挂载配置
-│   └── training.rs  # 训练路径、超时及受管推理默认权重配置校验
+│   └── training.rs  # 训练路径、本地识别模型、超时及受管推理默认权重配置校验
 ├── live/  # 官方直播源组装及异步连接、接收、清理与重连驱动
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   ├── bootstrap.rs  # 从主服务环境变量组装官方直播适配器
@@ -29,21 +29,24 @@ src/  # 主服务启动、配置解析及 HTTP / WebSocket 适配源码
 │   ├── error.rs  # 稳定的结构化 HTTP 错误映射
 │   ├── http.rs  # 组装播报、Agent、事件、直播连接及 WebSocket 路由和来源校验
 │   ├── live.rs  # 直播连接查询、连接及断开的 HTTP 输入边界
+│   ├── llm.rs  # LLM 接入配置读写与草稿连接测试 HTTP 入口
 │   ├── mapping.rs  # protocol DTO 与 domain 类型的显式转换，避免序列化字段影响领域规则。
 │   ├── mod.rs  # HTTP / WebSocket 输入与输出适配；在协议 DTO 与领域对象之间进行映射。
 │   ├── obs.rs  # 通过桌面资源通道执行 OBS 状态查询与受限控制
 │   ├── origin.rs  # 浏览器请求来源校验及 HTTP 来源中间件
-│   ├── resources.rs  # 音色上传、角色保存选择和逐项能力验证路由
-│   ├── runtime.rs  # 本地 LLM 到 TTS 联合时延显存测量与验证状态接口
-│   ├── training.rs  # 有界训练上传、后台任务、取消、成对权重试听保存启用接口
+│   ├── resources.rs  # 音色和角色增删选择、模型删除代理及能力验证路由
+│   ├── runtime.rs  # 离线推理测量、GPU 采样错误传播与预设查询
+│   ├── training.rs  # 训练素材导入、性能设置、按所选 GPU 准入及版本试听保存接口
+│   ├── training_models.rs  # 模型内存状态查询及带资源互斥和取消保护的启停接口
 │   └── websocket.rs  # 唯一执行端连接准入及音频配对校验
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 ├── agent.rs  # Agent 异步驱动与服务状态组装入口
 ├── bootstrap.rs  # 读取私有配置，组装语音、LLM 和直播适配器并管理服务生命周期
-├── config.rs  # 主服务配置聚合、读取与启动前校验
+├── config.rs  # TOML 配置、本机 LLM 覆盖加载及启动前全局校验
 ├── gpu.rs  # 训练试听测量独占租约、保留直播及 Agent 状态的音色切换准入与互斥测试
 ├── lib.rs  # 可注入适配器的服务模块导出与集成测试入口
 ├── live.rs  # 直播连接单会话所有权、公开快照和手动连接断开控制
+├── llm_settings.rs  # 本机 LLM 覆盖配置的原子保存、凭据隔离与重启状态查询
 ├── main.rs  # Linux / WSL 主服务入口。业务编排位于 meowlive-application。
 ├── resources.rs  # 桌面资源请求关联、单操作准入与取消生命周期
 ├── state.rs  # 语音、Agent、唯一执行桥接和直播连接的共享状态及取消生命周期
@@ -61,4 +64,4 @@ src/  # 主服务启动、配置解析及 HTTP / WebSocket 适配源码
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: e3c424cb270fd253fe5f94d32af93b6c311759deb5ad230cdd8c77371a4d9352 -->
+<!-- directory-tree-sha256: 5f0b6f5650a277f56f9f5abd1b9965de65c1e96a547b4eeba550ec40126e1ec6 -->

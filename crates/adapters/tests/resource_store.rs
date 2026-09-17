@@ -160,6 +160,64 @@ fn rejects_path_traversal_in_engine_root_and_corrupt_snapshot() {
     fs::remove_dir_all(root).unwrap();
 }
 
+#[test]
+fn deleted_reference_and_selection_stay_deleted_after_restart() {
+    let root = temp_root("delete");
+    let config = FileResourceStoreConfig {
+        storage_root: root.clone(),
+        engine_root: "/engine/shared".into(),
+    };
+    let library = ResourceLibrary::open(std::sync::Arc::new(
+        FileResourceStore::new(config.clone()).unwrap(),
+    ))
+    .unwrap();
+    let voice = library
+        .create_voice("待删除", "zh", "参考文本", &wav(3, 8000, 1, 100))
+        .unwrap();
+    library.select_voice(&voice.id).unwrap();
+    let reference = root
+        .join("references")
+        .join(format!("{}.wav", voice.reference.as_str()));
+    assert!(reference.exists());
+    library.delete_voice(&voice.id).unwrap();
+    assert!(!reference.exists());
+    let reopened =
+        ResourceLibrary::open(std::sync::Arc::new(FileResourceStore::new(config).unwrap()))
+            .unwrap();
+    assert!(reopened.snapshot().voices.is_empty());
+    assert!(reopened.snapshot().active_voice_id.is_empty());
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn refuses_catalogs_that_alias_another_voices_reference() {
+    let root = temp_root("aliased-reference");
+    let config = FileResourceStoreConfig {
+        storage_root: root.clone(),
+        engine_root: "/engine/shared".into(),
+    };
+    let library = ResourceLibrary::open(std::sync::Arc::new(
+        FileResourceStore::new(config.clone()).unwrap(),
+    ))
+    .unwrap();
+    library
+        .create_voice("音色", "zh", "参考文本", &wav(3, 8000, 1, 100))
+        .unwrap();
+    let mut catalog: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("catalog.json")).unwrap()).unwrap();
+    catalog["voices"][0]["reference"] = serde_json::json!("123e4567-e89b-42d3-a456-426614174000");
+    fs::write(
+        root.join("catalog.json"),
+        serde_json::to_vec(&catalog).unwrap(),
+    )
+    .unwrap();
+    assert!(
+        ResourceLibrary::open(std::sync::Arc::new(FileResourceStore::new(config).unwrap()))
+            .is_err()
+    );
+    fs::remove_dir_all(root).unwrap();
+}
+
 #[cfg(unix)]
 #[test]
 fn rejects_reference_directory_replaced_by_a_symbolic_link() {

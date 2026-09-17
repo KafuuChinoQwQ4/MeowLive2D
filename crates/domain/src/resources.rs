@@ -123,7 +123,7 @@ impl VoiceProfile {
     }
 
     pub fn validate(&self) -> Result<(), ResourceValidationError> {
-        if !valid_uuid(&self.id) {
+        if !valid_voice_id(&self.id) {
             return Err(ResourceValidationError::InvalidVoiceId);
         }
         if !valid_name(&self.name) {
@@ -156,7 +156,7 @@ impl Default for ResourceCatalog {
         Self {
             voices: Vec::new(),
             characters: Vec::new(),
-            active_voice_id: "default".into(),
+            active_voice_id: String::new(),
             active_character_id: None,
         }
     }
@@ -177,7 +177,7 @@ impl ResourceCatalog {
                 return Err(ResourceValidationError::DuplicateVoiceId);
             }
         }
-        let voice_exists = |id: &str| id == "default" || voice_ids.contains(id);
+        let voice_exists = |id: &str| id.is_empty() || id == "default" || voice_ids.contains(id);
         if !voice_exists(&self.active_voice_id) {
             return Err(ResourceValidationError::VoiceNotFound);
         }
@@ -207,7 +207,7 @@ pub(crate) fn valid_name(value: &str) -> bool {
     !value.is_empty() && value.chars().count() <= 80 && !value.chars().any(char::is_control)
 }
 
-fn valid_uuid(value: &str) -> bool {
+pub fn valid_voice_id(value: &str) -> bool {
     value.len() == 36
         && value.bytes().enumerate().all(|(index, byte)| match index {
             8 | 13 | 18 | 23 => byte == b'-',

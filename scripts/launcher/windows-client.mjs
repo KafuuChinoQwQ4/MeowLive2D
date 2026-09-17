@@ -1,14 +1,30 @@
-import { access, mkdir, readFile, writeFile, rename } from 'node:fs/promises';
+import { access, mkdir, open, readFile, writeFile, rename } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { join, resolve, delimiter } from 'node:path';
 import { spawn, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import { displayPath } from './paths.mjs';
+import { enableWindowsVts } from './windows-config.mjs';
 
 const execute = promisify(execFile);
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function exists(path) { try { await access(path, constants.R_OK); return true; } catch { return false; } }
+
+async function clientFailure(path) {
+  let file;
+  try {
+    file = await open(join(path, 'client.log'), 'r');
+    const size = (await file.stat()).size;
+    const buffer = Buffer.alloc(8192);
+    const { bytesRead } = await file.read(buffer, 0, buffer.length, Math.max(0, size - buffer.length));
+    if (/memory allocation of \d+ bytes failed|out of memory/i.test(buffer.toString('utf8', 0, bytesRead))) {
+      return 'Windows 系统内存不足，执行端已退出。请关闭本地大模型或其他高占用程序，再重新连接；TTS 默认使用低内存模式。';
+    }
+  } catch { /* The helper may fail before creating a log. */ }
+  finally { await file?.close().catch(() => {}); }
+  return 'Windows 执行端启动失败，请展开日志位置查看原因，并确认默认扬声器可用。';
+}
 
 export async function inspectBridge(url) {
   try {
@@ -77,7 +93,7 @@ export class WindowsClientSupervisor {
       if (raw.length <= 8192) report = JSON.parse(raw);
     } catch { /* The helper has not published its first status yet. */ }
     if (report?.state === 'failed') {
-      await this.requestStop('failed', 'Windows 执行端启动失败，请展开日志位置查看原因，并确认默认扬声器可用。'); return;
+      await this.requestStop('failed', await clientFailure(session.path)); return;
     }
     if (report?.state === 'stopped') {
       await this.requestStop('failed', 'Windows 执行端已退出，可重新打开开关连接。'); return;
@@ -110,10 +126,16 @@ export class WindowsClientSupervisor {
         await this.requestStop('stopped', 'Windows 执行端已断开。'); return;
       }
       if (this.session || this.state === 'external') return;
+      this.lastExit = null;
       if (this.issue) throw new Error(this.issue);
       const bridge = await this.probe(this.url);
       if (!bridge.ready) throw new Error('请先打开主服务开关，等待运行就绪。');
       if (bridge.connected) { this.state = 'external'; this.message = '已有执行端连接，请使用当前执行端。'; return; }
+      try { await enableWindowsVts(this.paths.config); }
+      catch (error) {
+        this.state = 'failed'; this.message = error.message;
+        throw error;
+      }
       const path = join(this.root, 'data/windows-launcher', randomUUID());
       await mkdir(path, { recursive: true, mode: 0o700 });
       const session = { path, started: Date.now(), stopped: false, completion: Promise.resolve() };
@@ -135,10 +157,16 @@ export class WindowsClientSupervisor {
         session.completion = new Promise(resolve => child.once('close', () => {
           clearTimeout(session.forceTimer);
           if (this.session === session) {
+            this.lastExit = session;
             this.session = null; this.state = session.finalState ?? 'failed';
             this.message = session.finalMessage ?? 'Windows 启动进程退出。请双击 launchers/start-windows.cmd 重新打开面板，并检查执行端配置和默认扬声器。';
           }
-          resolve();
+          if (session.finalMessage) { resolve(); return; }
+          // The helper usually exits before the next status poll. Enrich this
+          // failure from its log, but never overwrite a subsequent start/exit.
+          void clientFailure(session.path).then(message => {
+            if (this.lastExit === session && this.state === 'failed' && !this.session) this.message = message;
+          }).finally(resolve);
         }));
       } catch {
         this.session = null; this.state = 'failed'; this.message = '无法访问 Windows 执行端，请双击 launchers/start-windows.cmd 重新打开面板。';

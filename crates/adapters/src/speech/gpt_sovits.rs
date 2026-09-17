@@ -168,7 +168,13 @@ impl GptSovits {
             }
             bytes.extend_from_slice(&chunk);
         }
-        decode_wav(&bytes)
+        let audio = decode_wav(&bytes)?;
+        if audio.samples.iter().all(|sample| *sample == 0) {
+            return Err(SynthesisError::new(
+                "语音引擎返回了静音音频，请核对参考录音、参考文本和语言是否一致，再重试合成",
+            ));
+        }
+        Ok(audio)
     }
 }
 

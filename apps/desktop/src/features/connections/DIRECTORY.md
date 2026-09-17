@@ -18,4 +18,4 @@ connections/  # 直播平台连接状态、事件计数和人工连接控制
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 6da21264ca46e07b06fef89e31f37413f185c736fdd45cd183dd2e16ae409264 -->
+<!-- directory-tree-sha256: 67cc552fedd22d71aaede666cb16e7624bc6020023757508664e0cb535ae704f -->

@@ -212,6 +212,55 @@ pub async fn save_character(
     snapshot(&state).await.map(Json)
 }
 
+pub async fn delete_voice(
+    State(state): State<AppState>,
+    body: Result<Json<ResourceSelection>, JsonRejection>,
+) -> Result<Json<ResourceSnapshot>, ApiError> {
+    let request = json(body)?;
+    let edit = state
+        .resource_edits
+        .clone()
+        .try_lock_owned()
+        .map_err(|_| invalid("角色资源正在更新"))?;
+    let lease = state.acquire_model_selection().await?;
+    let training = state.training.clone();
+    work(&state, move |lib| {
+        let _edit = edit;
+        let _lease = lease;
+        if training
+            .snapshot()
+            .jobs
+            .iter()
+            .any(|job| job.parameters.voice_id == request.id)
+        {
+            return Err("该音色仍有关联的训练任务或模型版本，请先在声音训练中删除它们".into());
+        }
+        lib.delete_voice(&request.id).map_err(|e| e.to_string())
+    })
+    .await?;
+    snapshot(&state).await.map(Json)
+}
+
+pub async fn delete_character(
+    State(state): State<AppState>,
+    body: Result<Json<ResourceSelection>, JsonRejection>,
+) -> Result<Json<ResourceSnapshot>, ApiError> {
+    let request = json(body)?;
+    let edit = state
+        .resource_edits
+        .clone()
+        .try_lock_owned()
+        .map_err(|_| invalid("角色资源正在更新"))?;
+    let lease = state.acquire_model_selection().await?;
+    work(&state, move |lib| {
+        let _edit = edit;
+        let _lease = lease;
+        lib.delete_character(&request.id).map_err(|e| e.to_string())
+    })
+    .await?;
+    snapshot(&state).await.map(Json)
+}
+
 struct Changing(Arc<std::sync::atomic::AtomicBool>);
 impl Drop for Changing {
     fn drop(&mut self) {
@@ -332,14 +381,58 @@ pub async fn desktop(
     body: Result<Json<DesktopResourceOperation>, JsonRejection>,
 ) -> Result<Json<DesktopResourceResult>, ApiError> {
     let operation = json(body)?;
+    if let DesktopResourceOperation::DeleteImportedModel { id } = operation {
+        if !valid_imported_id(&id) {
+            return Err(invalid("模型标识无效"));
+        }
+        let edit = state
+            .resource_edits
+            .clone()
+            .try_lock_owned()
+            .map_err(|_| invalid("角色资源正在更新"))?;
+        let lease = state.acquire_model_selection().await?;
+        // A disconnected HTTP caller must not release the deletion fence early.
+        return tokio::spawn(async move {
+            let _edit = edit;
+            let _lease = lease;
+            let listed = state.desktop_resource(DesktopResourceOperation::ListImportedModels).await?;
+            let DesktopResourceResult::ImportedModels { models } = listed else {
+                return Err(desktop_error(listed));
+            };
+            if !valid_imported_models(&models) { return Err(invalid("桌面返回的模型列表无效")); }
+            let model = models.into_iter().find(|model| model.id == id)
+                .ok_or_else(|| invalid("模型不存在，请刷新列表"))?;
+            work(&state, move |lib| {
+                    let characters = lib.snapshot().characters;
+                    if model.model_id.is_none() && !characters.is_empty() {
+                        return Err("无法确认该模型与角色的对应关系，请先在 VTS 加载一次以生成模型标识，再卸载并刷新列表".into());
+                    }
+                    if characters.iter().any(|role| model.model_id.as_deref() == Some(role.model_id.as_str())) {
+                        Err("该模型仍被角色配置使用，请先编辑或删除对应角色配置".into())
+                    } else { Ok(()) }
+                }).await?;
+            let result = state.desktop_resource(DesktopResourceOperation::DeleteImportedModel { id: id.clone() }).await?;
+            match &result {
+                DesktopResourceResult::ModelDeleted { id: received, .. } if received == &id => Ok(Json(result)),
+                DesktopResourceResult::Error { code, message } if bounded(code, 128) && bounded(message, 1000) => Ok(Json(result)),
+                _ => Err(desktop_error(result)),
+            }
+        }).await.map_err(|_| invalid("模型删除任务中断"))?;
+    }
     match &operation {
-        DesktopResourceOperation::ListModels | DesktopResourceOperation::ImportModel => {}
+        DesktopResourceOperation::ListModels
+        | DesktopResourceOperation::ImportModel
+        | DesktopResourceOperation::ListImportedModels => {}
         DesktopResourceOperation::ListHotkeys { model_id }
             if !model_id.trim().is_empty() && model_id.len() <= 128 => {}
         _ => return Err(invalid("请通过角色选择或预览操作使用此能力")),
     }
     let result = state.desktop_resource(operation.clone()).await?;
     let valid = match (&operation, &result) {
+        (
+            DesktopResourceOperation::ListImportedModels,
+            DesktopResourceResult::ImportedModels { models },
+        ) => valid_imported_models(models),
         (DesktopResourceOperation::ListModels, DesktopResourceResult::Models { models }) => {
             models.len() <= 256
                 && models
@@ -381,4 +474,22 @@ pub async fn desktop(
 }
 fn bounded(value: &str, max: usize) -> bool {
     !value.trim().is_empty() && value.chars().count() <= max
+}
+
+fn valid_imported_id(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+}
+
+fn valid_imported_models(models: &[ImportedModel]) -> bool {
+    let mut ids = std::collections::HashSet::new();
+    models.len() <= 256
+        && models.iter().all(|model| {
+            valid_imported_id(&model.id)
+                && ids.insert(&model.id)
+                && bounded(&model.name, 256)
+                && model.model_id.as_deref().is_none_or(|id| bounded(id, 128))
+        })
 }

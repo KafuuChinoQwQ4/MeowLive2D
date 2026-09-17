@@ -7,7 +7,7 @@
 ```text
 resources/  # 资源快照转换与参考音频校验实现
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-├── snapshot.rs  # 持久化资源快照的版本化 DTO 与领域转换
+├── snapshot.rs  # 资源快照版本化转换及音色参考标识一致性验证
 └── wav.rs  # 参考音频 PCM 格式、时长和静音校验
 ```
 
@@ -15,4 +15,4 @@ resources/  # 资源快照转换与参考音频校验实现
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 27c47949795a98d1f854415eedea309ec16b012b7c820330502ccbd2d640f616 -->
+<!-- directory-tree-sha256: 6c351d239ec451c7e50976d69767bede3a67caf05f93ec902ae6614c2d1ade88 -->

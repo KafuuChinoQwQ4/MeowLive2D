@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { ObsOperation, ObsSnapshot } from "@meowlive/contracts";
 import { type ObsClient } from "../../services/server/obs";
+import { useFeedback } from "../../app/feedback/OperationFeedback";
 
 export function ObsPanel({ client }: { client: ObsClient }) {
+  const feedback = useFeedback();
   const [snapshot, setSnapshot] = useState<ObsSnapshot | null>(null);
   const [selected, setSelected] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -19,14 +21,14 @@ export function ObsPanel({ client }: { client: ObsClient }) {
     setBusy(true);
     setSnapshot(null);
     void client.getStatus(controller.signal).then((value) => {
-      if (!controller.signal.aborted) accept(value);
+      if (!controller.signal.aborted) { accept(value); feedback.clearIssue("obs:status"); }
     }).catch((failure: unknown) => {
-      if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : "OBS 状态读取失败");
+      if (!controller.signal.aborted) { setError(failure instanceof Error ? failure.message : "OBS 状态读取失败"); feedback.reportIssue("obs:status", "OBS 状态读取失败", failure); }
     }).finally(() => {
       if (!controller.signal.aborted) { current.current = null; setBusy(false); }
     });
     return () => { controller.abort(); current.current?.abort(); };
-  }, [client]);
+  }, [client, feedback]);
   async function run(operation?: ObsOperation) {
     if (current.current) return;
     const controller = new AbortController();
@@ -35,11 +37,17 @@ export function ObsPanel({ client }: { client: ObsClient }) {
     setError(null);
     try {
       const value = await (operation ? client.execute(operation, controller.signal) : client.getStatus(controller.signal));
-      if (!controller.signal.aborted) accept(value);
+      if (!controller.signal.aborted) {
+        accept(value); feedback.clearIssue("obs:status");
+        const confirmed = !operation || (value.connected && (operation.type === "set_scene" ? value.current_scene === operation.scene_name : operation.type === "start_recording" ? value.recording : !value.recording));
+        if (!confirmed) feedback.error("OBS 操作未完成", "返回状态未确认本次操作，请刷新 OBS 状态后重试。");
+        else feedback.success(operation?.type === "start_recording" ? "OBS 录制已开始" : operation?.type === "stop_recording" ? "OBS 录制已停止" : operation?.type === "set_scene" ? "OBS 场景已切换" : "OBS 状态已刷新", value.connected ? `当前场景：${value.current_scene}；${value.recording ? "正在录制" : "未录制"}。` : "OBS 控制未启用，请检查连接配置。");
+      }
     } catch (failure) {
       if (!controller.signal.aborted) {
         setSnapshot(null);
         setError(`${failure instanceof Error ? failure.message : "OBS 操作失败"} 操作结果未知，请刷新状态确认。`);
+        feedback.error("OBS 操作失败", `${failure instanceof Error ? failure.message : "OBS 操作失败"} 操作结果未知，请刷新状态确认。`);
       }
     } finally {
       if (!controller.signal.aborted) { current.current = null; setBusy(false); }

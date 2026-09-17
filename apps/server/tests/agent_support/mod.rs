@@ -56,6 +56,8 @@ impl Harness {
     }
     pub async fn configured(config: AppConfig, model: Arc<dyn LanguageModel>) -> Self {
         let state = AppState::with_model(config, Arc::new(FixedSpeech), Some(model));
+        // The harness explicitly chooses its fake voice; new installations start empty.
+        state.resources.select_voice("default").unwrap();
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let base = format!("ws://{}", listener.local_addr().unwrap());
         let app = router(state.clone());

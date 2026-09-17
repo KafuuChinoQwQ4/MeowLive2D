@@ -17,7 +17,7 @@ tests/  # 应用用例的队列与状态流转集成测试
 ├── agent_lifecycle.rs  # 配置、暂停、停止和播放生命周期测试
 ├── agent_memory.rs  # 已完成对话数量及内容长度边界测试
 ├── agent_settings.rs  # 人设配置与运行资源上限测试
-├── resource_library.rs  # 资源保存一致性、容量与映射验证并发规则测试
+├── resource_library.rs  # 资源事务失败保护、角色音色删除绑定及清理重试用例测试
 ├── scheduler_bounds.rs  # 历史裁剪、去重淘汰、批次容量和克隆隔离测试
 ├── scheduler_events.rs  # 事件去重、过期、容量及礼物分组测试
 ├── speech_cancellation.rs  # 语音停止代次、迟到结果和断线取消测试
@@ -34,4 +34,4 @@ tests/  # 应用用例的队列与状态流转集成测试
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: e69d08387e393c1906b91a22a6ac9add52e180930d3c691819acdd634d92b58f -->
+<!-- directory-tree-sha256: e7266f5991f22744fe6214b088709e25b87e7afb3f264c6c02cf0e010163b5d2 -->

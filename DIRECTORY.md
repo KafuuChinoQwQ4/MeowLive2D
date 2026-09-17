@@ -10,26 +10,33 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   ├── desktop/  # React 控制面板及 Windows 桌面外壳
 │   │   ├── src/  # 按应用组装、业务功能、外部服务和公共能力组织的前端源码
 │   │   │   ├── app/  # React 根页面组装与全局样式
+│   │   │   │   ├── feedback/  # 全局操作结果弹窗、去重与面板反馈回归测试
+│   │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   │   │   ├── OperationFeedback.test.tsx  # 结果队列、焦点恢复、后台故障去重及启动状态回归测试
+│   │   │   │   │   ├── OperationFeedback.tsx  # 全局操作结果队列、错误去重、无障碍弹窗与焦点恢复
+│   │   │   │   │   ├── PanelFeedback.test.tsx  # 各控制面板操作结果、业务失败、异步状态与输入校验弹窗测试
+│   │   │   │   │   └── feedback.css  # 全局结果弹窗的醒目配色、遮罩与响应式样式
 │   │   │   │   ├── resources/  # 角色与音色功能的页面组装和共享状态
 │   │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   │   │   ├── ResourcesPanel.lifecycle.test.tsx  # 资源读取与操作的卸载取消测试
+│   │   │   │   │   ├── ResourcesPanel.preview.test.tsx  # 音色试听状态跟踪、执行端断线、失败与重试的前端回归测试
 │   │   │   │   │   ├── ResourcesPanel.regressions.test.tsx  # 当前角色重新加载与安装成功后刷新失败回归
 │   │   │   │   │   ├── ResourcesPanel.tsx  # 组装角色与音色面板并显示资源操作状态
 │   │   │   │   │   ├── index.ts  # 资源管理页面公共入口
-│   │   │   │   │   └── useResourcesController.ts  # 资源快照与桌面操作的共享控制器
+│   │   │   │   │   └── useResourcesController.ts  # 角色音色快照、资源删除及桌面模型管理共享控制器
 │   │   │   │   ├── App.desktop.test.tsx  # 原生桌面地址初始化、导航功能请求地址与失败回归
 │   │   │   │   ├── App.launcher.test.tsx  # 服务启停后的业务门控、环境页面常驻访问与模型检索草稿保留测试
 │   │   │   │   ├── App.navigation.test.tsx  # 切页保留在途播报、历史深链接与未知页面回退的集成测试
 │   │   │   │   ├── App.test.tsx  # 导航功能显隐、草稿保留与当前页标识的集成测试
 │   │   │   │   ├── App.tsx  # 组装客户端与原生配置，选择受管或手动模式的导航控制台
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   │   │   ├── ManagedWorkspace.tsx  # 共享启动管理状态、模型操作会话及业务就绪门控的工作区
+│   │   │   │   ├── ManagedWorkspace.tsx  # 受管服务状态、模型启用提示与功能工作区集成
 │   │   │   │   ├── Workspace.tsx  # 固定侧栏、始终可访问的环境页面、快捷入口与稳定挂载的导航布局
 │   │   │   │   ├── WorkspaceIcon.tsx  # 控制台导航、品牌猫形与快捷操作的代码内 SVG 图标
 │   │   │   │   ├── navigation.ts  # 控制台功能导航、分组、页面说明与 URL fragment 映射
 │   │   │   │   ├── styles.css  # 控制台公共样式、响应式布局与服务滑动开关样式
 │   │   │   │   ├── useWorkspaceNavigation.ts  # 页面选择、访问记录与浏览器前进后退同步
-│   │   │   │   └── workspace.css  # 粉色亚克力导航工作区、圆角下拉与文件选择控件、半透明卡片阴影和环境模型页面的响应式样式
+│   │   │   │   └── workspace.css  # 工作区布局、模型库与训练页签分页及结果弹窗样式
 │   │   │   ├── features/  # 面向用户的功能模块，各自封装组件与状态
 │   │   │   │   ├── agent/  # Agent 人设、话题和互动策略设置
 │   │   │   │   │   ├── AgentPanel.test.tsx  # Agent 状态控制、错误呈现、轮询竞态与取消清理测试
@@ -45,11 +52,11 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   │   │   ├── index.ts  # Agent 自动互动面板的功能出口
 │   │   │   │   │   └── useAgentController.ts  # 修订号防回滚及卸载取消的串行 Agent 轮询与动作控制器
 │   │   │   │   ├── characters/  # 角色模型选择、导入与动作映射界面
-│   │   │   │   │   ├── CharacterPanel.test.tsx  # 角色导入、保存、加载与能力预览交互测试
-│   │   │   │   │   ├── CharacterPanel.tsx  # 角色模型、音色、口型与热键映射管理界面
+│   │   │   │   │   ├── CharacterPanel.test.tsx  # 角色与安装模型删除确认、导入保存加载及能力预览交互测试
+│   │   │   │   │   ├── CharacterPanel.tsx  # 角色配置及安装模型增删、音色绑定、口型和热键管理界面
 │   │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   │   │   ├── index.ts  # 角色管理：VTS 模型选择、表情动作映射及导入操作的界面。
-│   │   │   │   │   └── types.ts  # 角色面板需要的状态与操作接口
+│   │   │   │   │   └── types.ts  # 角色档案与本机模型增删管理界面的状态和能力契约
 │   │   │   │   ├── connections/  # 直播平台连接状态、事件计数和人工连接控制
 │   │   │   │   │   ├── ConnectionPanel.test.tsx  # 直播连接面板状态展示、按钮规则与错误交互测试
 │   │   │   │   │   ├── ConnectionPanel.tsx  # 直播平台连接状态、事件统计与手动连接控制面板
@@ -72,6 +79,11 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   │   │   ├── index.ts  # 直播工作台：会话状态、弹幕观察、播放状态与人工控制。
 │   │   │   │   │   ├── polling.test.tsx  # 状态刷新、取消清理与迟到响应场景测试
 │   │   │   │   │   └── useSpeechController.ts  # 可取消的串行状态刷新与播报操作状态
+│   │   │   │   ├── llm/  # LLM 接入配置功能
+│   │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   │   │   ├── LlmPanel.test.tsx  # LLM 面板草稿、密钥与生命周期测试
+│   │   │   │   │   ├── LlmPanel.tsx  # LLM 服务商、协议、模型、密钥与连接测试面板
+│   │   │   │   │   └── index.ts  # LLM 功能公共入口
 │   │   │   │   ├── model-library/  # 环境检查、本地语音模型选择与官方模型下载管理界面
 │   │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   │   │   ├── ModelLibraryPanel.test.tsx  # 环境门控、模型选择、分页检索、会话失效和下载取消交互测试
@@ -82,24 +94,35 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   │   │   ├── ObsPanel.test.tsx  # OBS 显式控制、状态读回和失败后禁用操作的组件测试
 │   │   │   │   │   ├── ObsPanel.tsx  # OBS 状态刷新、场景选择和人工录制控制界面
 │   │   │   │   │   └── index.ts  # OBS 功能模块的公开组件出口
-│   │   │   │   ├── training/  # 音色训练素材审核、任务版本和离线测量界面
+│   │   │   │   ├── training/  # 仅音频与可选文本训练、转写校对、任务版本和离线测量界面
 │   │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   │   │   │   ├── TrainingPanel.saved.test.tsx  # 音色保存、重开复用、跨音色版本切换和失败重试交互回归测试
-│   │   │   │   │   ├── TrainingPanel.test.tsx  # 训练提交审核、任务取消、试听确认和音频释放交互测试
-│   │   │   │   │   ├── TrainingPanel.tsx  # 训练素材审核、任务取消、版本试听保存、音色选择切换及离线预设面板
+│   │   │   │   │   ├── TrainingPanel.audio.test.tsx  # 训练片段多格式转换上传、异步重选、容量与导入失败回归测试
+│   │   │   │   │   ├── TrainingPanel.feedback.test.tsx  # 验证 GPU 失败提示、训练与测量结果弹窗、终态竞态去重及过期请求隔离
+│   │   │   │   │   ├── TrainingPanel.saved.test.tsx  # 音色保存重开切换、删除确认及清理失败重试交互测试
+│   │   │   │   │   ├── TrainingPanel.test.tsx  # 训练配置独立选择、服务忙碌时编辑、提交审核与试听取消交互测试
+│   │   │   │   │   ├── TrainingPanel.transcription.test.tsx  # 训练声音与文本模式、空白转写汇总弹窗、审核及过期请求回归测试
+│   │   │   │   │   ├── TrainingPanel.tsx  # 训练性能设置、记录分页、音色版本、模型开关及结果弹窗工作区
+│   │   │   │   │   ├── TrainingPanel.workspace.test.tsx  # 训练页签与素材分页、音色归组、性能参数及独立模型启停测试
+│   │   │   │   │   ├── TrainingResultDialog.tsx  # 训练成功失败结果弹窗、建议提示及键盘焦点恢复
+│   │   │   │   │   ├── TrainingVoiceLibrary.tsx  # 按参考音色归组的训练音色库、版本选择与单版本操作
 │   │   │   │   │   ├── index.ts  # 训练面板公开组件导出
+│   │   │   │   │   ├── trainingFeedback.ts  # 训练操作结果、任务终态通知及失败原因对应的改正建议
 │   │   │   │   │   ├── useTraining.test.tsx  # 训练轮询独立更新、故障恢复与取消迟到结果测试
-│   │   │   │   │   └── useTraining.ts  # 训练资源预设独立轮询、音色保存切换及取消生命周期
+│   │   │   │   │   └── useTraining.ts  # 训练资源与模型状态轮询、操作反馈、终态通知及异步取消保护
 │   │   │   │   ├── voices/  # 参考素材、音色试听和训练任务界面
 │   │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   │   │   │   ├── VoicePanel.test.tsx  # 音色上传、选择、试听与缺失资源交互测试
-│   │   │   │   │   ├── VoicePanel.tsx  # 音色列表、参考音频上传校验、试听及已保存训练音色入口
+│   │   │   │   │   ├── VoicePanel.test.tsx  # 多格式音色上传选择试听、删除确认失败及空状态交互测试
+│   │   │   │   │   ├── VoicePanel.tsx  # 音色导入校验、选择试听和删除管理及训练音色入口
 │   │   │   │   │   ├── index.ts  # 音色管理：参考素材、试听与训练任务展示；不在浏览器执行模型推理。
-│   │   │   │   │   ├── types.ts  # 音色面板需要的状态与操作接口
-│   │   │   │   │   ├── wav.test.ts  # 参考音频格式、时长、容量与静音边界测试
-│   │   │   │   │   └── wav.ts  # 浏览器端参考 PCM16 WAV 结构与有效性校验
+│   │   │   │   │   └── types.ts  # 音色列表选择试听、上传删除及文件清理重试能力契约
 │   │   │   │   └── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   ├── services/  # 前端访问主服务、Linux 启动管理与 Windows 桌面能力的统一边界
+│   │   │   │   ├── audio/  # 参考音频与训练片段的浏览器解码、格式转换和音频校验
+│   │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   │   │   ├── index.test.ts  # 多格式音频转换、PCM 编码、文件大小、时长与解码失败测试
+│   │   │   │   │   ├── index.ts  # MP3 等多格式音频导入、离线解码与兼容 PCM16 WAV 转换
+│   │   │   │   │   ├── wav.test.ts  # 参考与训练音频的 WAV 格式、时长、容量与静音边界测试
+│   │   │   │   │   └── wav.ts  # 参考音频与训练片段的 PCM16 WAV 结构及有效性校验
 │   │   │   │   ├── desktop/  # Tauri 命令客户端与桌面能力边界
 │   │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   │   │   ├── index.test.ts  # 桌面 IPC 状态校验、来源约束和超时回归测试
@@ -123,15 +146,17 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   │   │   ├── live.failures.test.ts  # 直播快照边界、HTTP 错误、网络失败、超时及取消测试
 │   │   │   │   │   ├── live.requests.test.ts  # 直播连接查询、连接及断开请求契约测试
 │   │   │   │   │   ├── live.ts  # 直播连接 HTTP 客户端、超时取消与运行时快照校验
+│   │   │   │   │   ├── llm.test.ts  # LLM 客户端路由、校验、错误与超时测试
+│   │   │   │   │   ├── llm.ts  # LLM 设置与连接测试 HTTP 客户端及响应校验
 │   │   │   │   │   ├── obs.test.ts  # OBS HTTP 响应校验、失败和超时且不重放控制请求的测试
 │   │   │   │   │   ├── obs.ts  # OBS 主服务请求、超时处理和状态契约校验
 │   │   │   │   │   ├── requests.test.ts  # HTTP 请求与成功响应测试
 │   │   │   │   │   ├── resources.failures.test.ts  # 资源响应边界、请求失败、超时与取消测试
-│   │   │   │   │   ├── resources.requests.test.ts  # 资源接口路径、JSON 与音频上传负载测试
+│   │   │   │   │   ├── resources.requests.test.ts  # 资源增删接口负载、空绑定及安装模型响应关联测试
 │   │   │   │   │   ├── resources.ts  # 资源 HTTP 与桌面操作客户端及运行时响应校验
 │   │   │   │   │   ├── responses.ts  # 生成契约的运行时响应校验与错误映射
-│   │   │   │   │   ├── training.test.ts  # 训练契约、音色保存请求、测量证据、超时取消及试听响应测试
-│   │   │   │   │   └── training.ts  # 训练音色保存与运行预设 HTTP 客户端、严格响应校验和取消超时
+│   │   │   │   │   ├── training.test.ts  # 训练与转写契约、请求校验、保存删除及取消超时测试
+│   │   │   │   │   └── training.ts  # 训练性能、任务版本、模型启停与离线测量客户端及响应校验
 │   │   │   │   └── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   ├── shared/  # 跨功能复用且不持有业务流程的前端能力
 │   │   │   │   ├── lib/  # 与业务状态无关的公共纯函数
@@ -192,9 +217,9 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   │   ├── agent.rs  # Agent 人设和有界调度参数的 TOML 配置
 │   │   │   │   ├── live.rs  # 官方直播接入开关、应用编号、凭据变量名和重连参数校验
-│   │   │   │   ├── llm.rs  # 模型地址、密钥环境变量名与调用资源上限校验
+│   │   │   │   ├── llm.rs  # LLM 提供商协议、地址、模型及资源限额校验与密钥脱敏
 │   │   │   │   ├── resources.rs  # Linux 资源保存目录和引擎共享挂载配置
-│   │   │   │   └── training.rs  # 训练路径、超时及受管推理默认权重配置校验
+│   │   │   │   └── training.rs  # 训练路径、本地识别模型、超时及受管推理默认权重配置校验
 │   │   │   ├── live/  # 官方直播源组装及异步连接、接收、清理与重连驱动
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   │   ├── bootstrap.rs  # 从主服务环境变量组装官方直播适配器
@@ -206,21 +231,24 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   │   ├── error.rs  # 稳定的结构化 HTTP 错误映射
 │   │   │   │   ├── http.rs  # 组装播报、Agent、事件、直播连接及 WebSocket 路由和来源校验
 │   │   │   │   ├── live.rs  # 直播连接查询、连接及断开的 HTTP 输入边界
+│   │   │   │   ├── llm.rs  # LLM 接入配置读写与草稿连接测试 HTTP 入口
 │   │   │   │   ├── mapping.rs  # protocol DTO 与 domain 类型的显式转换，避免序列化字段影响领域规则。
 │   │   │   │   ├── mod.rs  # HTTP / WebSocket 输入与输出适配；在协议 DTO 与领域对象之间进行映射。
 │   │   │   │   ├── obs.rs  # 通过桌面资源通道执行 OBS 状态查询与受限控制
 │   │   │   │   ├── origin.rs  # 浏览器请求来源校验及 HTTP 来源中间件
-│   │   │   │   ├── resources.rs  # 音色上传、角色保存选择和逐项能力验证路由
-│   │   │   │   ├── runtime.rs  # 本地 LLM 到 TTS 联合时延显存测量与验证状态接口
-│   │   │   │   ├── training.rs  # 有界训练上传、后台任务、取消、成对权重试听保存启用接口
+│   │   │   │   ├── resources.rs  # 音色和角色增删选择、模型删除代理及能力验证路由
+│   │   │   │   ├── runtime.rs  # 离线推理测量、GPU 采样错误传播与预设查询
+│   │   │   │   ├── training.rs  # 训练素材导入、性能设置、按所选 GPU 准入及版本试听保存接口
+│   │   │   │   ├── training_models.rs  # 模型内存状态查询及带资源互斥和取消保护的启停接口
 │   │   │   │   └── websocket.rs  # 唯一执行端连接准入及音频配对校验
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   ├── agent.rs  # Agent 异步驱动与服务状态组装入口
 │   │   │   ├── bootstrap.rs  # 读取私有配置，组装语音、LLM 和直播适配器并管理服务生命周期
-│   │   │   ├── config.rs  # 主服务配置聚合、读取与启动前校验
+│   │   │   ├── config.rs  # TOML 配置、本机 LLM 覆盖加载及启动前全局校验
 │   │   │   ├── gpu.rs  # 训练试听测量独占租约、保留直播及 Agent 状态的音色切换准入与互斥测试
 │   │   │   ├── lib.rs  # 可注入适配器的服务模块导出与集成测试入口
 │   │   │   ├── live.rs  # 直播连接单会话所有权、公开快照和手动连接断开控制
+│   │   │   ├── llm_settings.rs  # 本机 LLM 覆盖配置的原子保存、凭据隔离与重启状态查询
 │   │   │   ├── main.rs  # Linux / WSL 主服务入口。业务编排位于 meowlive-application。
 │   │   │   ├── resources.rs  # 桌面资源请求关联、单操作准入与取消生命周期
 │   │   │   ├── state.rs  # 语音、Agent、唯一执行桥接和直播连接的共享状态及取消生命周期
@@ -258,18 +286,20 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   ├── live_lifecycle.rs  # 单直播连接、取消迟到结果、事件去重与重连终止测试
 │   │   │   ├── live_process.rs  # 真实主服务进程的直播凭据组装、默认不连接与公开响应脱敏测试
 │   │   │   ├── live_runtime.rs  # 受控平台礼物与重复帧经真实适配器、Agent、语音和静音设备完成回执的联调测试
+│   │   │   ├── llm_profile.rs  # LLM 协议组装、私有配置持久化、重启加载及 HTTP 验证
 │   │   │   ├── m5_config.rs  # 本地预设地址资源上限及训练配置约束测试
 │   │   │   ├── obs_http.rs  # OBS HTTP 参数、桌面连接要求及模拟执行端贯通测试
 │   │   │   ├── request_origin.rs  # HTTP 来源拒绝和无副作用保障测试
-│   │   │   ├── resources_bridge.rs  # 桌面资源请求关联、停止、断连及响应边界测试
+│   │   │   ├── resources_bridge.rs  # 桌面资源关联、模型删除引用与并发保护、断连响应边界测试
 │   │   │   ├── resources_characters.rs  # 角色加载确认、预览验证及映射变更失效测试
-│   │   │   ├── resources_http.rs  # 资源初始状态、当前音色别名与离线操作测试
-│   │   │   ├── resources_process.rs  # 真实服务进程上传、恢复、试听、Agent 与缺失资源链路测试
+│   │   │   ├── resources_http.rs  # 初始空音色、角色删除、非法资源及音色别名 HTTP 测试
+│   │   │   ├── resources_process.rs  # 真实服务进程上传恢复试听、Agent、资源删除持久化链路测试
 │   │   │   ├── resources_runtime.rs  # 面板经真实桌面执行库到受控 VTS 的角色、热键与停止链路测试
 │   │   │   ├── runtime_loop.rs  # 真实服务与独立桌面运行时的静音播放集成测试
 │   │   │   ├── speech_delivery.rs  # PCM 下发、设备回执门控及独立停止通道测试
 │   │   │   ├── synthesis_cancellation.rs  # 合成停止、断线未知与重连不重播集成测试
-│   │   │   ├── training_http.rs  # 训练未配置、音色保存接口和离线未验证的公开 HTTP 行为测试
+│   │   │   ├── training_http.rs  # 训练配置、音色版本删除与当前选择清理、存储故障的 HTTP 测试
+│   │   │   ├── training_models.rs  # 受控 HTTP 验证模型开关及无需开启训练的默认推理流程
 │   │   │   └── training_process.rs  # 真实主服务训练上传、音色保存重启、版本试听启用、取消及 SIGTERM 子树清理测试
 │   │   ├── Cargo.toml  # 该 Rust 包的名称、workspace 配置与模块依赖声明
 │   │   └── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
@@ -298,37 +328,39 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   │   └── simulator.rs  # 模拟弹幕、礼物和连接变化的事件来源，用于首个互动闭环与事件回放。
 │   │   │   ├── llm/  # 云端及本地 LLM 的协议适配
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   │   │   ├── config.rs  # LLM 地址、模型、密钥脱敏及超时和响应上限校验
+│   │   │   │   ├── config.rs  # LLM 地址规范化、认证头及资源限制的统一校验
 │   │   │   │   ├── mod.rs  # 模型协议适配。兼容同一协议的云端与本地服务复用实现，其他协议独立添加。
+│   │   │   │   ├── multi_provider.rs  # OpenAI Responses、Anthropic Messages、Gemini 与兼容聊天的协议适配
 │   │   │   │   ├── openai_compatible.rs  # 非流式 Chat Completions 传输、认证、响应大小与临时错误分类
-│   │   │   │   ├── prompt.rs  # Chat Completions 系统提示与结构化用户事件和历史请求构建
-│   │   │   │   └── response.rs  # 模型响应封装、严格决策 JSON、事件子集及语音文本校验
+│   │   │   │   ├── prompt.rs  # 跨 LLM 协议共享的结构化 Agent 提示与输入校验
+│   │   │   │   └── response.rs  # LLM 文本决策内容与 OpenAI 聊天响应的严格校验
 │   │   │   ├── speech/  # GPT-SoVITS 等语音引擎的请求和音频格式适配
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   │   ├── gpt_sovits.rs  # GPT-SoVITS HTTP 适配入口：参考素材路径解析、合成参数映射与音频解码。
 │   │   │   │   ├── mod.rs  # 语音引擎适配与音频格式转换。推理服务和模型权重位于项目目录之外。
-│   │   │   │   ├── model_synthesizer.rs  # 音色成对权重加载、取消期间忙碌保护与共享推理事务
+│   │   │   │   ├── model_synthesizer.rs  # 模型内存启停、成对权重加载与合成互斥及取消事务保护
 │   │   │   │   ├── resource_synthesizer.rs  # 根据音色档案解析参考音频并调用 GPT-SoVITS
 │   │   │   │   └── wav.rs  # 完整 RIFF/WAV 边界与 PCM16 格式校验解码
 │   │   │   ├── storage/  # SQLite 记录与 Linux 素材文件存储
 │   │   │   │   ├── resources/  # 资源快照转换与参考音频校验实现
 │   │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   │   │   │   ├── snapshot.rs  # 持久化资源快照的版本化 DTO 与领域转换
+│   │   │   │   │   ├── snapshot.rs  # 资源快照版本化转换及音色参考标识一致性验证
 │   │   │   │   │   └── wav.rs  # 参考音频 PCM 格式、时长和静音校验
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   │   ├── files.rs  # Linux 素材文件存储，负责文件落盘及引擎可访问路径；Windows 模型导入另属 desktop-runtime。
 │   │   │   │   ├── mod.rs  # 持久化和本地素材存储实现；应用层只看存取接口。
-│   │   │   │   ├── resources.rs  # 版本化原子资源快照与不可变参考 WAV 文件存储
+│   │   │   │   ├── resources.rs  # 原子资源快照、音色与参考标识一致性校验及参考 WAV 存取清理
 │   │   │   │   └── sqlite.rs  # SQLite 记录存储适配入口。表结构和迁移随首个持久化用例加入。
 │   │   │   ├── training/  # 独立训练进程、进度及产物的适配
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   │   ├── mod.rs  # 独立训练进程适配，处理进程状态与训练产物；调度策略属于 application。
 │   │   │   │   ├── process.rs  # 独立训练进程组启动、超时取消和有界日志进度
-│   │   │   │   ├── store.rs  # 训练任务原子快照、保存音色兼容加载、不可变素材及成对权重指纹校验
-│   │   │   │   └── tests.rs  # 任务与音色保存持久化、旧存档兼容、存储故障、模型校验和真实子进程清理测试
+│   │   │   │   ├── store.rs  # 任务素材与续训权重私有副本、原子历史存储和成对模型校验
+│   │   │   │   ├── tests.rs  # 训练音色持久化、音频模式、转写进程、删除清理及存储故障测试
+│   │   │   │   └── transcription.rs  # 单片音频自动转写的有界子进程、私有临时素材与退出清理
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   ├── lib.rs  # 外部能力实现：依赖业务层定义的 ports，不反向定义业务规则。
-│   │   │   └── runtime.rs  # 本地 NVIDIA 显存采样与输出边界校验
+│   │   │   └── runtime.rs  # GPU 采样、WSL 工具查找与有界错误诊断
 │   │   ├── tests/  # GPT-SoVITS、WAV 与 LLM 适配器的集成和输入输出边界测试
 │   │   │   ├── bilibili_support/  # 受控官方直播 HTTP 和 WebSocket 协议测试服务
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
@@ -351,10 +383,12 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   ├── gpt_sovits_validation.rs  # 引擎配置、默认音色和播报文本输入校验测试
 │   │   │   ├── llm_cancellation.rs  # 取消模型决策 future 后关闭在途 HTTP 连接测试
 │   │   │   ├── llm_limits.rs  # 配置请求响应上限、总超时、错误分类与敏感信息脱敏测试
+│   │   │   ├── llm_multi_provider.rs  # 多 LLM 协议的请求认证、输出校验和边界测试
 │   │   │   ├── llm_output_validation.rs  # 严格决策字段、事件子集、工具调用、截断及内容约束测试
 │   │   │   ├── llm_transport.rs  # 路径、认证、JSON 模式、消息角色、礼物分组提示与重定向测试
+│   │   │   ├── model_runtime.rs  # 模型关闭拒绝合成、启停后恢复及不污染权重状态的 HTTP 测试
 │   │   │   ├── model_synthesizer.rs  # 取消后的权重合成互斥与默认模型恢复链路测试
-│   │   │   ├── resource_store.rs  # 资源持久化恢复、音频边界与文件异常测试
+│   │   │   ├── resource_store.rs  # 参考音频存储持久化、删除重启、路径及标识一致性测试
 │   │   │   ├── resource_synthesizer.rs  # 上传音色的引擎路径解析与默认音色回退测试
 │   │   │   ├── wav_decoding.rs  # 完整 WAV 的基础 PCM 解码与无效输入测试
 │   │   │   └── wav_validation.rs  # WAV 采样率、位深、帧完整性和容器畸形校验测试
@@ -376,7 +410,7 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   │   ├── mod.rs  # 由业务方定义的外部能力接口。实现位于 adapters 或应用入口的传输适配层。
 │   │   │   │   ├── speech.rs  # 可动态注入的异步语音合成接口与 PCM 输出类型
 │   │   │   │   ├── storage.rs  # 资源快照、参考音频与引擎路径存储接口
-│   │   │   │   └── training.rs  # 训练素材存储、成对模型解析与受控进程执行接口
+│   │   │   │   └── training.rs  # 训练存储、同音色续训基底与受控进程接口
 │   │   │   ├── scheduler/  # 候选事件优先级与礼物分组策略
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   │   └── selection.rs  # 礼物优先选择和有界原始事件分组
@@ -384,11 +418,11 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   ├── agent.rs  # Agent 生命周期、决策调度和状态快照
 │   │   │   ├── lib.rs  # 业务用例与外部能力接口。通过注入 ports 的实现调用外部能力。
 │   │   │   ├── performance.rs  # 协调发言、动作、下发与执行回执；处理代次、取消及重连后未知状态。
-│   │   │   ├── resources.rs  # 角色与音色档案用例、持久化事务和映射验证一致性
+│   │   │   ├── resources.rs  # 角色与音色档案用例、删除和选择清理、持久化事务及映射一致性
 │   │   │   ├── scheduler.rs  # 有界事件存储、独立去重和终态历史裁剪
 │   │   │   ├── session.rs  # 会话启动、暂停、恢复与关闭用例，协调在途任务的生命周期。
 │   │   │   ├── speech.rs  # 单执行者语音 FIFO 队列、容量历史限制与取消回执状态机
-│   │   │   └── training.rs  # 单任务训练生命周期、失败恢复、取消、试听、音色保存与版本启用用例
+│   │   │   └── training.rs  # 训练任务调度、同音色续训基底选择及版本保存选用
 │   │   ├── tests/  # 应用用例的队列与状态流转集成测试
 │   │   │   ├── agent_support/  # Agent 测试公共夹具
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
@@ -401,7 +435,7 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   ├── agent_lifecycle.rs  # 配置、暂停、停止和播放生命周期测试
 │   │   │   ├── agent_memory.rs  # 已完成对话数量及内容长度边界测试
 │   │   │   ├── agent_settings.rs  # 人设配置与运行资源上限测试
-│   │   │   ├── resource_library.rs  # 资源保存一致性、容量与映射验证并发规则测试
+│   │   │   ├── resource_library.rs  # 资源事务失败保护、角色音色删除绑定及清理重试用例测试
 │   │   │   ├── scheduler_bounds.rs  # 历史裁剪、去重淘汰、批次容量和克隆隔离测试
 │   │   │   ├── scheduler_events.rs  # 事件去重、过期、容量及礼物分组测试
 │   │   │   ├── speech_cancellation.rs  # 语音停止代次、迟到结果和断线取消测试
@@ -413,7 +447,7 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   ├── src/  # 播放、连接、口型、VTS、OBS 与模型导入的执行源码
 │   │   │   ├── assets/  # Live2D 导出模型包的本地校验与安装
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   │   │   └── model.rs  # 模型清单和 VTS 引用检查、限制与无覆盖安装
+│   │   │   │   └── model.rs  # 模型清单与路径校验、无覆盖安装、模型身份枚举及持久化删除重试
 │   │   │   ├── audio/  # 音频设备后端、采样转换与设备播放时钟
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   │   ├── conversion.rs  # 相位连续的 PCM 重采样与声道映射
@@ -442,7 +476,7 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   │   └── config.rs  # OBS 本机地址、密码环境变量名与整次操作超时校验
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   │   ├── assets.rs  # Live2D 模型校验与本地安装公共接口
+│   │   │   ├── assets.rs  # 本机 Live2D 模型包校验、安装、枚举及删除能力导出
 │   │   │   ├── audio.rs  # 音频设备边界、播放事件与设备输出能量观测接口
 │   │   │   ├── avatar.rs  # VTube Studio 独立连接入口、配置与可观察状态导出
 │   │   │   ├── cli.rs  # 桌面客户端配置加载、服务重连、VTS 组装与限时退出入口
@@ -454,7 +488,7 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   ├── obs.rs  # OBS v5 鉴权、有界状态查询、场景录制控制与状态读回
 │   │   │   ├── playback.rs  # 播放状态机、代次取消、乱序校验与设备回执
 │   │   │   ├── presentation.rs  # 桌面口型驱动生命周期与角色参数切换组装
-│   │   │   └── resource_control.rs  # 桌面资源命令执行、Windows 目录选择和能力调用
+│   │   │   └── resource_control.rs  # 桌面模型导入列举删除、VTS 加载热键与 OBS 控制执行
 │   │   ├── tests/  # 桌面执行运行时独立集成测试
 │   │   │   ├── avatar_support/  # VTS 本地 WebSocket 场景测试的隔离文件与协议辅助设施
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
@@ -492,6 +526,7 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   ├── lip_sync_levels.rs  # 口型能量阈值、增益、时间平滑及非法输入测试
 │   │   │   ├── lip_sync_lifecycle.rs  # 设备驱动口型、停止、完成、失败和析构复位测试
 │   │   │   ├── model_assets.rs  # 模型引用、路径限制、安装与覆盖保护测试
+│   │   │   ├── model_management.rs  # 已安装 Live2D 模型列表、删除、路径边界及跨端协议测试
 │   │   │   ├── obs_configuration.rs  # OBS 本机配置、URL 归一化及超时边界测试
 │   │   │   ├── obs_websocket.rs  # OBS 受控鉴权、状态读回、协议边界与禁止重放写请求测试
 │   │   │   ├── output_meter.rs  # 设备能量的播放延迟、静音、过期、容量与复位测试
@@ -513,7 +548,7 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   ├── resources.rs  # 音色、参考素材、资源目录及纯业务不变量
 │   │   │   ├── session.rs  # 直播会话的状态与合法状态转换；与每条发言的生命周期分别建模。
 │   │   │   ├── speech.rs  # 播报文本校验、任务快照、生成代次与执行状态语义
-│   │   │   ├── training.rs  # 训练状态、受限素材、成对权重与音色绑定的领域不变量
+│   │   │   ├── training.rs  # 训练参数、性能边界、片段校验和任务状态领域规则
 │   │   │   └── voice.rs  # 配置音色标识校验
 │   │   ├── tests/  # 领域对象与输入不变量集成测试
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
@@ -536,15 +571,17 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   ├── launcher.rs  # 本机主服务、TTS 和 Windows 执行端三开关的启动管理契约
 │   │   │   ├── lib.rs  # 跨进程通信契约的唯一来源。与业务领域对象分离，按协议版本演进。
 │   │   │   ├── live.rs  # 直播连接阶段、公开状态与诊断计数的跨端契约
+│   │   │   ├── llm.rs  # LLM 接入设置、密钥输入与脱敏查询契约
 │   │   │   ├── model_library.rs  # 本机环境、模型目录、安装结果及下载任务的跨进程契约
 │   │   │   ├── obs.rs  # OBS 状态、场景与录制操作公开契约及严格反序列化
 │   │   │   ├── resources.rs  # 跨端角色音色档案及桌面资源操作契约
-│   │   │   └── training.rs  # 训练任务、模型版本与保存状态、试听和本地资源测量跨端契约
+│   │   │   ├── training.rs  # 训练片段、性能参数、任务版本及离线测量跨端契约
+│   │   │   └── training_runtime.rs  # 独立于 TTS 服务的模型内存启停请求与状态契约
 │   │   ├── tests/  # 通信协议独立集成测试
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   ├── agent_contracts.rs  # Agent 输入严格反序列化及公开 JSON 形状测试
 │   │   │   ├── audio_frames.rs  # PCM 二进制帧编码、边界与损坏输入测试
-│   │   │   ├── compatibility.rs  # 协议必填字段、标签与音频格式兼容测试
+│   │   │   ├── compatibility.rs  # 协议必填字段、训练模式缺省兼容、未知标签与音频格式测试
 │   │   │   ├── control_serialization.rs  # 控制消息与执行回执序列化测试
 │   │   │   └── obs_contracts.rs  # OBS 指令未知字段拒绝与资源通道契约测试
 │   │   ├── Cargo.toml  # 该 Rust 包的名称、workspace 配置与模块依赖声明
@@ -553,7 +590,7 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 ├── docs/  # 本地架构与规划文档；完整树见 docs/DIRECTORY.md，Git 忽略且可不存在
 ├── launchers/  # 面向用户的 Windows 双击与 Linux 启动入口及 Windows 进程管理脚本
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   ├── README.md  # 新人三开关启动、Windows 双击入口与退出流程
+│   ├── README.md  # 首次环境准备、Windows 执行端构建与日常启动退出说明
 │   ├── start-windows.cmd  # Windows 双击启动入口，调用 WSL2 检查与控制面板启动脚本
 │   ├── start-windows.ps1  # 检测 WSL2、选择发行版、启动 Linux 项目并打开浏览器
 │   ├── start.sh  # Linux 与 WSL 新人控制面板入口，检查依赖并启动网页服务管理器
@@ -571,13 +608,14 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 ├── scripts/  # 开发工具、目录用途登记与索引同步检查
 │   ├── launcher/  # Linux 本机服务启动管理、配置读取、状态探测与控制接口
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   ├── config.mjs  # 读取私有启动配置与主服务 TOML，校验路径并仅给服务进程加载密钥
+│   │   ├── config.mjs  # 私有启动配置、LLM 覆盖元数据及主服务环境的加载与脱敏
 │   │   ├── config.test.mjs  # 启动配置、缺失环境、密钥隔离和本机地址限制的测试
 │   │   ├── health.mjs  # 检查主服务及 TTS HTTP 就绪状态和端口占用
 │   │   ├── http.mjs  # 同源会话保护的三个服务开关及模型管理 HTTP 接口
 │   │   ├── http.test.mjs  # 启停接口来源、会话、请求形状及大小限制测试
 │   │   ├── log.mjs  # 受管进程日志限量保存、密钥遮盖及常见启动故障识别
 │   │   ├── log.test.mjs  # 子进程日志跨数据块密钥遮盖与显存错误诊断测试
+│   │   ├── memory.mjs  # 读取 Linux/WSL 与 Windows 主机内存余量，提供受管 TTS 启动和运行保护判定
 │   │   ├── model-catalog.mjs  # 核对官方来源的公开语音模型目录、下载文件范围和接入状态
 │   │   ├── model-download.mjs  # 官方模型文件下载、代理支持、磁盘检查、校验和完成文件复用
 │   │   ├── model-download.test.mjs  # 环境识别与模型下载完整性、取消、固定来源和路径校验测试
@@ -586,10 +624,15 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   ├── model-library.test.mjs  # 模型发现选择持久化、启动门控、外部进程保护及取消回归测试
 │   │   ├── paths.mjs  # 启动器配置路径解析与相对项目或用户目录的可移植路径显示
 │   │   ├── paths.test.mjs  # 项目目录、用户主目录及外部路径解析与显示回归测试
+│   │   ├── process-cleanup.mjs  # 核对项目与进程身份后清理残留进程组并通知受管 Windows 执行端停止
+│   │   ├── process-cleanup.test.mjs  # 残留服务正常及强制退出、孤立子进程回收和其他检出隔离测试
+│   │   ├── shutdown.mjs  # 幂等处理重复中断与终端挂断信号，等待启动器完成服务清理
+│   │   ├── shutdown.test.mjs  # 真实进程验证重复 Ctrl+C、终止和终端挂断时等待受管服务回收
 │   │   ├── supervisor.mjs  # 固定服务子进程的幂等启停、就绪等待、超时取消和退出回收
 │   │   ├── supervisor.test.mjs  # 真实受控子进程的启动停止、取消、崩溃、冲突与外部服务隔离测试
 │   │   ├── windows-client.mjs  # WSL2 调用 Windows helper、连接就绪检查及第三开关生命周期
-│   │   └── windows-client.test.mjs  # Windows 连接门控、重复启动、取消重试、外部保护与关闭顺序回归测试
+│   │   ├── windows-client.test.mjs  # Windows 连接门控、重复启动、取消重试、外部保护与关闭顺序回归测试
+│   │   └── windows-config.mjs  # 安全解析并原子更新实际 Windows 执行端 TOML，仅启用 VTS 插件连接
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   ├── README.md  # 开发验证命令、网页启动管理及引擎工具说明
 │   ├── acceptance.mjs  # 只读持续观测、脱敏采样与整体验收 JSON 报告工具
@@ -597,12 +640,17 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   ├── directory-descriptions.json  # 可提交工程的文件和目录用途登记；索引生成的说明源
 │   ├── directory-tree.mjs  # 递归生成目录树，校验用途覆盖并检测文件内容变化
 │   ├── directory-tree.test.mjs  # 验证递归索引、文件增删改、排除规则、本地文档隔离和符号链接边界
-│   ├── engine_workspace.py  # 独立引擎镜像与选定模型资源隔离，训练及推理的离线环境配置
+│   ├── engine_workspace.py  # 构建项目自有引擎副本并配置 CPU、GPU、数据加载和内存模式
 │   ├── extract-model-archive.py  # 限定路径和解压大小的 G2PW 官方模型压缩包解压器
+│   ├── model_runtime.py  # 受管 TTS 模型按需加载、卸载、并发保护及私有引擎入口适配
+│   ├── model_runtime_test.py  # 模型默认待机、加载卸载、失败重试及流式取消的无权重测试
 │   ├── start-control-panel.mjs  # 启动 Vite 控制面板、模型管理与本地服务监督器并回收受管进程
-│   ├── start-managed-inference.py  # 按选定模型目录和私有配置启动 GPT-SoVITS v2 推理服务
-│   ├── train-gpt-sovits.py  # 逐阶段 GPT-SoVITS v2 预处理训练及最终成对模型校验桥接
-│   ├── training_test.py  # 训练清单、受限环境、低显存配置及模型压缩包解压边界回归测试
+│   ├── start-managed-inference.py  # 准备私有推理配置、默认不加载模型的受管 TTS 服务启动入口
+│   ├── stop-control-panel.mjs  # Linux 与 WSL 手动清理本项目残留服务并报告停止结果的命令入口
+│   ├── train-gpt-sovits.py  # GPT-SoVITS 分阶段训练、同音色权重续训与产物校验入口
+│   ├── training_test.py  # 验证训练路径、性能传递、阶段进程与低显存兼容行为
+│   ├── training_transcription.py  # 本地 faster-whisper 识别、缺失文本补全与离线输入输出校验
+│   ├── transcribe-training.py  # 单片训练语音转写命令入口，输出供用户校对的文本
 │   └── windows-bootstrap.test.ps1  # Windows PowerShell 入口语法、WSL 检测及参数边界回归测试
 ├── tests/  # 业务测试归属说明与回放数据入口
 │   ├── contracts/  # 跨端消息兼容及生成类型一致性测试的归属
@@ -627,7 +675,7 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 ├── Cargo.toml  # Rust workspace 成员、共享依赖、编译基线和 lint 配置
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 ├── LICENSE  # MIT 开源许可证与项目版权声明
-├── README.md  # 项目概览、模块边界、开发命令和目录维护入口
+├── README.md  # 新手上手说明：启动播报、VTS 口型、AI 互动、可选训练与开发入口
 ├── package-lock.json  # npm 工作区依赖版本及完整性锁定结果
 ├── package.json  # npm workspaces、依赖基线及统一开发和检查命令
 └── tsconfig.base.json  # 所有 TypeScript 工作区共享的严格类型与模块配置
@@ -648,4 +696,4 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 7e39e2dca53493a5fe0d04b49ef9930752411d133b51c1225e05d89647b18fb1 -->
+<!-- directory-tree-sha256: 2b762dbd3a000211adfc59d34509187ed10e06b2cb7478692942618dae7fc8cc -->

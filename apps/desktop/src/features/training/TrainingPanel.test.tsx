@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { TrainingClient } from "../../services/server/training";
@@ -7,8 +7,8 @@ import { resourceSnapshot, pcm16Wav, voice } from "../../test/resource-fixtures"
 import { TrainingPanel } from "./TrainingPanel";
 const preset = { mode: "local", model: "small", local_only: true, verified: false, max_tokens: 512, timeout_seconds: 30, measurement: null, message: "本地预设未验证" };
 function setup() {
-  const client: TrainingClient = { snapshot: vi.fn().mockResolvedValue({ enabled: true, busy: false, jobs: [], versions: [] }),
-    create: vi.fn().mockResolvedValue({}), cancel: vi.fn(), save: vi.fn(), activate: vi.fn(), audition: vi.fn(), preset: vi.fn().mockResolvedValue(preset), measure: vi.fn() };
+  const client: TrainingClient = { modelStatus: vi.fn().mockResolvedValue({ supported: true, state: "loaded", message: "模型已启用" }), setModelsEnabled: vi.fn(), snapshot: vi.fn().mockResolvedValue({ enabled: true, busy: false, jobs: [], versions: [] }),
+    transcribe: vi.fn(), create: vi.fn().mockResolvedValue({}), cancel: vi.fn(), delete: vi.fn(), save: vi.fn(), activate: vi.fn(), audition: vi.fn(), preset: vi.fn().mockResolvedValue(preset), measure: vi.fn() };
   const resources = { getSnapshot: vi.fn().mockResolvedValue(resourceSnapshot()), selectVoice: vi.fn().mockResolvedValue(resourceSnapshot()) } as unknown as ResourcesClient;
   return { client, resources };
 }
@@ -18,31 +18,71 @@ describe("训练面板", () => {
     deps.resources.getSnapshot = vi.fn().mockResolvedValue(resourceSnapshot({ voices: [], characters: [], active_voice_id: activeVoiceId, active_character_id: null, default_voice_available: false }));
     render(<TrainingPanel {...deps} />);
 
-    expect(await screen.findByText("当前使用：未设置音色")).toBeVisible();
+    await screen.findByText("训练就绪");
     expect(screen.getByRole("link", { name: "上传参考声音" })).toHaveAttribute("href", "#resources");
     expect(screen.getByLabelText("训练音色")).toHaveValue("");
     expect(screen.getByRole("button", { name: "开始训练" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("tab", { name: /已训练音色/ }));
+    expect(await screen.findByText("当前选用：尚未选用训练音色")).toBeVisible();
     expect(screen.getByRole("button", { name: "使用所选音色" })).toBeDisabled();
   });
 
-  it("只有两个片段文本已核对后才提交训练", async () => {
-    const user = userEvent.setup(); const deps = setup(); render(<TrainingPanel {...deps} />);
+  it("手动选择训练音色和轮次，只有两个片段文本已核对后才提交训练", async () => {
+    const user = userEvent.setup(); const deps = setup();
+    deps.resources.getSnapshot = vi.fn().mockResolvedValue(resourceSnapshot({ voices: [voice(), voice({ id: "voice-2", name: "另一音色" })] }));
+    render(<TrainingPanel {...deps} />);
     await screen.findByText("训练就绪");
-    await user.type(screen.getByLabelText("训练名称"), "新音色版本");
-    await user.selectOptions(screen.getByLabelText("训练音色"), "voice-1");
+    const configuration = within(screen.getByRole("region", { name: "新建训练配置" }));
+    expect(configuration.getByLabelText("训练音色")).toHaveValue("");
+    expect(configuration.getByLabelText("训练音色")).toBeEnabled();
+    await user.type(configuration.getByLabelText("训练名称"), "新音色版本");
+    await user.selectOptions(configuration.getByLabelText("训练音色"), "voice-2");
+    fireEvent.change(configuration.getByLabelText("GPT / SoVITS 轮次"), { target: { value: "3" } });
     await user.upload(screen.getByLabelText("训练片段"), [pcm16Wav(), pcm16Wav()]);
-    await user.type(screen.getByLabelText("片段 1 文本"), "第一段");
+    await user.click(screen.getByLabelText("输入并校对文本"));
+    await user.type(await screen.findByLabelText("片段 1 文本"), "第一段");
     await user.type(screen.getByLabelText("片段 2 文本"), "第二段");
     expect(screen.getByRole("button", { name: "开始训练" })).toBeDisabled();
     await user.click(screen.getByLabelText("我已逐片听取并核对文本，素材与所选音色一致"));
     await user.click(screen.getByRole("button", { name: "开始训练" }));
-    await waitFor(() => expect(deps.client.create).toHaveBeenCalledWith(expect.objectContaining({ reviewed: true, voice_id: "voice-1", gpt_epochs: 1 }), expect.any(Array), expect.any(AbortSignal)));
+    await waitFor(() => expect(deps.client.create).toHaveBeenCalledWith(expect.objectContaining({ reviewed: true, voice_id: "voice-2", gpt_epochs: 3, sovits_epochs: 3 }), expect.any(Array), expect.any(AbortSignal)));
+    expect(deps.resources.selectVoice).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("tab", { name: "离线设置" }));
     expect(screen.getByText("本地预设未验证")).toBeVisible();
   });
+  it.each(["读取中", "忙碌", "未配置"])("训练服务%s时仍能主动选择导入音色和填写配置，但不能开始训练", async state => {
+    const deps = setup();
+    deps.client.snapshot = state === "读取中" ? vi.fn(() => new Promise(() => {}))
+      : vi.fn().mockResolvedValue({ enabled: state !== "未配置", busy: state === "忙碌", jobs: [], versions: [] });
+    const user = userEvent.setup();
+    render(<TrainingPanel {...deps} />);
+    await screen.findByRole("option", { name: "温柔旁白" });
+    const select = screen.getByLabelText("训练音色");
+    expect(select).toBeEnabled();
+    expect(select).toHaveValue("");
+    await user.selectOptions(select, "voice-1");
+    await user.type(screen.getByLabelText("训练名称"), "我的训练");
+    fireEvent.change(screen.getByLabelText("GPT / SoVITS 轮次"), { target: { value: "2" } });
+    expect(select).toHaveValue("voice-1");
+    expect(screen.getByLabelText("训练名称")).toHaveValue("我的训练");
+    expect(screen.getByLabelText("GPT / SoVITS 轮次")).toHaveValue(2);
+    await user.upload(screen.getByLabelText("训练片段"), [pcm16Wav(), pcm16Wav()]);
+    await user.click(screen.getByLabelText("输入并校对文本"));
+    await user.type(await screen.findByLabelText("片段 1 文本"), "第一段");
+    await user.type(screen.getByLabelText("片段 2 文本"), "第二段");
+    const reviewed = screen.getByLabelText("我已逐片听取并核对文本，素材与所选音色一致");
+    await user.click(reviewed);
+    expect(reviewed).toBeChecked();
+    const start = screen.getByRole("button", { name: "开始训练" });
+    expect(start).toBeDisabled();
+    fireEvent.submit(start.closest("form")!);
+    expect(deps.client.create).not.toHaveBeenCalled();
+    expect(deps.resources.selectVoice).not.toHaveBeenCalled();
+  });
   it("取消训练不依赖播放器且卸载会取消状态请求", async () => {
-    const deps = setup(); deps.client.snapshot = vi.fn().mockResolvedValue({ enabled: true, busy: true, jobs: [{ id: "job", name: "正在训练", status: "training", progress: 40, message: "训练中", clip_count: 2, created_at_ms: 1 }], versions: [] });
+    const deps = setup(); deps.client.snapshot = vi.fn().mockResolvedValue({ enabled: true, busy: true, jobs: [{ id: "job", name: "正在训练", status: "training", progress: 40, message: "训练中", clip_count: 2, created_at_ms: 1, performance: { batch_size: 1, data_workers: 1, cpu_threads: 2, gpu_index: 0, low_memory: true } }], versions: [] });
     deps.client.cancel = vi.fn().mockResolvedValue({}); const user = userEvent.setup();
-    const view = render(<TrainingPanel {...deps} />); await screen.findByRole("button", { name: "取消训练" });
+    const view = render(<TrainingPanel {...deps} />); await user.click(screen.getByRole("tab", { name: /训练记录/ })); await screen.findByRole("button", { name: "取消训练" });
     await user.click(screen.getByRole("button", { name: "取消训练" }));
     expect(deps.client.cancel).toHaveBeenCalledWith("job", expect.any(AbortSignal));
     const signal = vi.mocked(deps.client.snapshot).mock.calls[0]?.[0]; view.unmount(); expect(signal?.aborted).toBe(true);
@@ -57,11 +97,13 @@ describe("训练面板", () => {
     const create = vi.fn().mockReturnValue("blob:audition"), revoke = vi.fn();
     vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: create, revokeObjectURL: revoke }));
     const user = userEvent.setup(); const view = render(<TrainingPanel {...deps} />);
-    await screen.findByText("成对权重"); expect(screen.getByRole("button", { name: "启用此版本" })).toBeDisabled();
+    await user.click(screen.getByRole("tab", { name: /已训练音色/ }));
+    await screen.findByText(/查看版本：成对权重/); expect(screen.getByRole("button", { name: "选用此版本" })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: "生成版本试听" }));
     await screen.findByLabelText("版本试听音频");
+    await user.click(await screen.findByRole("button", { name: "知道了" }));
     await user.click(screen.getByLabelText("我已试听并确认此版本效果"));
-    await user.click(screen.getByRole("button", { name: "启用此版本" }));
+    await user.click(screen.getByRole("button", { name: "选用此版本" }));
     expect(deps.client.activate).toHaveBeenCalledWith("version", expect.any(AbortSignal));
     view.unmount(); expect(revoke).toHaveBeenCalledWith("blob:audition"); vi.unstubAllGlobals();
   });
@@ -77,7 +119,8 @@ describe("素材审核目标", () => {
     await user.type(screen.getByLabelText("训练名称"), "版本");
     await user.selectOptions(screen.getByLabelText("训练音色"), "voice-1");
     await user.upload(screen.getByLabelText("训练片段"), [pcm16Wav(), pcm16Wav()]);
-    await user.type(screen.getByLabelText("片段 1 文本"), "第一段");
+    await user.click(screen.getByLabelText("输入并校对文本"));
+    await user.type(await screen.findByLabelText("片段 1 文本"), "第一段");
     await user.type(screen.getByLabelText("片段 2 文本"), "第二段");
     const reviewed = screen.getByLabelText("我已逐片听取并核对文本，素材与所选音色一致");
     await user.click(reviewed);
@@ -88,14 +131,16 @@ describe("素材审核目标", () => {
     expect(screen.getByRole("button", { name: "开始训练" })).toBeEnabled();
     vi.mocked(deps.resources.getSnapshot).mockResolvedValue(resourceSnapshot({ voices: [voice(), voice({ id: "voice-2", available: false })] }));
     await waitFor(() => expect(screen.getByRole("button", { name: "开始训练" })).toBeDisabled(), { timeout: 3000 });
-    expect(screen.getByRole("button", { name: "测量本地 LLM 与 TTS" })).toBeDisabled();
     expect(reviewed).not.toBeChecked();
+    await user.click(screen.getByRole("tab", { name: "离线设置" }));
+    expect(screen.getByRole("button", { name: "测量本地 LLM 与 TTS" })).toBeDisabled();
   });
   it("预设失败时仍提供运行中任务的取消入口", async () => {
     const deps = setup();
-    deps.client.snapshot = vi.fn().mockResolvedValue({ enabled: true, busy: true, jobs: [{ id: "job", name: "运行任务", status: "training", progress: 40, message: "训练中", clip_count: 2, created_at_ms: 1 }], versions: [] });
+    deps.client.snapshot = vi.fn().mockResolvedValue({ enabled: true, busy: true, jobs: [{ id: "job", name: "运行任务", status: "training", progress: 40, message: "训练中", clip_count: 2, created_at_ms: 1, performance: { batch_size: 1, data_workers: 1, cpu_threads: 2, gpu_index: 0, low_memory: true } }], versions: [] });
     deps.client.preset = vi.fn().mockRejectedValue(new Error("预设不可用"));
     render(<TrainingPanel {...deps} />);
+    fireEvent.click(screen.getByRole("tab", { name: /训练记录/ }));
     expect(await screen.findByRole("button", { name: "取消训练" })).toBeEnabled();
     expect(screen.getByRole("alert")).toHaveTextContent("预设不可用");
   });

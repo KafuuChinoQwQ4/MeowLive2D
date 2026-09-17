@@ -17,6 +17,7 @@ use tokio_util::sync::CancellationToken;
 #[derive(Clone)]
 pub struct AppState {
     pub config: Arc<AppConfig>,
+    pub llm_settings: Arc<crate::llm_settings::LlmSettingsStore>,
     pub session_id: Arc<String>,
     pub(crate) inner: Arc<Mutex<Inner>>,
     pub(crate) wake: Arc<Notify>,
@@ -78,6 +79,10 @@ impl AppState {
             .expect("validated Agent configuration");
         let live = crate::live::LiveState::new(&config.live, live_source.is_some());
         Self {
+            llm_settings: Arc::new(crate::llm_settings::LlmSettingsStore::new(
+                config.llm.clone(),
+                None,
+            )),
             config: Arc::new(config),
             session_id: Arc::new(uuid::Uuid::new_v4().to_string()),
             inner: Arc::new(Mutex::new(Inner {

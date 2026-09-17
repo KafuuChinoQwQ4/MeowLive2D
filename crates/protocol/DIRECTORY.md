@@ -19,15 +19,17 @@ protocol/  # 跨进程控制、事件、音频和执行消息的契约源
 │   ├── launcher.rs  # 本机主服务、TTS 和 Windows 执行端三开关的启动管理契约
 │   ├── lib.rs  # 跨进程通信契约的唯一来源。与业务领域对象分离，按协议版本演进。
 │   ├── live.rs  # 直播连接阶段、公开状态与诊断计数的跨端契约
+│   ├── llm.rs  # LLM 接入设置、密钥输入与脱敏查询契约
 │   ├── model_library.rs  # 本机环境、模型目录、安装结果及下载任务的跨进程契约
 │   ├── obs.rs  # OBS 状态、场景与录制操作公开契约及严格反序列化
 │   ├── resources.rs  # 跨端角色音色档案及桌面资源操作契约
-│   └── training.rs  # 训练任务、模型版本与保存状态、试听和本地资源测量跨端契约
+│   ├── training.rs  # 训练片段、性能参数、任务版本及离线测量跨端契约
+│   └── training_runtime.rs  # 独立于 TTS 服务的模型内存启停请求与状态契约
 ├── tests/  # 通信协议独立集成测试
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   ├── agent_contracts.rs  # Agent 输入严格反序列化及公开 JSON 形状测试
 │   ├── audio_frames.rs  # PCM 二进制帧编码、边界与损坏输入测试
-│   ├── compatibility.rs  # 协议必填字段、标签与音频格式兼容测试
+│   ├── compatibility.rs  # 协议必填字段、训练模式缺省兼容、未知标签与音频格式测试
 │   ├── control_serialization.rs  # 控制消息与执行回执序列化测试
 │   └── obs_contracts.rs  # OBS 指令未知字段拒绝与资源通道契约测试
 ├── Cargo.toml  # 该 Rust 包的名称、workspace 配置与模块依赖声明
@@ -43,4 +45,4 @@ protocol/  # 跨进程控制、事件、音频和执行消息的契约源
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: a10a812257b51e768360bd8c60f7b682f440e28aaf5d51b9c777ef947ad09f29 -->
+<!-- directory-tree-sha256: 3ca6e87940429d8266b11acf13ce8fff53ec470431798f9618bc959847241fad -->

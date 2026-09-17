@@ -10,6 +10,8 @@ vi.mock("../services/desktop", () => ({ getDesktopStatus: vi.fn() }));
 import { getDesktopStatus } from "../services/desktop";
 import { App } from "./App";
 
+const llmSnapshot = { settings: { provider: "custom", api_format: "openai_responses", base_url: "", model: "", mode: "cloud", timeout_seconds: 30, max_tokens: 1024, json_mode: true }, key_configured: false, restart_required: false, active_model: "", storage_available: true };
+
 afterEach(() => { vi.unstubAllGlobals(); vi.resetAllMocks(); window.history.replaceState(null, "", "/"); });
 
 it("waits for desktop configuration and uses its address in every panel", async () => {
@@ -21,6 +23,7 @@ it("waits for desktop configuration and uses its address in every panel", async 
     if (path === "/api/live") return jsonResponse(liveSnapshot());
     if (path === "/api/resources") return jsonResponse(resourceSnapshot());
     if (path === "/api/obs") return jsonResponse({ connected: false, recording: false, current_scene: "", scenes: [] });
+    if (path === "/api/llm") return jsonResponse(llmSnapshot);
     return jsonResponse(serverStatus());
   });
   vi.stubGlobal("fetch", fetcher);
@@ -30,7 +33,7 @@ it("waits for desktop configuration and uses its address in every panel", async 
   finish({ config_path: "desktop.toml", server_url: "http://127.0.0.1:19777", runtime: { running: true, simulation: true, last_error: null } });
   await userEvent.click(await screen.findByRole("link", { name: "语音播报" }));
   await screen.findByRole("heading", { name: "文字播报" });
-  for (const name of ["角色与音色", "Agent 互动", "直播连接", "OBS 控制", "训练与离线"]) {
+  for (const name of ["角色与音色", "Agent 互动", "LLM 接入", "直播连接", "OBS 控制", "训练与离线"]) {
     await userEvent.click(screen.getByRole("link", { name }));
   }
   await waitFor(() => expect(fetcher.mock.calls.length).toBeGreaterThanOrEqual(6));

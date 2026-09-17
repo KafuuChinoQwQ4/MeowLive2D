@@ -86,7 +86,12 @@ impl AppConfig {
     }
     pub fn load(path: &Path) -> Result<Self, String> {
         let text = std::fs::read_to_string(path).map_err(|e| format!("无法读取配置：{e}"))?;
-        Self::parse(&text)
+        let mut config = Self::parse(&text)?;
+        if let Some(llm) = crate::llm_settings::load_override(path)? {
+            config.llm = llm;
+        }
+        config.validate()?;
+        Ok(config)
     }
     pub fn validate(&self) -> Result<(), String> {
         self.agent.validate()?;

@@ -4,6 +4,7 @@ pub mod bootstrap;
 pub mod config;
 mod gpu;
 pub mod live;
+pub mod llm_settings;
 pub mod resources;
 pub mod state;
 pub mod transport;

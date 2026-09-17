@@ -1,8 +1,9 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt, fs,
-    io::Write,
+    io::{Read, Write},
     path::{Component, Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
 };
@@ -77,6 +78,16 @@ pub struct InstalledModel {
     pub restart_required: bool,
 }
 
+/// A model directory directly installed below VTube Studio's Live2DModels.
+/// The identifier is opaque and is never interpreted as a filesystem path.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ImportedModel {
+    pub id: String,
+    pub name: String,
+    pub model_file: PathBuf,
+    pub model_id: Option<String>,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AssetError {
     InvalidSource,
@@ -94,6 +105,9 @@ pub enum AssetError {
     DepthLimit,
     InvalidModelsDirectory,
     InvalidInstallName,
+    InvalidModelId,
+    ModelInUse,
+    DeleteIncomplete,
     AlreadyExists,
     SourceChanged,
     Io,
@@ -125,6 +139,11 @@ impl fmt::Display for AssetError {
             Self::DepthLimit => "模型包目录层级超过限制",
             Self::InvalidModelsDirectory => "安装目标必须是现存的 Live2DModels 目录",
             Self::InvalidInstallName => "模型安装目录名称无效",
+            Self::InvalidModelId => "模型安装标识无效",
+            Self::ModelInUse => {
+                "目标模型正在 VTS 中使用，或暂时无法确认模型身份；请先卸载当前 VTS 模型后再删除"
+            }
+            Self::DeleteIncomplete => "模型目录清理未完成，请释放文件占用后重试删除",
             Self::AlreadyExists => "同名 VTS 模型目录已存在",
             Self::SourceChanged => "模型包在校验后发生变化",
             Self::Io => "模型资源文件操作失败",
@@ -183,6 +202,8 @@ struct MotionReference {
 
 #[derive(Deserialize)]
 struct VtubeConfig {
+    #[serde(rename = "ModelID", default)]
+    model_id: Option<String>,
     #[serde(rename = "FileReferences")]
     files: VtubeFileReferences,
     #[serde(rename = "Hotkeys", default)]
@@ -240,7 +261,7 @@ pub fn validate_model_package(
     if manifest_size > limits.max_manifest_bytes {
         return Err(AssetError::FileSizeLimit);
     }
-    let manifest_bytes = fs::read(manifest_path).map_err(|_| AssetError::Io)?;
+    let manifest_bytes = read_json_file(manifest_path, limits.max_manifest_bytes)?;
     let manifest: Manifest =
         serde_json::from_slice(&manifest_bytes).map_err(|_| AssetError::InvalidManifest)?;
     let mut referenced_files = validate_references(&root, manifest.files, limits.max_depth)?;
@@ -287,6 +308,14 @@ pub fn install_model_package(
 
     let _lock = ImportLock::acquire(live2d_models_dir)?;
     let destination = live2d_models_dir.join(install_name);
+    if fs::symlink_metadata(delete_receipt_path(
+        live2d_models_dir,
+        &imported_model_id(install_name),
+    ))
+    .is_ok()
+    {
+        return Err(AssetError::DeleteIncomplete);
+    }
     if fs::symlink_metadata(&destination).is_ok() {
         return Err(AssetError::AlreadyExists);
     }
@@ -331,6 +360,271 @@ pub fn install_model_package(
     })
 }
 
+/// Enumerate only direct child directories of the configured Live2DModels directory.
+/// This intentionally includes legacy installs without a receipt, while exposing no path.
+pub fn list_imported_models(live2d_models_dir: &Path) -> Result<Vec<ImportedModel>, AssetError> {
+    validate_models_directory(live2d_models_dir)?;
+    let mut models = Vec::new();
+    for entry in fs::read_dir(live2d_models_dir).map_err(|_| AssetError::Io)? {
+        let entry = entry.map_err(|_| AssetError::Io)?;
+        let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
+            continue;
+        };
+        if let Some(id) = name
+            .strip_prefix(".meowlive-delete-")
+            .and_then(|s| s.strip_suffix(".json"))
+        {
+            if let Ok(model) = read_receipt_by_id(live2d_models_dir, id)
+                && fs::symlink_metadata(live2d_models_dir.join(&model.name))
+                    .is_err_and(|error| error.kind() == std::io::ErrorKind::NotFound)
+            {
+                models.push(model);
+            }
+            continue;
+        }
+        if name.starts_with(".meowlive-") || validate_install_name(&name).is_err() {
+            continue;
+        }
+        // VTS also keeps unrelated folders here. An invalid package must not hide
+        // the valid models, and it must never become a remote deletion candidate.
+        if let Ok(model) = inspect_imported_model(&entry.path(), &name) {
+            models.push(model);
+        }
+    }
+    models.sort_by(|left, right| left.name.cmp(&right.name));
+    Ok(models)
+}
+
+/// Remove an installed model selected by its opaque ID. The source package is untouched.
+pub fn delete_imported_model(
+    live2d_models_dir: &Path,
+    id: &str,
+    current_model_id: Option<&str>,
+) -> Result<ImportedModel, AssetError> {
+    validate_models_directory(live2d_models_dir)?;
+    if id.len() != 64 || !id.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(AssetError::InvalidModelId);
+    }
+    let _lock = ImportLock::acquire(live2d_models_dir)?;
+    let destination_root =
+        fs::canonicalize(live2d_models_dir).map_err(|_| AssetError::InvalidModelsDirectory)?;
+    let mut selected = None;
+    for entry in fs::read_dir(live2d_models_dir).map_err(|_| AssetError::Io)? {
+        let entry = entry.map_err(|_| AssetError::Io)?;
+        let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
+            continue;
+        };
+        if !name.starts_with(".meowlive-")
+            && validate_install_name(&name).is_ok()
+            && imported_model_id(&name) == id
+        {
+            selected = Some((entry.path(), name));
+            break;
+        }
+    }
+    let Some((path, name)) = selected else {
+        let pending = read_receipt_by_id(live2d_models_dir, id)?;
+        if !fs::symlink_metadata(live2d_models_dir.join(&pending.name))
+            .is_err_and(|error| error.kind() == std::io::ErrorKind::NotFound)
+        {
+            return Err(AssetError::InvalidModelId);
+        }
+        fs::remove_file(delete_receipt_path(live2d_models_dir, id))
+            .map_err(|_| AssetError::DeleteIncomplete)?;
+        return Ok(pending);
+    };
+    // Inspect before removing anything: all descendants and ancestors reject
+    // symlinks/reparse points, and the manifest/resources must still be valid.
+    let model = inspect_imported_model(&path, &name)?;
+    if current_model_id
+        .is_some_and(|loaded| model.model_id.as_deref().is_none_or(|id| id == loaded))
+    {
+        return Err(AssetError::ModelInUse);
+    }
+    let canonical = fs::canonicalize(&path).map_err(|_| AssetError::Io)?;
+    if canonical.parent() != Some(destination_root.as_path()) {
+        return Err(AssetError::InvalidModelsDirectory);
+    }
+    let receipt_path = delete_receipt_path(live2d_models_dir, id);
+    if !receipt_path.try_exists().map_err(|_| AssetError::Io)? {
+        let receipt = DeleteReceipt {
+            name: model.name.clone(),
+            model_file: model.model_file.to_string_lossy().into_owned(),
+            model_id: model.model_id.clone(),
+        };
+        let stage = create_stage(live2d_models_dir)?;
+        let staged_receipt = stage.path.join("delete.json");
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&staged_receipt)
+            .map_err(|_| AssetError::Io)?;
+        serde_json::to_writer(&mut file, &receipt).map_err(|_| AssetError::Io)?;
+        file.sync_all().map_err(|_| AssetError::Io)?;
+        drop(file);
+        fs::rename(&staged_receipt, &receipt_path).map_err(|_| AssetError::Io)?;
+    }
+    // The receipt lives outside the package so partial filesystem failures or a
+    // process interruption cannot remove the retry entry along with the manifest.
+    fs::remove_dir_all(&path).map_err(|_| AssetError::DeleteIncomplete)?;
+    fs::remove_file(receipt_path).map_err(|_| AssetError::DeleteIncomplete)?;
+    Ok(model)
+}
+
+fn imported_model_id(name: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(b"meowlive2d-installed-model\0");
+    hasher.update(name.as_bytes());
+    format!("{:x}", hasher.finalize())
+}
+
+fn inspect_imported_model(root: &Path, name: &str) -> Result<ImportedModel, AssetError> {
+    reject_symlink_ancestors(root)?;
+    let metadata = fs::symlink_metadata(root).map_err(|_| AssetError::InvalidSource)?;
+    if !metadata.is_dir() {
+        return Err(AssetError::InvalidSource);
+    }
+    let limits = ModelImportLimits::default();
+    // Enforce traversal limits before the manifest discovery walk. Model binary
+    // data is only stat'ed, never loaded into memory for list/delete operations.
+    let (files, _) = scan_package(root, limits)?;
+    if let Some(pending) = read_delete_receipt(root, name)? {
+        return Ok(pending);
+    }
+    let package = validate_model_package(root, &limits)?;
+    if package.package_root != root {
+        return Err(AssetError::InvalidSource);
+    }
+    let mut ids = BTreeSet::new();
+    for file in files.iter().filter(|file| {
+        file.relative.components().count() == 1
+            && file
+                .relative
+                .to_string_lossy()
+                .to_ascii_lowercase()
+                .ends_with(".vtube.json")
+    }) {
+        if file.bytes > limits.max_manifest_bytes {
+            return Err(AssetError::FileSizeLimit);
+        }
+        let config: VtubeConfig = serde_json::from_slice(&read_json_file(
+            &root.join(&file.relative),
+            limits.max_manifest_bytes,
+        )?)
+        .map_err(|_| AssetError::InvalidManifest)?;
+        if let Some(id) = config.model_id.filter(|id| !id.is_empty()) {
+            if id.len() > 1024 || id.chars().any(char::is_control) {
+                return Err(AssetError::InvalidManifest);
+            }
+            ids.insert(id);
+        }
+    }
+    if ids.len() > 1 {
+        return Err(AssetError::InvalidManifest);
+    }
+    Ok(ImportedModel {
+        id: imported_model_id(name),
+        name: name.to_owned(),
+        model_file: package.model_file,
+        model_id: ids.into_iter().next(),
+    })
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct DeleteReceipt {
+    name: String,
+    model_file: String,
+    model_id: Option<String>,
+}
+
+fn delete_receipt_path(root: &Path, id: &str) -> PathBuf {
+    root.join(format!(".meowlive-delete-{id}.json"))
+}
+
+fn read_receipt_by_id(root: &Path, id: &str) -> Result<ImportedModel, AssetError> {
+    if id.len() != 64 || !id.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(AssetError::InvalidModelId);
+    }
+    let path = delete_receipt_path(root, id);
+    let metadata = fs::symlink_metadata(&path).map_err(|_| AssetError::InvalidModelId)?;
+    if metadata_is_link(&metadata) {
+        return Err(AssetError::SymlinkNotAllowed);
+    }
+    if !metadata.is_file() {
+        return Err(AssetError::InvalidManifest);
+    }
+    let receipt: DeleteReceipt = serde_json::from_slice(&read_json_file(&path, 4096)?)
+        .map_err(|_| AssetError::InvalidManifest)?;
+    validate_install_name(&receipt.name)?;
+    if receipt.name.starts_with(".meowlive-") || imported_model_id(&receipt.name) != id {
+        return Err(AssetError::InvalidModelId);
+    }
+    read_delete_receipt(&root.join(&receipt.name), &receipt.name)?.ok_or(AssetError::InvalidModelId)
+}
+
+fn read_delete_receipt(root: &Path, name: &str) -> Result<Option<ImportedModel>, AssetError> {
+    let id = imported_model_id(name);
+    let path = delete_receipt_path(root.parent().ok_or(AssetError::InvalidSource)?, &id);
+    let metadata = match fs::symlink_metadata(&path) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(_) => return Err(AssetError::Io),
+    };
+    if metadata_is_link(&metadata) {
+        return Err(AssetError::SymlinkNotAllowed);
+    }
+    if !metadata.is_file() {
+        return Err(AssetError::InvalidManifest);
+    }
+    let receipt: DeleteReceipt = serde_json::from_slice(&read_json_file(&path, 4096)?)
+        .map_err(|_| AssetError::InvalidManifest)?;
+    if receipt.name != name
+        || validate_install_name(&receipt.model_file).is_err()
+        || !receipt
+            .model_file
+            .to_ascii_lowercase()
+            .ends_with(".model3.json")
+        || receipt
+            .model_id
+            .as_ref()
+            .is_some_and(|id| id.is_empty() || id.len() > 1024 || id.chars().any(char::is_control))
+    {
+        return Err(AssetError::InvalidManifest);
+    }
+    Ok(Some(ImportedModel {
+        id,
+        name: name.to_owned(),
+        model_file: receipt.model_file.into(),
+        model_id: receipt.model_id,
+    }))
+}
+
+fn read_json_file(path: &Path, limit: u64) -> Result<Vec<u8>, AssetError> {
+    let mut bytes = Vec::new();
+    fs::File::open(path)
+        .map_err(|_| AssetError::Io)?
+        .take(limit.saturating_add(1))
+        .read_to_end(&mut bytes)
+        .map_err(|_| AssetError::Io)?;
+    if bytes.len() as u64 > limit {
+        return Err(AssetError::FileSizeLimit);
+    }
+    Ok(bytes)
+}
+
+fn metadata_is_link(metadata: &fs::Metadata) -> bool {
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        // Also reject junctions and other reparse points on Windows.
+        if metadata.file_attributes() & 0x400 != 0 {
+            return true;
+        }
+    }
+    metadata.file_type().is_symlink()
+}
+
 fn validate_limits(limits: ModelImportLimits) -> Result<(), AssetError> {
     if limits.max_files == 0
         || limits.max_total_bytes == 0
@@ -346,7 +640,7 @@ fn validate_limits(limits: ModelImportLimits) -> Result<(), AssetError> {
 
 fn find_manifests(root: &Path, max_depth: usize) -> Result<Vec<PathBuf>, AssetError> {
     let metadata = fs::symlink_metadata(root).map_err(|_| AssetError::InvalidSource)?;
-    if metadata.file_type().is_symlink() {
+    if metadata_is_link(&metadata) {
         return Err(AssetError::SymlinkNotAllowed);
     }
     if !metadata.is_dir() {
@@ -360,8 +654,9 @@ fn find_manifests(root: &Path, max_depth: usize) -> Result<Vec<PathBuf>, AssetEr
         }
         for entry in fs::read_dir(directory).map_err(|_| AssetError::Io)? {
             let entry = entry.map_err(|_| AssetError::Io)?;
-            let kind = entry.file_type().map_err(|_| AssetError::Io)?;
-            if kind.is_symlink() {
+            let metadata = fs::symlink_metadata(entry.path()).map_err(|_| AssetError::Io)?;
+            let kind = metadata.file_type();
+            if metadata_is_link(&metadata) {
                 return Err(AssetError::SymlinkNotAllowed);
             }
             if kind.is_dir() {
@@ -393,7 +688,7 @@ fn scan_package(
         for entry in fs::read_dir(directory).map_err(|_| AssetError::Io)? {
             let entry = entry.map_err(|_| AssetError::Io)?;
             let metadata = fs::symlink_metadata(entry.path()).map_err(|_| AssetError::Io)?;
-            if metadata.file_type().is_symlink() {
+            if metadata_is_link(&metadata) {
                 return Err(AssetError::SymlinkNotAllowed);
             }
             if metadata.is_dir() {
@@ -454,7 +749,7 @@ fn validate_references(
         let path = root.join(&relative);
         let metadata =
             fs::symlink_metadata(&path).map_err(|_| AssetError::MissingReference(value.clone()))?;
-        if metadata.file_type().is_symlink() {
+        if metadata_is_link(&metadata) {
             return Err(AssetError::SymlinkNotAllowed);
         }
         if !metadata.is_file() {
@@ -483,13 +778,13 @@ fn validate_vtube_references(
             continue;
         }
         let metadata = fs::symlink_metadata(entry.path()).map_err(|_| AssetError::Io)?;
-        if metadata.file_type().is_symlink() {
+        if metadata_is_link(&metadata) {
             return Err(AssetError::SymlinkNotAllowed);
         }
         if !metadata.is_file() || metadata.len() > max_json_bytes {
             return Err(AssetError::InvalidManifest);
         }
-        let bytes = fs::read(entry.path()).map_err(|_| AssetError::Io)?;
+        let bytes = read_json_file(&entry.path(), max_json_bytes)?;
         let config: VtubeConfig =
             serde_json::from_slice(&bytes).map_err(|_| AssetError::InvalidManifest)?;
         let configured_model = safe_reference(&config.files.model, max_depth)?;
@@ -528,7 +823,7 @@ fn validate_vtube_references(
             let relative = safe_reference(&value, max_depth)?;
             let metadata = fs::symlink_metadata(root.join(&relative))
                 .map_err(|_| AssetError::MissingReference(value.clone()))?;
-            if metadata.file_type().is_symlink() {
+            if metadata_is_link(&metadata) {
                 return Err(AssetError::SymlinkNotAllowed);
             }
             if !metadata.is_file() {
@@ -571,7 +866,7 @@ fn validate_models_directory(path: &Path) -> Result<(), AssetError> {
     }
     reject_symlink_ancestors(path)?;
     let metadata = fs::symlink_metadata(path).map_err(|_| AssetError::InvalidModelsDirectory)?;
-    if metadata.file_type().is_symlink() {
+    if metadata_is_link(&metadata) {
         return Err(AssetError::SymlinkNotAllowed);
     }
     if !metadata.is_dir() {
@@ -583,7 +878,7 @@ fn validate_models_directory(path: &Path) -> Result<(), AssetError> {
 fn reject_symlink_ancestors(path: &Path) -> Result<(), AssetError> {
     for ancestor in path.ancestors().filter(|path| !path.as_os_str().is_empty()) {
         match fs::symlink_metadata(ancestor) {
-            Ok(metadata) if metadata.file_type().is_symlink() => {
+            Ok(metadata) if metadata_is_link(&metadata) => {
                 return Err(AssetError::SymlinkNotAllowed);
             }
             Ok(_) => {}

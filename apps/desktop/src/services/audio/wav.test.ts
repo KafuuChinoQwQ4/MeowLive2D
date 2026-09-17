@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { pcm16Wav } from "../../test/resource-fixtures";
 import { validateVoiceWav } from "./wav";
 
-describe("参考音频预检", () => {
+describe("参考与训练音频 WAV 预检", () => {
   it("接受 3–10 秒、8–48kHz、单声道或双声道的非静音 PCM16 WAV", async () => {
     await expect(validateVoiceWav(pcm16Wav({ seconds: 3, sampleRate: 8_000, channels: 1 }))).resolves.toEqual({
       durationMs: 3_000, sampleRate: 8_000, channels: 1,

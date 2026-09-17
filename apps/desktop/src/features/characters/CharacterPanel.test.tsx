@@ -17,6 +17,8 @@ function setupClients() {
     getSnapshot: vi.fn().mockResolvedValue(initial),
     createVoice: vi.fn().mockResolvedValue(initial),
     selectVoice: vi.fn().mockResolvedValue(initial),
+    deleteVoice: vi.fn().mockResolvedValue(initial),
+    deleteCharacter: vi.fn().mockResolvedValue(initial),
     saveCharacter: vi.fn().mockResolvedValue(saved),
     selectCharacter: vi.fn().mockResolvedValue(initial),
     previewCharacter: vi.fn().mockResolvedValue(validated),
@@ -31,6 +33,43 @@ function setupClients() {
 }
 
 describe("角色管理", () => {
+  it("已安装模型删除需要确认，成功刷新本地列表", async () => {
+    const user = userEvent.setup();
+    const pair = setupClients();
+    const id = "a".repeat(64);
+    let deleted = false;
+    pair.resourceClient.desktop = vi.fn<ResourcesClient["desktop"]>(async operation => {
+      if (operation.type === "delete_imported_model") {
+        deleted = true;
+        return { type: "model_deleted", id, restart_required: true };
+      }
+      return { type: "imported_models", models: deleted ? [] : [{ id, name: "导入猫咪", model_id: "model-new" }] };
+    });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<ResourcesPanel {...pair} />);
+    await user.click(await screen.findByRole("button", { name: "管理已安装模型" }));
+    await user.click(await screen.findByRole("button", { name: "删除模型 导入猫咪" }));
+    expect(deleted).toBe(false);
+    confirm.mockReturnValue(true);
+    await user.click(screen.getByRole("button", { name: "删除模型 导入猫咪" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "删除模型 导入猫咪" })).not.toBeInTheDocument());
+    expect(pair.resourceClient.desktop).toHaveBeenCalledWith({ type: "delete_imported_model", id }, expect.any(AbortSignal));
+    expect(screen.getByText(/已删除模型.*重启 VTube Studio/)).toBeVisible();
+    confirm.mockRestore();
+  });
+  it("删除正在编辑的角色后清空表单并保留声音资源", async () => {
+    const user = userEvent.setup();
+    const pair = setupClients();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    pair.resourceClient.deleteCharacter = vi.fn().mockResolvedValue(resourceSnapshot({ characters: [], active_character_id: null }));
+    render(<ResourcesPanel {...pair} />);
+    await user.click(await screen.findByRole("button", { name: "编辑" }));
+    await user.click(screen.getByRole("button", { name: "删除角色 小猫主播" }));
+    expect(pair.resourceClient.deleteCharacter).toHaveBeenCalledWith({ id: "character-1" }, expect.any(AbortSignal));
+    await waitFor(() => expect(screen.getByLabelText("角色名称")).toHaveValue(""));
+    expect(screen.getByText("温柔旁白", { selector: "strong" })).toBeVisible();
+    confirm.mockRestore();
+  });
   it("新角色先等待用户选择音色，不预选配置默认音色", async () => {
     const user = userEvent.setup();
     const pair = setupClients();

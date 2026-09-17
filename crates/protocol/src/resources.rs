@@ -88,6 +88,13 @@ pub struct VtsHotkey {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
+pub struct ImportedModel {
+    pub id: String,
+    pub name: String,
+    pub model_id: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum DesktopResourceOperation {
     Obs {
@@ -108,6 +115,10 @@ pub enum DesktopResourceOperation {
     },
     /// Selection is local to the desktop. Never accept a remotely supplied path.
     ImportModel,
+    ListImportedModels,
+    DeleteImportedModel {
+        id: String,
+    },
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
@@ -134,6 +145,13 @@ pub enum DesktopResourceResult {
         model_file: String,
         files: u32,
         bytes: u32,
+        restart_required: bool,
+    },
+    ImportedModels {
+        models: Vec<ImportedModel>,
+    },
+    ModelDeleted {
+        id: String,
         restart_required: bool,
     },
     Error {

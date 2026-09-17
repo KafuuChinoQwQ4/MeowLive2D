@@ -16,6 +16,7 @@ mod tests {
             voice_id: "default".into(),
             sovits_epochs: 1,
             gpt_epochs: 1,
+            performance: TrainingPerformance::default(),
         };
         assert!(parameters.validate().is_ok());
         parameters.voice_id = "../voice".into();
@@ -23,6 +24,57 @@ mod tests {
         parameters.voice_id = "default".into();
         parameters.gpt_epochs = 21;
         assert!(parameters.validate().is_err());
+    }
+    #[test]
+    fn performance_defaults_are_conservative_and_bounds_are_enforced() {
+        let defaults = TrainingPerformance::default();
+        assert_eq!(
+            defaults,
+            TrainingPerformance {
+                batch_size: 1,
+                data_workers: 1,
+                cpu_threads: 2,
+                gpu_index: 0,
+                low_memory: true,
+            }
+        );
+        assert!(defaults.validate().is_ok());
+        for invalid in [
+            TrainingPerformance {
+                batch_size: 0,
+                ..defaults
+            },
+            TrainingPerformance {
+                batch_size: 17,
+                ..defaults
+            },
+            TrainingPerformance {
+                data_workers: 9,
+                ..defaults
+            },
+            TrainingPerformance {
+                cpu_threads: 0,
+                ..defaults
+            },
+            TrainingPerformance {
+                cpu_threads: 17,
+                ..defaults
+            },
+            TrainingPerformance {
+                gpu_index: 16,
+                ..defaults
+            },
+        ] {
+            assert!(invalid.validate().is_err(), "accepted {invalid:?}");
+        }
+        assert!(
+            TrainingPerformance {
+                data_workers: 0,
+                ..defaults
+            }
+            .validate()
+            .is_ok()
+        );
     }
     #[test]
     fn artifacts_must_be_the_fixed_pair_inside_job() {
@@ -86,15 +138,49 @@ impl TrainingState {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct TrainingPerformance {
+    pub batch_size: u16,
+    pub data_workers: u16,
+    pub cpu_threads: u16,
+    pub gpu_index: u16,
+    pub low_memory: bool,
+}
+impl Default for TrainingPerformance {
+    fn default() -> Self {
+        Self {
+            batch_size: 1,
+            data_workers: 1,
+            cpu_threads: 2,
+            gpu_index: 0,
+            low_memory: true,
+        }
+    }
+}
+impl TrainingPerformance {
+    pub fn validate(&self) -> Result<(), TrainingError> {
+        if !(1..=16).contains(&self.batch_size)
+            || self.data_workers > 8
+            || !(1..=16).contains(&self.cpu_threads)
+            || self.gpu_index > 15
+        {
+            return Err(TrainingError::Invalid("训练性能参数无效".into()));
+        }
+        Ok(())
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TrainingParameters {
     pub name: String,
     pub voice_id: String,
     pub sovits_epochs: u16,
     pub gpt_epochs: u16,
+    pub performance: TrainingPerformance,
 }
 impl TrainingParameters {
     pub fn validate(&self) -> Result<(), TrainingError> {
+        self.performance.validate()?;
         if !crate::resources::valid_name(&self.name)
             || crate::voice::VoiceId::new(&self.voice_id).is_err()
             || !(1..=20).contains(&self.sovits_epochs)
@@ -115,14 +201,14 @@ impl TrainingClip {
     pub fn validate(&self) -> Result<(), TrainingError> {
         if self.wav.is_empty()
             || self.wav.len() > MAX_CLIP_BYTES
-            || self.text.trim().is_empty()
+            || (!self.text.is_empty() && self.text.trim().is_empty())
             || self.text.chars().count() > 500
             || self.text.chars().any(char::is_control)
             || self.text.contains('|')
             || !matches!(self.language.as_str(), "zh" | "en" | "ja" | "ko" | "yue")
         {
             return Err(TrainingError::Invalid(
-                "片段需要有效的 WAV、人工确认文本和明确语言".into(),
+                "片段需要有效的 WAV、明确语言及有效文本，自动识别时文本须留空".into(),
             ));
         }
         Ok(())

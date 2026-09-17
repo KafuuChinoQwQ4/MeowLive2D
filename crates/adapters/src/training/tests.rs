@@ -54,7 +54,120 @@ fn parameters() -> TrainingParameters {
         voice_id: "default".into(),
         sovits_epochs: 1,
         gpt_epochs: 1,
+        performance: TrainingPerformance::default(),
     }
+}
+
+#[test]
+fn repeated_voice_training_inherits_latest_successful_pair_and_survives_parent_deletion() {
+    let temp = Temp::new();
+    let store = Arc::new(FileTrainingStore::open(&temp.0).unwrap());
+    let manager = TrainingManager::open(
+        store.clone(),
+        Arc::new(FakeEngine {
+            complete_pair: true,
+        }),
+    )
+    .unwrap();
+    let first = manager.create(parameters(), vec![clip(); 2]).unwrap();
+    manager.run(&first.id).unwrap();
+    let second = manager.create(parameters(), vec![clip(); 2]).unwrap();
+    let prepared = store.prepared(&second.id).unwrap();
+    let manifest: serde_json::Value =
+        serde_json::from_slice(&fs::read(&prepared.job_file).unwrap()).unwrap();
+    assert_eq!(manifest["base"]["job_id"], first.id);
+    assert_eq!(
+        fs::read(prepared.work_dir.join("base/gpt.ckpt")).unwrap(),
+        b"gpt model"
+    );
+    assert_eq!(
+        fs::read(prepared.work_dir.join("base/sovits.pth")).unwrap(),
+        b"sovits model"
+    );
+    manager.run(&second.id).unwrap();
+    // Audition/save can update timestamps, but cannot make an older model the new base.
+    manager.mark_auditioned(&first.id).unwrap();
+    manager.save_version(&first.id).unwrap();
+    let third = manager.create(parameters(), vec![clip(); 2]).unwrap();
+    let third_prepared = store.prepared(&third.id).unwrap();
+    let third_manifest: serde_json::Value =
+        serde_json::from_slice(&fs::read(&third_prepared.job_file).unwrap()).unwrap();
+    assert_eq!(third_manifest["base"]["job_id"], second.id);
+    manager.run(&third.id).unwrap();
+    manager.delete(&second.id).unwrap();
+    assert_eq!(
+        fs::read(third_prepared.work_dir.join("base/gpt.ckpt")).unwrap(),
+        b"gpt model"
+    );
+    assert!(manager.resolve_version(&third.id).is_ok());
+    let mut other = parameters();
+    other.voice_id = "different-voice".into();
+    let different = manager.create(other, vec![clip(); 2]).unwrap();
+    let manifest: serde_json::Value =
+        serde_json::from_slice(&fs::read(store.prepared(&different.id).unwrap().job_file).unwrap())
+            .unwrap();
+    assert!(manifest["base"].is_null());
+}
+
+#[test]
+fn damaged_latest_voice_pair_prevents_silent_restart_from_generic_weights() {
+    let temp = Temp::new();
+    let store = Arc::new(FileTrainingStore::open(&temp.0).unwrap());
+    let manager = TrainingManager::open(
+        store.clone(),
+        Arc::new(FakeEngine {
+            complete_pair: true,
+        }),
+    )
+    .unwrap();
+    let first = manager.create(parameters(), vec![clip(); 2]).unwrap();
+    manager.run(&first.id).unwrap();
+    fs::write(
+        store
+            .prepared(&first.id)
+            .unwrap()
+            .work_dir
+            .join("artifacts/gpt.ckpt"),
+        b"broken",
+    )
+    .unwrap();
+    assert!(manager.create(parameters(), vec![clip(); 2]).is_err());
+    assert_eq!(manager.snapshot().jobs.len(), 1);
+    assert_eq!(fs::read_dir(temp.0.join("jobs")).unwrap().count(), 1);
+}
+
+#[test]
+fn performance_is_persisted_in_catalog_and_job_manifest() {
+    let temp = Temp::new();
+    let store = Arc::new(FileTrainingStore::open(&temp.0).unwrap());
+    let manager = TrainingManager::open(
+        store,
+        Arc::new(FakeEngine {
+            complete_pair: true,
+        }),
+    )
+    .unwrap();
+    let mut configured = parameters();
+    configured.performance = TrainingPerformance {
+        batch_size: 4,
+        data_workers: 0,
+        cpu_threads: 8,
+        gpu_index: 2,
+        low_memory: false,
+    };
+    let job = manager.create(configured, vec![clip(); 2]).unwrap();
+    let catalog: serde_json::Value =
+        serde_json::from_slice(&fs::read(temp.0.join("catalog.json")).unwrap()).unwrap();
+    let manifest: serde_json::Value = serde_json::from_slice(
+        &fs::read(temp.0.join("jobs").join(job.id).join("job.json")).unwrap(),
+    )
+    .unwrap();
+    let expected = serde_json::json!({
+        "batch_size": 4, "data_workers": 0, "cpu_threads": 8,
+        "gpu_index": 2, "low_memory": false
+    });
+    assert_eq!(catalog["jobs"][0]["performance"], expected);
+    assert_eq!(manifest["performance"], expected);
 }
 struct FakeEngine {
     complete_pair: bool,
@@ -231,7 +344,9 @@ fn saving_rejects_missing_unfinished_unauditioned_and_missing_artifacts() {
     assert!(manager.save_version(&job.id).is_err());
     assert!(!manager.snapshot().jobs[0].saved);
     assert!(!store.load().unwrap().jobs[0].saved);
-    let cancelled = manager.create(parameters(), vec![clip(); 2]).unwrap();
+    let mut other_parameters = parameters();
+    other_parameters.voice_id = "other-voice".into();
+    let cancelled = manager.create(other_parameters, vec![clip(); 2]).unwrap();
     manager.cancel(&cancelled.id).unwrap();
     assert!(matches!(
         manager.save_version(&cancelled.id),
@@ -264,11 +379,18 @@ fn old_catalog_migrates_only_active_versions_to_saved() {
         serde_json::from_slice(&fs::read(&catalog_path).unwrap()).unwrap();
     for job in legacy["jobs"].as_array_mut().unwrap() {
         job.as_object_mut().unwrap().remove("saved");
+        job.as_object_mut().unwrap().remove("performance");
     }
     fs::write(&catalog_path, serde_json::to_vec(&legacy).unwrap()).unwrap();
     let catalog = store.load().unwrap();
     assert!(catalog.jobs[0].saved);
     assert!(!catalog.jobs[1].saved);
+    assert!(
+        catalog
+            .jobs
+            .iter()
+            .all(|job| { job.parameters.performance == TrainingPerformance::default() })
+    );
     store.save(&catalog).unwrap();
     assert_eq!(store.load().unwrap(), catalog);
     // An explicit false in a current catalog is invalid for an active version.
@@ -469,11 +591,19 @@ impl TrainingStore for FailingCommitStore {
     fn new_job_id(&self) -> String {
         self.inner.new_job_id()
     }
-    fn prepare(&self, job: &TrainingJob, clips: &[TrainingClip]) -> Result<(), TrainingError> {
-        self.inner.prepare(job, clips)
+    fn prepare(
+        &self,
+        job: &TrainingJob,
+        clips: &[TrainingClip],
+        base: Option<&TrainingJob>,
+    ) -> Result<(), TrainingError> {
+        self.inner.prepare(job, clips, base)
     }
     fn remove_unpublished(&self, id: &str) -> Result<(), TrainingError> {
         self.inner.remove_unpublished(id)
+    }
+    fn remove_published(&self, id: &str) -> Result<(), TrainingError> {
+        self.inner.remove_published(id)
     }
     fn prepared(&self, id: &str) -> Result<PreparedTrainingJob, TrainingError> {
         self.inner.prepared(id)
@@ -641,11 +771,19 @@ impl TrainingStore for FailStartStore {
     fn new_job_id(&self) -> String {
         self.inner.new_job_id()
     }
-    fn prepare(&self, job: &TrainingJob, clips: &[TrainingClip]) -> Result<(), TrainingError> {
-        self.inner.prepare(job, clips)
+    fn prepare(
+        &self,
+        job: &TrainingJob,
+        clips: &[TrainingClip],
+        base: Option<&TrainingJob>,
+    ) -> Result<(), TrainingError> {
+        self.inner.prepare(job, clips, base)
     }
     fn remove_unpublished(&self, id: &str) -> Result<(), TrainingError> {
         self.inner.remove_unpublished(id)
+    }
+    fn remove_published(&self, id: &str) -> Result<(), TrainingError> {
+        self.inner.remove_published(id)
     }
     fn prepared(&self, id: &str) -> Result<PreparedTrainingJob, TrainingError> {
         self.inner.prepared(id)
@@ -713,5 +851,328 @@ fn failed_start_commit_releases_slot_without_starting_engine() {
         );
         assert!(!reopened.snapshot().busy);
         assert!(manager.create(parameters(), vec![clip(); 2]).is_ok());
+    }
+}
+
+#[test]
+fn delete_active_saved_version_persists_and_preserves_other_versions() {
+    let temp = Temp::new();
+    let store = Arc::new(FileTrainingStore::open(&temp.0).unwrap());
+    let engine = Arc::new(FakeEngine {
+        complete_pair: true,
+    });
+    let manager = TrainingManager::open(store.clone(), engine.clone()).unwrap();
+    let mut ids = Vec::new();
+    for _ in 0..2 {
+        let job = manager.create(parameters(), vec![clip(); 2]).unwrap();
+        manager.run(&job.id).unwrap();
+        manager.mark_auditioned(&job.id).unwrap();
+        manager.save_version(&job.id).unwrap();
+        ids.push(job.id);
+    }
+    manager.activate(&ids[0]).unwrap();
+    manager.delete(&ids[0]).unwrap();
+    assert_eq!(manager.snapshot().jobs.len(), 1);
+    assert_eq!(manager.snapshot().jobs[0].id, ids[1]);
+    assert!(manager.snapshot().active_versions.is_empty());
+    assert!(!temp.0.join("jobs").join(&ids[0]).exists());
+    assert!(manager.resolve_version(&ids[1]).is_ok());
+    let reopened = TrainingManager::open(store, engine).unwrap();
+    assert_eq!(reopened.snapshot().jobs, manager.snapshot().jobs);
+    assert!(reopened.resolve_active_pair("default").unwrap().is_none());
+    reopened.delete(&ids[0]).unwrap();
+}
+
+#[test]
+fn delete_rejects_queued_training_and_allows_terminal_failed_jobs() {
+    let temp = Temp::new();
+    let manager = TrainingManager::open(
+        Arc::new(FileTrainingStore::open(&temp.0).unwrap()),
+        Arc::new(FakeEngine {
+            complete_pair: false,
+        }),
+    )
+    .unwrap();
+    let job = manager.create(parameters(), vec![clip(); 2]).unwrap();
+    assert_eq!(manager.delete(&job.id).unwrap_err(), TrainingError::Busy);
+    assert!(temp.0.join("jobs").join(&job.id).exists());
+    manager.run(&job.id).unwrap();
+    let queued = manager.create(parameters(), vec![clip(); 2]).unwrap();
+    assert_eq!(manager.delete(&job.id).unwrap_err(), TrainingError::Busy);
+    manager.cancel(&queued.id).unwrap();
+    manager.delete(&job.id).unwrap();
+    manager.delete(&queued.id).unwrap();
+    assert!(manager.snapshot().jobs.is_empty());
+    assert_eq!(fs::read_dir(temp.0.join("jobs")).unwrap().count(), 0);
+}
+
+#[test]
+fn delete_failed_catalog_commit_preserves_active_version_and_artifacts() {
+    let temp = Temp::new();
+    let store = Arc::new(FileTrainingStore::open(&temp.0).unwrap());
+    let engine = Arc::new(FakeEngine {
+        complete_pair: true,
+    });
+    let manager = TrainingManager::open(store.clone(), engine.clone()).unwrap();
+    let job = manager.create(parameters(), vec![clip(); 2]).unwrap();
+    manager.run(&job.id).unwrap();
+    manager.mark_auditioned(&job.id).unwrap();
+    manager.activate(&job.id).unwrap();
+    let before = store.load().unwrap();
+    let failing = TrainingManager::open(
+        Arc::new(FailingCommitStore {
+            inner: FileTrainingStore::open(&temp.0).unwrap(),
+        }),
+        engine,
+    )
+    .unwrap();
+    assert!(failing.delete(&job.id).is_err());
+    assert_eq!(failing.snapshot().jobs, before.jobs);
+    assert_eq!(store.load().unwrap(), before);
+    assert!(failing.resolve_active_pair("default").unwrap().is_some());
+}
+
+#[test]
+fn delete_cleanup_failure_is_explicit_and_retryable_after_restart() {
+    let temp = Temp::new();
+    let store = Arc::new(FileTrainingStore::open(&temp.0).unwrap());
+    let engine = Arc::new(FakeEngine {
+        complete_pair: true,
+    });
+    let manager = TrainingManager::open(store.clone(), engine.clone()).unwrap();
+    let job = manager.create(parameters(), vec![clip(); 2]).unwrap();
+    manager.cancel(&job.id).unwrap();
+    let directory = temp.0.join("jobs").join(&job.id);
+    let held = temp.0.join("held");
+    fs::rename(&directory, &held).unwrap();
+    fs::write(&directory, b"cannot remove a non-directory").unwrap();
+    let error = manager.delete(&job.id).unwrap_err().to_string();
+    assert!(error.contains("记录已删除"));
+    assert!(error.contains("重试"));
+    assert!(manager.snapshot().jobs.is_empty());
+    assert!(store.load().unwrap().jobs.is_empty());
+    fs::remove_file(&directory).unwrap();
+    fs::rename(&held, &directory).unwrap();
+    let reopened = TrainingManager::open(store, engine).unwrap();
+    reopened.delete(&job.id).unwrap();
+    assert!(!directory.exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn delete_rejects_traversal_and_job_symlinks_and_never_follows_nested_links() {
+    let temp = Temp::new();
+    let outside = Temp::new();
+    fs::write(outside.0.join("keep"), b"keep").unwrap();
+    let store = FileTrainingStore::open(&temp.0).unwrap();
+    for id in ["..", "../outside", "/tmp", "", "jobs"] {
+        assert!(store.remove_published(id).is_err());
+    }
+    let id = "00000000-0000-4000-8000-000000000001";
+    let job = temp.0.join("jobs").join(id);
+    std::os::unix::fs::symlink(&outside.0, &job).unwrap();
+    assert!(store.remove_published(id).is_err());
+    assert!(outside.0.join("keep").exists());
+    fs::remove_file(&job).unwrap();
+    fs::create_dir(&job).unwrap();
+    std::os::unix::fs::symlink(&outside.0, job.join("nested")).unwrap();
+    store.remove_published(id).unwrap();
+    store.remove_published(id).unwrap();
+    assert!(!job.exists());
+    assert_eq!(fs::read(outside.0.join("keep")).unwrap(), b"keep");
+}
+
+#[test]
+fn audio_only_dataset_is_accepted_and_records_automatic_transcription() {
+    let temp = Temp::new();
+    let store = Arc::new(FileTrainingStore::open(&temp.0).unwrap());
+    let manager = TrainingManager::open(
+        store.clone(),
+        Arc::new(FakeEngine {
+            complete_pair: true,
+        }),
+    )
+    .unwrap();
+    let mut audio_only = clip();
+    audio_only.text.clear();
+    let job = manager.create(parameters(), vec![audio_only; 2]).unwrap();
+    let manifest: serde_json::Value =
+        serde_json::from_slice(&fs::read(store.prepared(&job.id).unwrap().job_file).unwrap())
+            .unwrap();
+    assert_eq!(manifest["text_mode"], "audio_only");
+    assert_eq!(manifest["clips"][0]["text"], "");
+}
+
+#[test]
+fn automatic_text_keeps_dataset_validation_and_rejects_partial_manual_text() {
+    let temp = Temp::new();
+    let manager = TrainingManager::open(
+        Arc::new(FileTrainingStore::open(&temp.0).unwrap()),
+        Arc::new(FakeEngine {
+            complete_pair: true,
+        }),
+    )
+    .unwrap();
+    let mut audio_only = clip();
+    audio_only.text.clear();
+    assert!(
+        manager
+            .create(parameters(), vec![audio_only.clone(), clip()])
+            .is_err()
+    );
+    for bad in [" ", "bad|text", "bad\ntext", "bad\u{85}text"] {
+        let mut invalid = audio_only.clone();
+        invalid.text = bad.into();
+        assert!(manager.create(parameters(), vec![invalid; 2]).is_err());
+    }
+    audio_only.wav[0] = 0;
+    assert!(manager.create(parameters(), vec![audio_only; 2]).is_err());
+    assert!(manager.snapshot().jobs.is_empty());
+}
+
+#[cfg(unix)]
+fn transcription_engine(
+    temp: &Temp,
+    script: &str,
+    timeout: std::time::Duration,
+) -> ProcessTrainingEngine {
+    let runner = temp.0.join("runner.py");
+    fs::write(&runner, "").unwrap();
+    fs::write(temp.0.join("transcribe-training.py"), script).unwrap();
+    let root = temp.0.join("engine");
+    fs::create_dir_all(root.join("GPT_SoVITS")).unwrap();
+    fs::write(root.join("GPT_SoVITS/s2_train.py"), "").unwrap();
+    let storage = temp.0.join("storage");
+    fs::create_dir(&storage).unwrap();
+    ProcessTrainingEngine::new(ProcessTrainingConfig {
+        python: "/usr/bin/python3".into(),
+        runner,
+        timeout,
+    })
+    .unwrap()
+    .with_engine_root(root)
+    .unwrap()
+    .with_transcription(storage, temp.0.join("model"))
+    .unwrap()
+}
+
+#[cfg(unix)]
+#[test]
+fn transcription_process_uses_owned_audio_returns_text_and_cleans_temporary_files() {
+    let temp = Temp::new();
+    let engine = transcription_engine(
+        &temp,
+        "import argparse,json,pathlib\np=argparse.ArgumentParser()\np.add_argument('--audio');p.add_argument('--language');p.add_argument('--engine-root');p.add_argument('--model')\na=p.parse_args()\nassert pathlib.Path(a.audio).is_file()\nassert pathlib.Path(a.audio).parent.parent.name == 'storage'\nassert a.language == 'zh'\nassert pathlib.Path(a.model).name == 'model'\nprint(json.dumps({'text':'识别的文本。','language':'zh'}))\n",
+        std::time::Duration::from_secs(5),
+    );
+    let mut input = clip();
+    input.text.clear();
+    assert_eq!(
+        engine.transcribe(&input, &AtomicBool::new(false)).unwrap(),
+        "识别的文本。"
+    );
+    assert_eq!(fs::read_dir(temp.0.join("storage")).unwrap().count(), 0);
+}
+
+#[cfg(unix)]
+#[test]
+fn transcription_rejects_invalid_output_and_timeout_without_leaking_files() {
+    for script in [
+        "print('{}')",
+        "print('{\"text\":\"bad|text\",\"language\":\"zh\"}')",
+        "print('x'*20000)",
+        "import time;time.sleep(60)",
+    ] {
+        let temp = Temp::new();
+        let engine = transcription_engine(&temp, script, std::time::Duration::from_millis(150));
+        let mut input = clip();
+        input.text.clear();
+        let error = engine
+            .transcribe(&input, &AtomicBool::new(false))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("文本"), "{error}");
+        assert_eq!(fs::read_dir(temp.0.join("storage")).unwrap().count(), 0);
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn automatic_transcription_failure_reaches_job_status_as_actionable_text() {
+    let temp = Temp::new();
+    let runner = temp.0.join("runner.py");
+    fs::write(&runner, "import json,sys\nprint(json.dumps({'state':'failed','error':'transcription_failed','progress':5}),flush=True)\nsys.exit(1)\n").unwrap();
+    let engine = ProcessTrainingEngine::new(ProcessTrainingConfig {
+        python: "/usr/bin/python3".into(),
+        runner,
+        timeout: std::time::Duration::from_secs(5),
+    })
+    .unwrap();
+    let manager = TrainingManager::open(
+        Arc::new(FileTrainingStore::open(temp.0.join("store")).unwrap()),
+        Arc::new(engine),
+    )
+    .unwrap();
+    let mut input = clip();
+    input.text.clear();
+    let job = manager.create(parameters(), vec![input; 2]).unwrap();
+    let finished = manager.run(&job.id).unwrap();
+    assert_eq!(finished.state, TrainingState::Failed);
+    assert!(
+        finished.message.contains("自动提取文本"),
+        "{}",
+        finished.message
+    );
+    assert!(
+        finished.message.contains("手动填写"),
+        "{}",
+        finished.message
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn transcription_holds_admission_until_shutdown_reaps_the_owned_process_tree() {
+    use std::time::{Duration, Instant};
+    let temp = Temp::new();
+    let engine = transcription_engine(
+        &temp,
+        "import subprocess,sys,pathlib,time\np=subprocess.Popen([sys.executable,'-c','import time;time.sleep(60)'])\n(pathlib.Path.cwd().parent.parent/'asr-child.pid').write_text(str(p.pid))\ntime.sleep(60)\n",
+        Duration::from_secs(30),
+    );
+    let manager = Arc::new(
+        TrainingManager::open(
+            Arc::new(FileTrainingStore::open(temp.0.join("store")).unwrap()),
+            Arc::new(engine),
+        )
+        .unwrap(),
+    );
+    let mut input = clip();
+    input.text.clear();
+    let active = manager.clone();
+    let next = input.clone();
+    let thread = std::thread::spawn(move || active.transcribe(input));
+    let start = Instant::now();
+    let pid_file = temp.0.join("asr-child.pid");
+    while !pid_file.exists() {
+        assert!(start.elapsed() < Duration::from_secs(5));
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    assert!(manager.snapshot().busy);
+    assert_eq!(manager.transcribe(next).unwrap_err(), TrainingError::Busy);
+    assert_eq!(
+        manager.create(parameters(), vec![clip(); 2]).unwrap_err(),
+        TrainingError::Busy
+    );
+    manager.shutdown();
+    assert_eq!(
+        thread.join().unwrap().unwrap_err(),
+        TrainingError::Cancelled
+    );
+    assert!(!manager.snapshot().busy);
+    assert_eq!(fs::read_dir(temp.0.join("storage")).unwrap().count(), 0);
+    let pid = fs::read_to_string(pid_file).unwrap();
+    if let Ok(stat) = fs::read_to_string(format!("/proc/{pid}/stat")) {
+        assert_eq!(stat.split_whitespace().nth(2), Some("Z"));
     }
 }

@@ -32,7 +32,11 @@ conversation_limit = 6
 
 [llm]
 mode = "cloud"
-# API 根地址与模型名同时填写；适配器会追加 /chat/completions。
+# 可在控制面板的“LLM 接入”页配置；本机覆盖文件优先于此处。
+provider = "custom"
+# openai_chat / openai_responses / anthropic_messages / gemini_generate_content
+api_format = "openai_chat"
+# API 根地址或完整端点与模型名同时填写；适配器按 api_format 补齐路径。
 # 兼容服务可填写 https://提供商/API根路径 或 http://本地服务:端口/v1。
 base_url = ""
 model = ""
@@ -69,6 +73,9 @@ directory = "../data/training"
 # 启用时填写本机 GPT-SoVITS Python 环境的实际绝对路径。
 python = ""
 engine_root = ""
+# 自动提取训练文本的本地 faster-whisper 模型目录；空值使用引擎 tools/asr/models/faster-whisper-large-v3。
+# 需要 model.bin、config.json、tokenizer.json、preprocessor_config.json；运行时不会下载模型。使用 CPU int8，不占用训练显存。
+asr_model = ""
 timeout_seconds = 7200
 # 只对 scripts/start-managed-inference.py 的独立配置实例设 true。
 # 共享的其他 GPT-SoVITS 实例不应启用此项，因为权重接口会写推理配置。

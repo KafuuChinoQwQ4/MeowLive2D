@@ -17,6 +17,12 @@ it("keeps service switches available while hiding business panels until the serv
   expect(screen.getByRole("switch", { name: "Windows 执行端" })).toBeDisabled();
 });
 
+it("links LLM setup to the configuration page and explains that launcher status updates after restart", async () => {
+  render(<LauncherPanel client={client()} />);
+  expect(await screen.findByRole("link", { name: "前往 LLM 接入" })).toHaveAttribute("href", "#llm");
+  expect(screen.getByText(/保存后重启主服务/)).toBeVisible();
+});
+
 it("shows starting until the real status is ready and allows cancellation", async () => {
   const api = client();
   vi.mocked(api.setEnabled).mockResolvedValueOnce(launcherSnapshot("starting")).mockResolvedValueOnce(launcherSnapshot("stopping"));

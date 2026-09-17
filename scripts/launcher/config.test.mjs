@@ -26,6 +26,22 @@ test('loads the existing key into only the server environment, never public setu
   assert.equal(JSON.stringify(config.setup).includes('sk-test'), false);
 });
 
+test('TTS defaults to low memory mode and guards available system memory', async t => {
+  const config = await loadConfiguration(await fixture(t));
+  const tts = config.definitions.find(s => s.id === 'tts');
+  assert.equal(tts.args[tts.args.indexOf('--memory-mode') + 1], 'low');
+  assert.equal(tts.memoryGuard, true);
+});
+
+test('standard TTS text model is an explicit choice; invalid memory modes are rejected', async t => {
+  const root = await fixture(t, { ttsMemoryMode: 'standard' });
+  const config = await loadConfiguration(root);
+  assert.equal(config.definitions[1].issue, null);
+  assert.equal(config.definitions[1].args.at(-1), 'standard');
+  await writeFile(join(root, 'config/local/launcher.json'), JSON.stringify({ ttsMemoryMode: 'invalid' }));
+  assert.match((await loadConfiguration(root)).definitions[1].issue, /JSON/);
+});
+
 test('an existing key environment variable takes precedence over the local key file', async t => {
   const root = await fixture(t);
   const config = await loadConfiguration(root, { env: { PATH: process.env.PATH, TEST_LLM_KEY: 'env-secret' } });
@@ -54,11 +70,12 @@ test('remote speech URLs cannot become local process control targets', async t =
   assert.match(config.definitions.find(s => s.id === 'tts').issue, /127.0.0.1/);
 });
 
-test('an enabled cloud model with a missing key gives a preflight error', async t => {
+test('missing LLM key still allows server startup for configuration in the panel', async t => {
   const root = await fixture(t, { llmKeyFile: 'missing-key.txt' });
   const config = await loadConfiguration(root, { env: { PATH: process.env.PATH } });
   assert.equal(config.setup.llm_configured, false);
-  assert.match(config.definitions[0].issue, /密钥缺失/);
+  assert.equal(config.definitions[0].issue, null);
+  assert.match(config.setup.llm_message, /LLM 接入/);
 });
 
 
@@ -85,4 +102,15 @@ test('home-relative settings resolve against the launch user home, including pub
   const config = await loadConfiguration(root, { env: { PATH: process.env.PATH, HOME: '/home/alice' } });
   assert.equal(config.modelSettings.engine, '/home/alice/voice/engine');
   assert.equal(config.modelSettings.python, '/home/alice/voice/bin/python');
+});
+
+
+test('saved LLM profile overrides legacy model metadata without exposing its key', async t => {
+  const root = await fixture(t, { llmKeyFile: 'missing-key.txt' });
+  await writeFile(join(root, 'config/local/server.local-llm.json'), JSON.stringify({ schema: 1,
+    config: { base_url: 'https://api.anthropic.com/v1', model: 'user-chosen-claude', api_key_env: '' }, api_key: 'anthropic-private-key' }));
+  const config = await loadConfiguration(root, { env: { PATH: process.env.PATH } });
+  assert.equal(config.definitions[0].issue, null);
+  assert.equal(config.setup.llm_configured, true);
+  assert.equal(JSON.stringify(config).includes('anthropic-private-key'), false);
 });

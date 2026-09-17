@@ -8,7 +8,7 @@
 src/  # 播放、连接、口型、VTS、OBS 与模型导入的执行源码
 ├── assets/  # Live2D 导出模型包的本地校验与安装
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   └── model.rs  # 模型清单和 VTS 引用检查、限制与无覆盖安装
+│   └── model.rs  # 模型清单与路径校验、无覆盖安装、模型身份枚举及持久化删除重试
 ├── audio/  # 音频设备后端、采样转换与设备播放时钟
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   ├── conversion.rs  # 相位连续的 PCM 重采样与声道映射
@@ -37,7 +37,7 @@ src/  # 播放、连接、口型、VTS、OBS 与模型导入的执行源码
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   └── config.rs  # OBS 本机地址、密码环境变量名与整次操作超时校验
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-├── assets.rs  # Live2D 模型校验与本地安装公共接口
+├── assets.rs  # 本机 Live2D 模型包校验、安装、枚举及删除能力导出
 ├── audio.rs  # 音频设备边界、播放事件与设备输出能量观测接口
 ├── avatar.rs  # VTube Studio 独立连接入口、配置与可观察状态导出
 ├── cli.rs  # 桌面客户端配置加载、服务重连、VTS 组装与限时退出入口
@@ -49,7 +49,7 @@ src/  # 播放、连接、口型、VTS、OBS 与模型导入的执行源码
 ├── obs.rs  # OBS v5 鉴权、有界状态查询、场景录制控制与状态读回
 ├── playback.rs  # 播放状态机、代次取消、乱序校验与设备回执
 ├── presentation.rs  # 桌面口型驱动生命周期与角色参数切换组装
-└── resource_control.rs  # 桌面资源命令执行、Windows 目录选择和能力调用
+└── resource_control.rs  # 桌面模型导入列举删除、VTS 加载热键与 OBS 控制执行
 ```
 
 可继续查看各子目录的索引：
@@ -65,4 +65,4 @@ src/  # 播放、连接、口型、VTS、OBS 与模型导入的执行源码
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 73c3b8dec66f0fc4e187e7b17a04c1b069fb063f4ba0476ad8fd69e815a6116f -->
+<!-- directory-tree-sha256: a97805695f8a448b8180efe9a41a0fbd8e03c9362c1ba56c911679697d97a593 -->

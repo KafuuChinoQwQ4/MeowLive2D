@@ -26,6 +26,12 @@ struct Engine {
     busy: AtomicBool,
     poisoned: AtomicBool,
 }
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct ModelRuntimeStatus {
+    pub supported: bool,
+    pub state: String,
+    pub message: String,
+}
 impl ModelSynthesizer {
     pub fn new(
         inner: Arc<dyn SpeechSynthesizer>,
@@ -76,6 +82,36 @@ impl ModelSynthesizer {
     pub fn is_busy(&self) -> bool {
         self.engine.busy.load(Ordering::Acquire)
     }
+    pub async fn model_status(&self) -> Result<ModelRuntimeStatus, SynthesisError> {
+        self.engine.runtime_request(None).await
+    }
+    pub async fn set_models_enabled(
+        &self,
+        enabled: bool,
+    ) -> Result<ModelRuntimeStatus, SynthesisError> {
+        if self
+            .engine
+            .busy
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .is_err()
+        {
+            return Err(error("模型正在合成或切换，请稍后重试"));
+        }
+        let busy = Busy(self.engine.clone());
+        let engine = self.engine.clone();
+        tokio::spawn(async move {
+            let _busy = busy;
+            let result = engine.runtime_request(Some(enabled)).await?;
+            if result.supported && result.state == if enabled { "loaded" } else { "unloaded" } {
+                engine.poisoned.store(false, Ordering::Release);
+                Ok(result)
+            } else {
+                Err(error("引擎未确认模型启停，请刷新状态后重试"))
+            }
+        })
+        .await
+        .map_err(|_| error("模型启停操作未完成"))?
+    }
     pub async fn audition(&self, version: &str, text: String) -> Result<PcmAudio, SynthesisError> {
         self.generate(None, Some(version.to_owned()), text).await
     }
@@ -103,6 +139,10 @@ impl ModelSynthesizer {
         // Own the transaction: dropping the HTTP/speech future never drops a half-applied pair.
         tokio::spawn(async move {
             let _busy = busy;
+            let status = engine.runtime_request(None).await?;
+            if status.supported && status.state != "loaded" {
+                return Err(error("语音模型未就绪，请先在训练音色页面启用模型"));
+            }
             let (voice_id, pair) = tokio::task::spawn_blocking(move || {
                 if let Some(id) = version {
                     let pair = training
@@ -162,6 +202,12 @@ impl SpeechSynthesizer for ModelSynthesizer {
     }
 }
 impl Engine {
+    async fn runtime_request(
+        &self,
+        enabled: Option<bool>,
+    ) -> Result<ModelRuntimeStatus, SynthesisError> {
+        runtime_request(&self.client, &self.base, enabled).await
+    }
     async fn set_pair(&self, gpt: &str, sovits: &str) -> Result<(), SynthesisError> {
         for (route, path) in [("set_gpt_weights", gpt), ("set_sovits_weights", sovits)] {
             let mut url = self.base.clone();
@@ -199,6 +245,90 @@ impl Engine {
         Ok(())
     }
 }
+/// Control only the project-specific lifecycle API on a local TTS service.
+/// This also supports reference-only setups without training/weight management.
+pub async fn request_model_runtime(
+    base: &str,
+    enabled: Option<bool>,
+) -> Result<ModelRuntimeStatus, SynthesisError> {
+    let base = reqwest::Url::parse(base).map_err(|_| error("受管推理地址无效"))?;
+    if base.scheme() != "http"
+        || !base.host_str().is_some_and(|host| {
+            host.trim_matches(['[', ']'])
+                .parse::<std::net::IpAddr>()
+                .is_ok_and(|ip| ip.is_loopback())
+        })
+        || !base.username().is_empty()
+        || base.password().is_some()
+        || base.query().is_some()
+        || base.fragment().is_some()
+    {
+        return Err(error("模型开关仅支持项目受管的本机 TTS"));
+    }
+    let client = reqwest::Client::builder()
+        .no_proxy()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .map_err(|_| error("无法初始化模型开关"))?;
+    runtime_request(&client, &base, enabled).await
+}
+
+async fn runtime_request(
+    client: &reqwest::Client,
+    base: &reqwest::Url,
+    enabled: Option<bool>,
+) -> Result<ModelRuntimeStatus, SynthesisError> {
+    let mut url = base.clone();
+    url.set_path(&format!(
+        "{}/meowlive/models",
+        base.path().trim_end_matches('/')
+    ));
+    let request = match enabled {
+        Some(enabled) => client
+            .post(url)
+            .timeout(Duration::from_secs(300))
+            .json(&serde_json::json!({"enabled":enabled})),
+        None => client.get(url).timeout(Duration::from_secs(2)),
+    };
+    let mut response = request
+        .send()
+        .await
+        .map_err(|_| error("无法连接 TTS 服务，请先启动 TTS"))?;
+    if response.status() == reqwest::StatusCode::NOT_FOUND && enabled.is_none() {
+        return Ok(ModelRuntimeStatus {
+            supported: false,
+            state: "unsupported".into(),
+            message: "当前 TTS 不支持独立模型开关，请重启项目受管 TTS".into(),
+        });
+    }
+    if !response.status().is_success() {
+        return Err(error("模型操作失败，请检查 TTS 日志并刷新模型状态"));
+    }
+    let mut bytes = Vec::new();
+    while let Some(chunk) = response
+        .chunk()
+        .await
+        .map_err(|_| error("模型状态响应无效"))?
+    {
+        if bytes.len() + chunk.len() > 4096 {
+            return Err(error("模型状态响应超限"));
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    let value: ModelRuntimeStatus =
+        serde_json::from_slice(&bytes).map_err(|_| error("模型状态响应无效"))?;
+    if !value.supported
+        || !matches!(
+            value.state.as_str(),
+            "unloaded" | "loading" | "loaded" | "unloading" | "failed"
+        )
+        || value.message.chars().count() > 300
+    {
+        return Err(error("模型状态响应无效"));
+    }
+    Ok(value)
+}
+
 fn error(message: impl Into<String>) -> SynthesisError {
     SynthesisError::new(message)
 }

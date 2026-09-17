@@ -2,6 +2,14 @@
 
 export const PROTOCOL_VERSION = 3 as const;
 
+export type LlmSettings = { provider: string, api_format: string, base_url: string, model: string, mode: string, timeout_seconds: number, max_tokens: number, json_mode: boolean, };
+
+export type LlmSettingsSnapshot = { settings: LlmSettings, key_configured: boolean, restart_required: boolean, active_model: string, storage_available: boolean, };
+
+export type LlmSettingsRequest = { settings: LlmSettings, api_key: string | null, clear_api_key: boolean, };
+
+export type LlmTestResult = { message: string, };
+
 export type ModelEnvironment = { kind: string, release: string, distro: string, ready: boolean, message: string, };
 
 export type ModelRuntime = { engine_root: string, python_path: string, ready: boolean, message: string, };
@@ -24,15 +32,27 @@ export type LauncherSetup = { configuration_path: string, server_config: string,
 
 export type LauncherSnapshot = { schema_version: number, session_token: string, services: Array<LauncherService>, setup: LauncherSetup, };
 
-export type TrainingJob = { id: string, name: string, voice_id: string, status: string, progress: number, message: string, clip_count: number, created_at_ms: number, updated_at_ms: number, version_id: string | null, };
+export type TrainingJob = { id: string, name: string, voice_id: string, status: string, progress: number, message: string, clip_count: number, created_at_ms: number, updated_at_ms: number, version_id: string | null, performance: TrainingPerformance, };
+
+export type TrainingPerformance = { batch_size: number, data_workers: number, cpu_threads: number, gpu_index: number, low_memory: boolean, };
 
 export type ModelVersion = { id: string, job_id: string, voice_id: string, name: string, engine: string, model_version: string, auditioned: boolean, saved: boolean, active: boolean, available: boolean, created_at_ms: number, };
 
 export type TrainingSnapshot = { enabled: boolean, busy: boolean, jobs: Array<TrainingJob>, versions: Array<ModelVersion>, };
 
+export type TrainingModelRuntimeSnapshot = { supported: boolean, state: string, message: string, };
+
+export type TrainingModelRuntimeRequest = { enabled: boolean, };
+
 export type TrainingClipMetadata = { text: string, language: string, };
 
-export type TrainingCreateRequest = { name: string, voice_id: string, sovits_epochs: number, gpt_epochs: number, reviewed: boolean, clips: Array<TrainingClipMetadata>, };
+export type TrainingTextMode = "audio_only" | "reviewed_text";
+
+export type TrainingCreateRequest = { name: string, voice_id: string, sovits_epochs: number, gpt_epochs: number, reviewed: boolean, text_mode: TrainingTextMode, performance: TrainingPerformance, clips: Array<TrainingClipMetadata>, };
+
+export type TrainingTranscribeRequest = { language: string, };
+
+export type TrainingTranscription = { text: string, language: string, };
 
 export type TrainingAuditionRequest = { version_id: string, text: string, };
 
@@ -60,15 +80,17 @@ export type CharacterPreviewRequest = { character_id: string, intent: string, };
 
 export type VtsModel = { id: string, name: string, };
 
+export type ImportedModel = { id: string, name: string, model_id: string | null, };
+
 export type VtsHotkey = { id: string, name: string, };
 
 export type ObsOperation = { "type": "status" } | { "type": "set_scene", scene_name: string, } | { "type": "start_recording" } | { "type": "stop_recording" };
 
 export type ObsSnapshot = { connected: boolean, recording: boolean, current_scene: string, scenes: Array<string>, };
 
-export type DesktopResourceOperation = { "type": "obs", operation: ObsOperation, } | { "type": "list_models" } | { "type": "load_model", model_id: string, mouth_parameter: string, } | { "type": "list_hotkeys", model_id: string, } | { "type": "trigger_hotkey", model_id: string, hotkey_id: string, fallback_hotkey_id: string | null, } | { "type": "import_model" };
+export type DesktopResourceOperation = { "type": "obs", operation: ObsOperation, } | { "type": "list_models" } | { "type": "load_model", model_id: string, mouth_parameter: string, } | { "type": "list_hotkeys", model_id: string, } | { "type": "trigger_hotkey", model_id: string, hotkey_id: string, fallback_hotkey_id: string | null, } | { "type": "import_model" } | { "type": "list_imported_models" } | { "type": "delete_imported_model", id: string, };
 
-export type DesktopResourceResult = { "type": "obs", snapshot: ObsSnapshot, } | { "type": "models", models: Array<VtsModel>, } | { "type": "model_loaded", model_id: string, } | { "type": "hotkeys", model_id: string, hotkeys: Array<VtsHotkey>, } | { "type": "hotkey_triggered", hotkey_id: string, } | { "type": "model_imported", model_name: string, model_file: string, files: number, bytes: number, restart_required: boolean, } | { "type": "error", code: string, message: string, };
+export type DesktopResourceResult = { "type": "obs", snapshot: ObsSnapshot, } | { "type": "models", models: Array<VtsModel>, } | { "type": "model_loaded", model_id: string, } | { "type": "hotkeys", model_id: string, hotkeys: Array<VtsHotkey>, } | { "type": "hotkey_triggered", hotkey_id: string, } | { "type": "model_imported", model_name: string, model_file: string, files: number, bytes: number, restart_required: boolean, } | { "type": "imported_models", models: Array<ImportedModel>, } | { "type": "model_deleted", id: string, restart_required: boolean, } | { "type": "error", code: string, message: string, };
 
 export type LiveConnectionPhase = "disabled" | "disconnected" | "connecting" | "connected" | "reconnecting" | "disconnecting" | "failed";
 

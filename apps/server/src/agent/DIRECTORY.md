@@ -16,4 +16,4 @@ agent/  # Agent 服务状态、跨端映射和异步模型调度
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 5c16426c025a19fc1e49784a101cbf0b94a39174f705c3fa4b3e5024e314e11c -->
+<!-- directory-tree-sha256: d333c4d0cac09eb15f0b55929ae7b725b5e53550ce1b4d588d810d2a283029a7 -->

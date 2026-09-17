@@ -16,4 +16,4 @@ obs/  # OBS 场景与录制控制面板
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: d753bf469e103402cd50fb2c1ca42d5cb289aaaf17e6ce1fdd40ab5ee1b0802c -->
+<!-- directory-tree-sha256: 7e8dd4c4d24316796913b9111c5cc0749da072eaf17e7fb0c40df11936b9ff5a -->

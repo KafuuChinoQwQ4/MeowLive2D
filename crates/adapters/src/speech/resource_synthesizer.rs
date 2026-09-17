@@ -69,8 +69,8 @@ impl SpeechSynthesizer for ResourceSynthesizer {
                         base_url: self.config.base_url.clone(),
                         reference_audio,
                         prompt_text: reference_text,
-                        prompt_language: language.clone(),
-                        text_language: language,
+                        prompt_language: language,
+                        text_language: "auto".into(),
                         timeout: self.config.timeout,
                         max_audio_bytes: self.config.max_audio_bytes,
                     })?;

@@ -185,6 +185,81 @@ impl ResourceLibrary {
         })
     }
 
+    pub fn delete_voice(&self, id: &str) -> Result<(), ResourceError> {
+        {
+            let catalog = self.catalog.read().unwrap_or_else(|p| p.into_inner());
+            if !catalog.voices.iter().any(|voice| voice.id == id) {
+                // FileResourceStore owns references/<voice UUID>.wav. Metadata may
+                // already be committed by a previous deletion whose cleanup failed.
+                if !meowlive_domain::resources::valid_voice_id(id)
+                    || catalog
+                        .voices
+                        .iter()
+                        .any(|voice| voice.reference.as_str() == id)
+                {
+                    return Err(ResourceError::VoiceNotFound);
+                }
+                let reference = meowlive_domain::resources::ReferenceAsset::new(id)?;
+                return self.store.remove_reference(&reference).map_err(|error| {
+                    ResourceError::Store(format!(
+                        "音色配置已删除，但参考音频清理失败，请重试：{error}"
+                    ))
+                });
+            }
+        }
+        let reference = self.update_catalog(|catalog| {
+            let index = catalog
+                .voices
+                .iter()
+                .position(|voice| voice.id == id)
+                .ok_or(ResourceError::VoiceNotFound)?;
+            let removed = catalog.voices.remove(index);
+            if catalog.active_voice_id == id {
+                catalog.active_voice_id.clear();
+            }
+            for character in &mut catalog.characters {
+                if character.voice_id == id {
+                    character.voice_id.clear();
+                    if catalog.active_character_id.as_deref() == Some(&character.id) {
+                        catalog.active_character_id = None;
+                    }
+                }
+            }
+            Ok(removed.reference)
+        })?;
+        // Commit metadata first, so a failed catalog write cannot destroy a live reference.
+        self.store.remove_reference(&reference).map_err(|error| {
+            ResourceError::Store(format!(
+                "音色配置已删除，但参考音频清理失败，请重试：{error}"
+            ))
+        })
+    }
+
+    pub fn delete_character(&self, id: &str) -> Result<(), ResourceError> {
+        self.update_catalog(|catalog| {
+            let index = catalog
+                .characters
+                .iter()
+                .position(|character| character.id == id)
+                .ok_or(ResourceError::CharacterNotFound)?;
+            catalog.characters.remove(index);
+            if catalog.active_character_id.as_deref() == Some(id) {
+                catalog.active_character_id = None;
+            }
+            Ok(())
+        })
+    }
+
+    pub fn clear_voice_selection_if_current(&self, id: &str) -> Result<(), ResourceError> {
+        self.update_catalog(|catalog| {
+            if catalog.active_voice_id == id {
+                catalog.active_voice_id.clear();
+                catalog.active_character_id = None;
+            }
+            Ok(())
+        })
+    }
+
     pub fn select_voice(&self, id: &str) -> Result<(), ResourceError> {
         self.update_catalog(|catalog| {
             if !voice_exists(catalog, id) {

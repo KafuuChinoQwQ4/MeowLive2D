@@ -99,9 +99,10 @@ fn character_mapping_validation_is_private_and_updates_reset_preview_state() {
 }
 
 #[test]
-fn catalog_defaults_to_the_legacy_voice() {
+fn catalog_starts_without_a_selected_voice() {
     let catalog = ResourceCatalog::default();
-    assert_eq!(catalog.active_voice_id, "default");
+    assert_eq!(catalog.active_voice_id, "");
+    catalog.validate().unwrap();
     assert!(catalog.active_character_id.is_none());
     assert!(catalog.voices.is_empty());
     assert_eq!(voice().id, "123e4567-e89b-42d3-a456-426614174000");

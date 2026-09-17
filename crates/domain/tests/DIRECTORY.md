@@ -16,4 +16,4 @@ tests/  # 领域对象与输入不变量集成测试
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: ea320b8cf0ac0d0ba8e086f813a32d8505ca59b9e288469c343c394cfa71f2a0 -->
+<!-- directory-tree-sha256: 43e6d401d1b4110c0244a5d02783809cdb7dc409f1afd693ae92706637519877 -->

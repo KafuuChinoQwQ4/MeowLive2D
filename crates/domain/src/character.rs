@@ -104,7 +104,7 @@ impl CharacterProfile {
         if !valid_external_id(&self.model_id) {
             return Err(ResourceValidationError::InvalidModelId);
         }
-        if !valid_portable_id(&self.voice_id) {
+        if !self.voice_id.is_empty() && !valid_portable_id(&self.voice_id) {
             return Err(ResourceValidationError::InvalidVoiceId);
         }
         if !(4..=32).contains(&self.mouth_parameter.len())

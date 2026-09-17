@@ -50,9 +50,7 @@ async fn uploaded_voices_send_their_own_engine_reference_and_default_still_deleg
             let seen = seen.clone();
             let audio = response_wav.clone();
             async move {
-                seen.lock()
-                    .await
-                    .push(body["ref_audio_path"].as_str().unwrap().to_owned());
+                seen.lock().await.push(body);
                 audio
             }
         }),
@@ -98,16 +96,26 @@ async fn uploaded_voices_send_their_own_engine_reference_and_default_still_deleg
     for voice_id in ["default", one.id.as_str(), two.id.as_str()] {
         synth
             .synthesize(SynthesisRequest {
-                text: "hello".into(),
+                text: "你好，hello".into(),
                 voice_id: voice_id.into(),
             })
             .await
             .unwrap();
     }
     let seen = paths.lock().await.clone();
-    assert_eq!(seen[0], "/engine/default.wav");
-    assert_ne!(seen[1], seen[2]);
-    assert!(seen[1].starts_with("/engine/shared/references/"));
+    assert_eq!(seen[0]["ref_audio_path"], "/engine/default.wav");
+    assert_ne!(seen[1]["ref_audio_path"], seen[2]["ref_audio_path"]);
+    assert!(
+        seen[1]["ref_audio_path"]
+            .as_str()
+            .unwrap()
+            .starts_with("/engine/shared/references/")
+    );
+    assert_eq!(seen[1]["prompt_lang"], "zh");
+    assert_eq!(seen[2]["prompt_lang"], "en");
+    // A reference voice's language must not reinterpret the target Chinese text as English.
+    assert_eq!(seen[1]["text_lang"], "auto");
+    assert_eq!(seen[2]["text_lang"], "auto");
     task.abort();
     std::fs::remove_dir_all(root).unwrap();
 }

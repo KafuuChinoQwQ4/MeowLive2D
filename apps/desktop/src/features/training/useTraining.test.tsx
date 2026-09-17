@@ -9,7 +9,7 @@ import { useTraining } from "./useTraining";
 const snapshot: TrainingSnapshot = { enabled: true, busy: false, jobs: [], versions: [] };
 const preset = { mode: "local", model: "small", local_only: true, verified: false, max_tokens: 512, timeout_seconds: 30, measurement: null, message: "未验证" };
 function setup() {
-  const client: TrainingClient = { snapshot: vi.fn().mockResolvedValue(snapshot), preset: vi.fn().mockResolvedValue(preset), create: vi.fn(), cancel: vi.fn(), save: vi.fn(), activate: vi.fn(), audition: vi.fn(), measure: vi.fn() };
+  const client: TrainingClient = { modelStatus: vi.fn().mockResolvedValue({ supported: true, state: "loaded", message: "模型已启用" }), setModelsEnabled: vi.fn(), snapshot: vi.fn().mockResolvedValue(snapshot), preset: vi.fn().mockResolvedValue(preset), transcribe: vi.fn(), create: vi.fn(), cancel: vi.fn(), delete: vi.fn(), save: vi.fn(), activate: vi.fn(), audition: vi.fn(), measure: vi.fn() };
   const resources = { getSnapshot: vi.fn().mockResolvedValue(resourceSnapshot()) } as unknown as ResourcesClient;
   return { client, resources };
 }
@@ -68,4 +68,30 @@ describe("训练状态独立轮询", () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
     expect(d.client.snapshot).toHaveBeenCalledTimes(calls);
   });
+});
+
+it("模型状态不可用或迟迟不返回，不阻塞任务查询和刷新", async () => {
+  vi.useFakeTimers(); const deps = setup();
+  vi.mocked(deps.client.modelStatus).mockRejectedValueOnce(new Error("TTS 未启动")).mockImplementation(() => new Promise(() => {}));
+  const { result } = renderHook(() => useTraining(deps.client, deps.resources));
+  await act(async () => {});
+  expect(result.current.snapshot).toEqual(snapshot);
+  expect(result.current.error).toBe("");
+  expect(result.current.modelRuntime?.state).toBe("unavailable");
+  await act(async () => { await result.current.refresh(); });
+  expect(result.current.pending).toBe(false);
+  expect(result.current.snapshot).toEqual(snapshot);
+});
+
+it("启停模型更新独立状态，迟到轮询不能覆盖，也不激活音色", async () => {
+  vi.useFakeTimers(); const deps = setup();
+  const old = deferred<{ supported: boolean; state: string; message: string }>();
+  vi.mocked(deps.client.modelStatus).mockReturnValueOnce(old.promise).mockResolvedValue({ supported: true, state: "loaded", message: "已启用" });
+  vi.mocked(deps.client.setModelsEnabled).mockResolvedValue({ supported: true, state: "loaded", message: "已启用" });
+  const { result } = renderHook(() => useTraining(deps.client, deps.resources));
+  await act(async () => { await result.current.setModelsEnabled(true); });
+  expect(result.current.modelRuntime?.state).toBe("loaded");
+  await act(async () => { old.resolve({ supported: true, state: "unloaded", message: "旧状态" }); });
+  expect(result.current.modelRuntime?.state).toBe("loaded");
+  expect(deps.client.activate).not.toHaveBeenCalled();
 });

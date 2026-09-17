@@ -24,7 +24,7 @@ describe("Agent 面板状态与控制", () => {
     expect(await screen.findByText("Agent 已暂停")).toBeVisible();
     expect(screen.getByText("LLM 未配置")).toBeVisible();
     expect(screen.getByText("桌面执行端未连接")).toBeVisible();
-    expect(screen.getByText(/本地主服务配置/)).toBeVisible();
+    expect(screen.getByRole("link", { name: "前往 LLM 接入" })).toHaveAttribute("href", "#llm");
     expect(screen.getByRole("button", { name: "恢复 Agent" })).toBeDisabled();
   });
 

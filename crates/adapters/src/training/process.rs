@@ -22,8 +22,10 @@ pub struct ProcessTrainingConfig {
     pub timeout: Duration,
 }
 pub struct ProcessTrainingEngine {
-    config: ProcessTrainingConfig,
-    engine_root: Option<PathBuf>,
+    pub(super) config: ProcessTrainingConfig,
+    pub(super) engine_root: Option<PathBuf>,
+    pub(super) transcription_root: Option<PathBuf>,
+    pub(super) asr_model: Option<PathBuf>,
 }
 impl ProcessTrainingEngine {
     pub fn new(config: ProcessTrainingConfig) -> Result<Self, TrainingError> {
@@ -41,10 +43,30 @@ impl ProcessTrainingEngine {
         Ok(Self {
             config,
             engine_root: None,
+            transcription_root: None,
+            asr_model: None,
         })
     }
 }
 impl ProcessTrainingEngine {
+    pub fn with_transcription(
+        mut self,
+        directory: PathBuf,
+        model: PathBuf,
+    ) -> Result<Self, TrainingError> {
+        if !directory.is_absolute() || (!model.as_os_str().is_empty() && !model.is_absolute()) {
+            return Err(TrainingError::Engine(
+                "自动提取文本的存储目录或模型路径无效".into(),
+            ));
+        }
+        let metadata = fs::symlink_metadata(&directory).map_err(|_| engine_error())?;
+        if !metadata.is_dir() || metadata.file_type().is_symlink() {
+            return Err(engine_error());
+        }
+        self.transcription_root = Some(fs::canonicalize(directory).map_err(|_| engine_error())?);
+        self.asr_model = (!model.as_os_str().is_empty()).then_some(model);
+        Ok(self)
+    }
     pub fn with_engine_root(mut self, root: PathBuf) -> Result<Self, TrainingError> {
         if !root.is_absolute() || !root.join("GPT_SoVITS/s2_train.py").is_file() {
             return Err(TrainingError::Engine("GPT-SoVITS 安装路径无效".into()));
@@ -54,6 +76,14 @@ impl ProcessTrainingEngine {
     }
 }
 impl TrainingEngine for ProcessTrainingEngine {
+    fn transcribe(
+        &self,
+        clip: &meowlive_domain::training::TrainingClip,
+        cancelled: &AtomicBool,
+    ) -> Result<String, TrainingError> {
+        super::transcription::run(self, clip, cancelled)
+    }
+
     fn run(
         &self,
         job: &PreparedTrainingJob,
@@ -74,6 +104,9 @@ impl TrainingEngine for ProcessTrainingEngine {
         let mut command = Command::new(&self.config.python);
         if let Some(root) = &self.engine_root {
             command.env("MEOWLIVE_GPT_SOVITS_ROOT", root);
+        }
+        if let Some(model) = &self.asr_model {
+            command.env("MEOWLIVE_ASR_MODEL", model);
         }
         command.env("PYTHONDONTWRITEBYTECODE", "1");
         command
@@ -102,6 +135,7 @@ impl TrainingEngine for ProcessTrainingEngine {
         let reader = thread::spawn(move || read_progress(stdout, sender));
         let start = Instant::now();
         let mut success = false;
+        let mut transcription_failed = false;
         let mut last_progress = None;
         let mut last_emit = Instant::now() - Duration::from_secs(1);
         let outcome = loop {
@@ -116,6 +150,10 @@ impl TrainingEngine for ProcessTrainingEngine {
                 let Ok(event) = receiver.try_recv() else {
                     break;
                 };
+                if event.state == "failed" && event.error.as_deref() == Some("transcription_failed")
+                {
+                    transcription_failed = true;
+                }
                 if event.state == "succeeded" {
                     success = true;
                 }
@@ -157,9 +195,17 @@ impl TrainingEngine for ProcessTrainingEngine {
         let _ = reader.join();
         let _ = log_reader.join();
         for event in receiver.try_iter() {
+            if event.state == "failed" && event.error.as_deref() == Some("transcription_failed") {
+                transcription_failed = true;
+            }
             if event.state == "succeeded" {
                 success = true;
             }
+        }
+        if transcription_failed && !matches!(outcome, Err(TrainingError::Cancelled)) {
+            return Err(TrainingError::Engine(
+                "自动提取文本失败，请检查本地识别模型或选中输入文本后手动填写".into(),
+            ));
         }
         outcome?;
         if !success {
@@ -175,6 +221,8 @@ impl TrainingEngine for ProcessTrainingEngine {
 #[derive(serde::Deserialize)]
 struct Event {
     state: String,
+    #[serde(default)]
+    error: Option<String>,
     #[serde(default)]
     progress: u8,
 }
@@ -206,12 +254,12 @@ fn read_progress(mut stdout: impl Read, sender: mpsc::SyncSender<Event>) {
         }
     }
 }
-struct OwnedChild {
-    child: Child,
-    cleaned: bool,
+pub(super) struct OwnedChild {
+    pub(super) child: Child,
+    pub(super) cleaned: bool,
 }
 impl OwnedChild {
-    fn cleanup(&mut self) {
+    pub(super) fn cleanup(&mut self) {
         if self.cleaned {
             return;
         }

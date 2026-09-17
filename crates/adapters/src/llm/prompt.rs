@@ -17,6 +17,11 @@ pub(super) struct ChatRequest {
     response_format: Option<ResponseFormat>,
 }
 
+pub(super) struct PromptParts {
+    pub system: String,
+    pub user: String,
+}
+
 #[derive(Serialize)]
 struct Message {
     role: &'static str,
@@ -32,6 +37,28 @@ pub(super) fn build_payload(
     request: &DecisionRequest,
     config: &ValidatedConfig,
 ) -> Result<ChatRequest, LlmError> {
+    let prompt = build_prompt(request)?;
+    Ok(ChatRequest {
+        model: config.model.clone(),
+        stream: false,
+        max_tokens: config.max_tokens,
+        messages: [
+            Message {
+                role: "system",
+                content: prompt.system,
+            },
+            Message {
+                role: "user",
+                content: prompt.user,
+            },
+        ],
+        response_format: config.json_mode.then_some(ResponseFormat {
+            r#type: "json_object",
+        }),
+    })
+}
+
+pub(super) fn build_prompt(request: &DecisionRequest) -> Result<PromptParts, LlmError> {
     validate_request(request)?;
     let events = request.events.iter().map(event_value).collect::<Vec<_>>();
     let user = json!({
@@ -42,23 +69,9 @@ pub(super) fn build_payload(
             "assistant": turn.assistant,
         })).collect::<Vec<_>>(),
     });
-    Ok(ChatRequest {
-        model: config.model.clone(),
-        stream: false,
-        max_tokens: config.max_tokens,
-        messages: [
-            Message {
-                role: "system",
-                content: system_prompt(&request.persona),
-            },
-            Message {
-                role: "user",
-                content: user.to_string(),
-            },
-        ],
-        response_format: config.json_mode.then_some(ResponseFormat {
-            r#type: "json_object",
-        }),
+    Ok(PromptParts {
+        system: system_prompt(&request.persona),
+        user: user.to_string(),
     })
 }
 

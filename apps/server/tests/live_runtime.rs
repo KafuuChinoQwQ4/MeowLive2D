@@ -153,6 +153,7 @@ impl ServerHarness {
             Some(Arc::new(model)),
             Some(Arc::new(source)),
         );
+        state.resources.select_voice("default").unwrap();
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let base_url = format!("http://{}", listener.local_addr().unwrap());
         let app = router(state.clone());

@@ -14,4 +14,4 @@ agent_support/  # Agent 服务集成测试公共夹具
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 1e02847bdb0e7b5fd449a7cac363bb778488a11da053c4ba066feccb56e4c81e -->
+<!-- directory-tree-sha256: 0f77c06379c59e9f255cac3d890cb5114247641c887020d0ba38023e22e05a43 -->

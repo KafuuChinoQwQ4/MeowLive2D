@@ -35,7 +35,13 @@ impl OpenAiCompatible {
             .header(header::ACCEPT, "application/json")
             .json(&payload);
         if let Some(api_key) = &self.config.api_key {
-            builder = builder.header(header::AUTHORIZATION, api_key);
+            let value = format!(
+                "Bearer {}",
+                api_key
+                    .to_str()
+                    .map_err(|_| LlmError::new("LLM API key is invalid", false))?
+            );
+            builder = builder.header(header::AUTHORIZATION, value);
         }
         let mut response = builder.send().await.map_err(transport_error)?;
         let status = response.status();

@@ -4,4 +4,5 @@ mod config;
 mod prompt;
 mod response;
 
+pub mod multi_provider;
 pub mod openai_compatible;

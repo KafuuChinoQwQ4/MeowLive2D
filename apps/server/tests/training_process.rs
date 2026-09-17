@@ -47,12 +47,25 @@ impl Fixture {
             r#"#!/usr/bin/python3
 import sys,json,os,time,subprocess,hashlib
 from pathlib import Path
+if '--audio' in sys.argv:
+    audio=Path(sys.argv[sys.argv.index('--audio')+1])
+    assert audio.is_file() and audio.parent.name.startswith('.transcribe-')
+    assert audio.parent.parent.name=='training'
+    language=sys.argv[sys.argv.index('--language')+1]
+    if language=='en': sys.exit(1)
+    print(json.dumps({'text':'已自动识别，可继续校对。','language':language}),flush=True)
+    sys.exit(0)
 jobfile=Path(sys.argv[sys.argv.index('--job')+1])
 job=json.loads(jobfile.read_text())
 root=jobfile.parent
 assert Path.cwd()==root
 assert os.environ['MEOWLIVE_GPT_SOVITS_ROOT']
 assert len(job['clips'])==2 and job['fp16'] is True
+if job['name']=='audio-only':
+    assert job['text_mode']=='audio_only' and all(c['text']=='' for c in job['clips'])
+    (root/'automatic-transcription-requested.json').write_text(json.dumps(job['clips']))
+else:
+    assert job['text_mode']=='reviewed_text' and all(c['text'] for c in job['clips'])
 if job['name'].startswith('wait'):
     child=subprocess.Popen(['/usr/bin/python3','-c','import time;time.sleep(60)'])
     (root/'owned-pids.json').write_text(json.dumps([os.getpid(),child.pid]))
@@ -517,5 +530,72 @@ async fn real_binary_rejects_partial_pair_and_recovers_crashed_job_as_interrupte
     assert_eq!(recovered["versions"], json!([]));
     let next = f.train(&voice, "complete-after-restart").await;
     f.wait_state(&next, "completed").await;
+    f.terminate().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn real_binary_audio_only_upload_reaches_runner_and_transcription_preview_is_bounded() {
+    let mut f = Fixture::new().await;
+    let voice = f.voice().await;
+    let input = json!({"name":"audio-only", "voice_id":voice, "sovits_epochs":1, "gpt_epochs":1,
+        "reviewed":false, "text_mode":"audio_only", "clips":[{"language":"zh"},{"language":"zh"}]});
+    for bad in [
+        {
+            let mut value = input.clone();
+            value["text_mode"] = "reviewed_text".into();
+            value["reviewed"] = true.into();
+            value
+        },
+        {
+            let mut value = input.clone();
+            value["clips"][0]["text"] = "unexpected manual text".into();
+            value
+        },
+        {
+            let mut value = input.clone();
+            value.as_object_mut().unwrap().remove("text_mode");
+            value
+        },
+    ] {
+        let (code, body) = f.upload("/api/training/jobs", bad, 2).await;
+        assert_eq!(code, 400, "{body}");
+    }
+    assert!(f.snapshot().await["jobs"].as_array().unwrap().is_empty());
+    let (code, body) = f.upload("/api/training/jobs", input, 2).await;
+    assert_eq!(code, 202, "{body}");
+    let id = body["id"].as_str().unwrap();
+    f.wait_state(id, "completed").await;
+    let directory = f.root.join("training/jobs").join(id);
+    let manifest: Value =
+        serde_json::from_slice(&fs::read(directory.join("job.json")).unwrap()).unwrap();
+    assert_eq!(manifest["text_mode"], "audio_only");
+    assert_eq!(manifest["clips"][0]["text"], "");
+    assert_eq!(manifest["clips"][1]["text"], "");
+    assert!(
+        directory
+            .join("automatic-transcription-requested.json")
+            .exists()
+    );
+    let (code, body) = f
+        .upload("/api/training/transcribe", json!({"language":"zh"}), 1)
+        .await;
+    assert_eq!(code, 200, "{body}");
+    assert_eq!(
+        body,
+        json!({"text":"已自动识别，可继续校对。", "language":"zh"})
+    );
+    let (code, body) = f
+        .upload("/api/training/transcribe", json!({"language":"en"}), 1)
+        .await;
+    assert_eq!(code, 500, "{body}");
+    assert!(body["message"].as_str().unwrap().contains("手动填写"));
+    assert!(!f.snapshot().await["busy"].as_bool().unwrap());
+    assert!(fs::read_dir(f.root.join("training")).unwrap().all(|entry| {
+        !entry
+            .unwrap()
+            .file_name()
+            .to_string_lossy()
+            .starts_with(".transcribe-")
+    }));
     f.terminate().await;
 }

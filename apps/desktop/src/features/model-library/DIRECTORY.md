@@ -16,4 +16,4 @@ model-library/  # 环境检查、本地语音模型选择与官方模型下载�
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 060436613628e83da19e66e98344bcc8984434b2822bbd72b10c090d49f9f353 -->
+<!-- directory-tree-sha256: 62dfd38ee8712c7183fa4852699a4c299ce7d7f3ba8dbef03f972dc428adc9af -->

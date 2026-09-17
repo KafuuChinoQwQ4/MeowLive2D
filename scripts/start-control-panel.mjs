@@ -8,6 +8,7 @@ import { createLauncherMiddleware } from './launcher/http.mjs';
 import { ModelLibrary } from './launcher/model-library.mjs';
 import { closeModelConnections } from './launcher/model-download.mjs';
 import { WindowsClientSupervisor, managedServices } from './launcher/windows-client.mjs';
+import { installShutdownHandlers } from './launcher/shutdown.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const args = process.argv.slice(2);
@@ -32,8 +33,7 @@ async function shutdown() {
   await cleanup();
   await vite?.close();
 }
-process.once('SIGINT', () => void shutdown());
-process.once('SIGTERM', () => void shutdown());
+installShutdownHandlers(shutdown);
 try {
   vite = await createServer({
     root: join(root, 'apps/desktop'), configFile: join(root, 'apps/desktop/vite.config.ts'),

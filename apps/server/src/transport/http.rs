@@ -23,18 +23,33 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/api/status", get(status))
         .route(
+            "/api/llm/settings",
+            get(super::llm::settings).post(super::llm::save),
+        )
+        .route("/api/llm/test", post(super::llm::test))
+        .route(
             "/api/obs",
             get(super::obs::status).post(super::obs::control),
         )
         .route("/api/training", get(super::training::status))
         .route(
+            "/api/training/models",
+            get(super::training_models::status).post(super::training_models::control),
+        )
+        .route(
             "/api/training/jobs",
             post(super::training::create)
                 .layer(DefaultBodyLimit::max(32 * 1024 * 1024 + 128 * 1024)),
         )
+        .route(
+            "/api/training/transcribe",
+            post(super::training::transcribe)
+                .layer(DefaultBodyLimit::max(2 * 1024 * 1024 + 16 * 1024)),
+        )
         .route("/api/training/cancel", post(super::training::cancel))
         .route("/api/training/activate", post(super::training::activate))
         .route("/api/training/save", post(super::training::save))
+        .route("/api/training/delete", post(super::training::delete))
         .route("/api/training/audition", post(super::training::audition))
         .route("/api/runtime/preset", get(super::runtime::status))
         .route("/api/runtime/measure", post(super::runtime::measure))
@@ -45,6 +60,11 @@ pub fn router(state: AppState) -> Router {
                 .layer(DefaultBodyLimit::max(2 * 1024 * 1024 + 32 * 1024)),
         )
         .route("/api/voices/select", post(super::resources::select_voice))
+        .route("/api/voices/delete", post(super::resources::delete_voice))
+        .route(
+            "/api/characters/delete",
+            post(super::resources::delete_character),
+        )
         .route(
             "/api/characters/save",
             post(super::resources::save_character),
@@ -106,6 +126,14 @@ async fn speak(
         .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, "invalid_text", e.to_string()))?;
     VoiceId::new(&request.voice_id)
         .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, "invalid_voice", e.to_string()))?;
+    // Keep resolution and queue admission in the same resource edit fence.
+    let _edit = state.resource_edits.clone().try_lock_owned().map_err(|_| {
+        ApiError::new(
+            StatusCode::CONFLICT,
+            "resource_busy",
+            "资源正在更新，请稍后播报",
+        )
+    })?;
     let resources = state.resources.clone();
     let voice_id = tokio::task::spawn_blocking(move || {
         let selected = if request.voice_id == "active" {
@@ -127,7 +155,7 @@ async fn speak(
         ApiError::new(
             StatusCode::BAD_REQUEST,
             "unknown_voice",
-            "音色不存在或参考音频缺失，请检查音色资源",
+            "尚未选择可用音色，请先导入参考声音并选择使用",
         )
     })?;
     let mut inner = state.inner.lock().await;

@@ -50,6 +50,16 @@ api_key_env="MEOWLIVE_TEST_MODEL_KEY"
     ))
     .await;
     let client = reqwest::Client::new();
+    assert!(
+        client
+            .post(format!("{}/api/voices/select", process.base))
+            .json(&json!({"id":"default"}))
+            .send()
+            .await
+            .unwrap()
+            .status()
+            .is_success()
+    );
     let config = ClientConfig {
         server_url: process.base.clone(),
         ..ClientConfig::default()

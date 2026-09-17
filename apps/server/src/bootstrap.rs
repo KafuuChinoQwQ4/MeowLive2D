@@ -7,7 +7,7 @@ use crate::{
     transport::http::router,
     worker::run_worker,
 };
-use meowlive_adapters::llm::openai_compatible::{LlmConfig as AdapterConfig, OpenAiCompatible};
+use meowlive_adapters::llm::multi_provider::{LlmConfig as AdapterConfig, MultiProvider};
 use meowlive_adapters::speech::gpt_sovits::{GptSovits, GptSovitsConfig};
 use meowlive_application::ports::llm::LanguageModel;
 use meowlive_application::ports::speech::{
@@ -32,7 +32,22 @@ pub async fn run(config_path: &Path) -> Result<(), String> {
     config.training.resolve(config_path)?;
     let training = build_training(&config.training)?;
     let resources = build_resources(&config.resources)?;
-    let model = build_model(&config.llm)?;
+    if config.speech.reference_audio.trim().is_empty()
+        && resources.snapshot().active_voice_id == "default"
+    {
+        resources
+            .clear_voice_selection_if_current("default")
+            .map_err(|error| error.to_string())?;
+    }
+    let model = match build_model(&config.llm) {
+        Ok(model) => model,
+        Err(_) => {
+            eprintln!(
+                "LLM 尚未就绪；请在控制面板的 LLM 接入页检查配置、测试并保存，再重启主服务。"
+            );
+            None
+        }
+    };
     let live_source = build_live_source(&config.live)?;
     let speech = &config.speech;
     let synthesizer: Arc<dyn SpeechSynthesizer> = if speech.reference_audio.trim().is_empty() {
@@ -99,6 +114,10 @@ pub async fn run(config_path: &Path) -> Result<(), String> {
         listener.local_addr().map_err(|e| e.to_string())?
     );
     let mut state = AppState::with_services(config, synthesizer, model, live_source);
+    state.llm_settings = Arc::new(crate::llm_settings::LlmSettingsStore::new(
+        state.config.llm.clone(),
+        Some(crate::llm_settings::settings_path(config_path)),
+    ));
     state.resources = resources;
     state.training = training;
     state.model_synthesizer = model_synthesizer;
@@ -136,7 +155,9 @@ pub fn build_model(config: &LlmConfig) -> Result<Option<Arc<dyn LanguageModel>>,
     if !config.is_configured() {
         return Ok(None);
     }
-    let api_key = if config.api_key_env.is_empty() {
+    let api_key = if let Some(key) = &config.api_key {
+        Some(key.clone())
+    } else if config.api_key_env.is_empty() {
         None
     } else {
         let key =
@@ -146,15 +167,18 @@ pub fn build_model(config: &LlmConfig) -> Result<Option<Arc<dyn LanguageModel>>,
         }
         Some(key)
     };
-    let model = OpenAiCompatible::new(AdapterConfig {
-        base_url: config.base_url.clone(),
-        model: config.model.clone(),
-        api_key,
-        timeout: Duration::from_secs(config.timeout_seconds),
-        max_response_bytes: config.max_response_bytes,
-        max_tokens: config.max_tokens,
-        json_mode: config.json_mode,
-    })
+    let model = MultiProvider::new(
+        AdapterConfig {
+            base_url: config.base_url.clone(),
+            model: config.model.clone(),
+            api_key,
+            timeout: Duration::from_secs(config.timeout_seconds),
+            max_response_bytes: config.max_response_bytes,
+            max_tokens: config.max_tokens,
+            json_mode: config.json_mode,
+        },
+        config.api_format.parse().map_err(|_| "LLM API 格式无效")?,
+    )
     .map_err(|error| error.message)?;
     Ok(Some(Arc::new(model)))
 }
@@ -201,6 +225,9 @@ pub fn build_training(
         timeout: Duration::from_secs(config.timeout_seconds),
     })
     .and_then(|engine| engine.with_engine_root(config.engine_root.clone()))
+    .and_then(|engine| {
+        engine.with_transcription(config.directory.clone(), config.asr_model.clone())
+    })
     .map_err(|e| e.to_string())?;
     TrainingManager::open(Arc::new(store), Arc::new(engine))
         .map(Arc::new)

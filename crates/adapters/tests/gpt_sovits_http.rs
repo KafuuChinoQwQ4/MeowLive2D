@@ -50,3 +50,24 @@ async fn rejects_engine_failure_without_exposing_body() {
     assert!(!error.message.contains("secret"));
     task.abort();
 }
+
+#[tokio::test]
+async fn rejects_silent_synthesis_instead_of_reporting_successful_playback() {
+    let (url, task) =
+        http::engine(Router::new().route("/tts", post(|| async { support::wav(&[0; 8000], 1) })))
+            .await;
+    let mut config = http::config(url);
+    config.max_audio_bytes = 32 * 1024;
+    let result = GptSovits::new(config)
+        .unwrap()
+        .synthesize(http::request())
+        .await;
+    assert!(
+        result.is_err(),
+        "silent synthesis must not be delivered as successful audio"
+    );
+    let error = result.unwrap_err();
+    assert!(error.message.contains("静音"));
+    assert!(error.message.contains("参考文本"));
+    task.abort();
+}

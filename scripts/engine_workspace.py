@@ -1,6 +1,7 @@
 """Project-owned GPT-SoVITS code mirror; no upstream cwd/cache/config writes."""
 from pathlib import Path
 import os
+import re
 import shutil
 import sys
 import sysconfig
@@ -79,7 +80,11 @@ def workspace(engine, destination, models_root=None):
     return destination
 
 
-def environment(work, models):
+def environment(work, models, performance=None):
+    performance = performance or {
+        "cpu_threads": 2,
+        "gpu_index": 0,
+    }
     env = {key: value for key, value in os.environ.items() if key in {
         "PATH", "LANG", "LC_ALL", "LD_LIBRARY_PATH", "SYSTEMROOT", "WINDIR", "HOME", "USERPROFILE",
         "CUDA_HOME", "CUDA_PATH", "SSL_CERT_FILE", "REQUESTS_CA_BUNDLE"
@@ -94,13 +99,17 @@ def environment(work, models):
     env.update(PYTHONPATH=os.pathsep.join([str(work), str(work / "GPT_SoVITS")]),
                PYTHONDONTWRITEBYTECODE="1", PYTHONUNBUFFERED="1", HF_HUB_OFFLINE="1",
                TRANSFORMERS_OFFLINE="1", HF_DATASETS_OFFLINE="1", TOKENIZERS_PARALLELISM="false",
-               CUDA_VISIBLE_DEVICES="0", _CUDA_VISIBLE_DEVICES="0", OMP_NUM_THREADS="2",
+               CUDA_VISIBLE_DEVICES=str(performance["gpu_index"]),
+               _CUDA_VISIBLE_DEVICES=str(performance["gpu_index"]),
+               OMP_NUM_THREADS=str(performance["cpu_threads"]),
                version="v2", hz="25hz", bert_path=str(models["bert"]), GRADIO_ANALYTICS_ENABLED="False")
     return env
 
 
-def configure_low_memory(work):
+def configure_low_memory(work, enabled=True):
     """Change only optimizer implementation in the owned copy; upstream stays read-only."""
+    if not enabled:
+        return
     path = work / "GPT_SoVITS/s2_train.py"
     original = path.read_text()
     marker = "        eps=hps.train.eps,\n"
@@ -110,3 +119,57 @@ def configure_low_memory(work):
     if original.count(marker) != 2:
         raise ValueError("上游优化器入口已变化，请检查训练兼容性")
     path.write_text(original.replace(marker, replacement))
+
+
+def configure_training_loaders(work):
+    """Make both upstream training loaders honor bounded job-owned settings."""
+    sovits = work / "GPT_SoVITS/s2_train.py"
+    code = sovits.read_text()
+    markers = [
+        ("        num_workers=5,\n", "        num_workers=hps.data.num_workers,\n"),
+        ("        persistent_workers=True,\n        prefetch_factor=3,\n",
+         "        persistent_workers=hps.data.persistent_workers,\n        prefetch_factor=hps.data.prefetch_factor,\n"),
+    ]
+    for original, replacement in markers:
+        if replacement in code:
+            continue
+        if code.count(original) != 1:
+            raise ValueError("上游 SoVITS 数据加载入口已变化，请检查训练兼容性")
+        code = code.replace(original, replacement)
+    sovits.write_text(code)
+
+    gpt = work / "GPT_SoVITS/AR/data/data_module.py"
+    code = gpt.read_text()
+    original = ("            num_workers=self.num_workers,\n"
+                "            persistent_workers=True,\n"
+                "            prefetch_factor=16,\n")
+    replacement = ("            num_workers=self.num_workers,\n"
+                   "            persistent_workers=self.config[\"data\"][\"persistent_workers\"],\n"
+                   "            prefetch_factor=self.config[\"data\"][\"prefetch_factor\"],\n")
+    if replacement not in code:
+        if code.count(original) != 1:
+            raise ValueError("上游 GPT 数据加载入口已变化，请检查训练兼容性")
+        code = code.replace(original, replacement)
+    validation_original = ("            num_workers=max(self.num_workers, 12),\n"
+                           "            persistent_workers=True,\n"
+                           "            prefetch_factor=16,\n")
+    validation_replacement = ("            num_workers=self.num_workers,\n"
+                              "            persistent_workers=self.config[\"data\"][\"persistent_workers\"],\n"
+                              "            prefetch_factor=self.config[\"data\"][\"prefetch_factor\"],\n")
+    if validation_original in code:
+        code = code.replace(validation_original, validation_replacement)
+    gpt.write_text(code)
+
+
+def configure_inference_memory(work, mode):
+    """Select the upstream pypinyin fallback only in our owned inference copy."""
+    if mode not in {"low", "standard"}:
+        raise ValueError("未知推理内存模式")
+    path = work / "GPT_SoVITS/text/chinese2.py"
+    original = path.read_text()
+    updated, count = re.subn(r"(?m)^is_g2pw = (?:True|False)(?=\s*(?:#|$))",
+                             "is_g2pw = " + str(mode == "standard"), original)
+    if count != 1:
+        raise ValueError("上游中文推理入口已变化，无法应用内存模式；请检查引擎兼容性")
+    if updated != original:
+        path.write_text(updated)

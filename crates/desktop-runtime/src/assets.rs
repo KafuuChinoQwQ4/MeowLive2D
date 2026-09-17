@@ -3,6 +3,6 @@
 mod model;
 
 pub use model::{
-    AssetError, InstalledModel, ModelImportLimits, ValidatedModelPackage, install_model_package,
-    validate_model_package,
+    AssetError, ImportedModel, InstalledModel, ModelImportLimits, ValidatedModelPackage,
+    delete_imported_model, install_model_package, list_imported_models, validate_model_package,
 };

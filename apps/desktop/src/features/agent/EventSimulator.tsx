@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import type { EventBatchRequest, EventBatchResult, LiveEventInput } from "@meowlive/contracts";
+import { useFeedback } from "../../app/feedback/OperationFeedback";
 
 type EventMode = "chat" | "gift";
 
@@ -49,6 +50,7 @@ export function EventSimulator({ disabled, onSubmit }: {
   disabled: boolean;
   onSubmit: (batch: EventBatchRequest) => Promise<EventBatchResult | null>;
 }) {
+  const notices = useFeedback();
   const [mode, setMode] = useState<EventMode>("chat");
   const [viewer, setViewer] = useState("");
   const [chatText, setChatText] = useState("");
@@ -68,6 +70,7 @@ export function EventSimulator({ disabled, onSubmit }: {
     if (mode === "gift" && !positiveUint32(count)) error = "礼物数量必须是正整数。";
     if (error) {
       setValidationError(error);
+      notices.error("模拟事件检查失败", error);
       return;
     }
     setValidationError(null);
@@ -87,6 +90,7 @@ export function EventSimulator({ disabled, onSubmit }: {
     const decoded = readReplay(replay);
     if (!decoded.events) {
       setValidationError(decoded.error ?? "回放内容无效。");
+      notices.error("事件回放检查失败", decoded.error ?? "回放内容无效。");
       return;
     }
     setValidationError(null);

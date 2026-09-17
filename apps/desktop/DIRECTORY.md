@@ -8,26 +8,33 @@ React 控制面板及 Windows 桌面外壳
 desktop/  # React 控制面板及 Windows 桌面外壳
 ├── src/  # 按应用组装、业务功能、外部服务和公共能力组织的前端源码
 │   ├── app/  # React 根页面组装与全局样式
+│   │   ├── feedback/  # 全局操作结果弹窗、去重与面板反馈回归测试
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   ├── OperationFeedback.test.tsx  # 结果队列、焦点恢复、后台故障去重及启动状态回归测试
+│   │   │   ├── OperationFeedback.tsx  # 全局操作结果队列、错误去重、无障碍弹窗与焦点恢复
+│   │   │   ├── PanelFeedback.test.tsx  # 各控制面板操作结果、业务失败、异步状态与输入校验弹窗测试
+│   │   │   └── feedback.css  # 全局结果弹窗的醒目配色、遮罩与响应式样式
 │   │   ├── resources/  # 角色与音色功能的页面组装和共享状态
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   ├── ResourcesPanel.lifecycle.test.tsx  # 资源读取与操作的卸载取消测试
+│   │   │   ├── ResourcesPanel.preview.test.tsx  # 音色试听状态跟踪、执行端断线、失败与重试的前端回归测试
 │   │   │   ├── ResourcesPanel.regressions.test.tsx  # 当前角色重新加载与安装成功后刷新失败回归
 │   │   │   ├── ResourcesPanel.tsx  # 组装角色与音色面板并显示资源操作状态
 │   │   │   ├── index.ts  # 资源管理页面公共入口
-│   │   │   └── useResourcesController.ts  # 资源快照与桌面操作的共享控制器
+│   │   │   └── useResourcesController.ts  # 角色音色快照、资源删除及桌面模型管理共享控制器
 │   │   ├── App.desktop.test.tsx  # 原生桌面地址初始化、导航功能请求地址与失败回归
 │   │   ├── App.launcher.test.tsx  # 服务启停后的业务门控、环境页面常驻访问与模型检索草稿保留测试
 │   │   ├── App.navigation.test.tsx  # 切页保留在途播报、历史深链接与未知页面回退的集成测试
 │   │   ├── App.test.tsx  # 导航功能显隐、草稿保留与当前页标识的集成测试
 │   │   ├── App.tsx  # 组装客户端与原生配置，选择受管或手动模式的导航控制台
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   ├── ManagedWorkspace.tsx  # 共享启动管理状态、模型操作会话及业务就绪门控的工作区
+│   │   ├── ManagedWorkspace.tsx  # 受管服务状态、模型启用提示与功能工作区集成
 │   │   ├── Workspace.tsx  # 固定侧栏、始终可访问的环境页面、快捷入口与稳定挂载的导航布局
 │   │   ├── WorkspaceIcon.tsx  # 控制台导航、品牌猫形与快捷操作的代码内 SVG 图标
 │   │   ├── navigation.ts  # 控制台功能导航、分组、页面说明与 URL fragment 映射
 │   │   ├── styles.css  # 控制台公共样式、响应式布局与服务滑动开关样式
 │   │   ├── useWorkspaceNavigation.ts  # 页面选择、访问记录与浏览器前进后退同步
-│   │   └── workspace.css  # 粉色亚克力导航工作区、圆角下拉与文件选择控件、半透明卡片阴影和环境模型页面的响应式样式
+│   │   └── workspace.css  # 工作区布局、模型库与训练页签分页及结果弹窗样式
 │   ├── features/  # 面向用户的功能模块，各自封装组件与状态
 │   │   ├── agent/  # Agent 人设、话题和互动策略设置
 │   │   │   ├── AgentPanel.test.tsx  # Agent 状态控制、错误呈现、轮询竞态与取消清理测试
@@ -43,11 +50,11 @@ desktop/  # React 控制面板及 Windows 桌面外壳
 │   │   │   ├── index.ts  # Agent 自动互动面板的功能出口
 │   │   │   └── useAgentController.ts  # 修订号防回滚及卸载取消的串行 Agent 轮询与动作控制器
 │   │   ├── characters/  # 角色模型选择、导入与动作映射界面
-│   │   │   ├── CharacterPanel.test.tsx  # 角色导入、保存、加载与能力预览交互测试
-│   │   │   ├── CharacterPanel.tsx  # 角色模型、音色、口型与热键映射管理界面
+│   │   │   ├── CharacterPanel.test.tsx  # 角色与安装模型删除确认、导入保存加载及能力预览交互测试
+│   │   │   ├── CharacterPanel.tsx  # 角色配置及安装模型增删、音色绑定、口型和热键管理界面
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   ├── index.ts  # 角色管理：VTS 模型选择、表情动作映射及导入操作的界面。
-│   │   │   └── types.ts  # 角色面板需要的状态与操作接口
+│   │   │   └── types.ts  # 角色档案与本机模型增删管理界面的状态和能力契约
 │   │   ├── connections/  # 直播平台连接状态、事件计数和人工连接控制
 │   │   │   ├── ConnectionPanel.test.tsx  # 直播连接面板状态展示、按钮规则与错误交互测试
 │   │   │   ├── ConnectionPanel.tsx  # 直播平台连接状态、事件统计与手动连接控制面板
@@ -70,6 +77,11 @@ desktop/  # React 控制面板及 Windows 桌面外壳
 │   │   │   ├── index.ts  # 直播工作台：会话状态、弹幕观察、播放状态与人工控制。
 │   │   │   ├── polling.test.tsx  # 状态刷新、取消清理与迟到响应场景测试
 │   │   │   └── useSpeechController.ts  # 可取消的串行状态刷新与播报操作状态
+│   │   ├── llm/  # LLM 接入配置功能
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   ├── LlmPanel.test.tsx  # LLM 面板草稿、密钥与生命周期测试
+│   │   │   ├── LlmPanel.tsx  # LLM 服务商、协议、模型、密钥与连接测试面板
+│   │   │   └── index.ts  # LLM 功能公共入口
 │   │   ├── model-library/  # 环境检查、本地语音模型选择与官方模型下载管理界面
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   ├── ModelLibraryPanel.test.tsx  # 环境门控、模型选择、分页检索、会话失效和下载取消交互测试
@@ -80,24 +92,35 @@ desktop/  # React 控制面板及 Windows 桌面外壳
 │   │   │   ├── ObsPanel.test.tsx  # OBS 显式控制、状态读回和失败后禁用操作的组件测试
 │   │   │   ├── ObsPanel.tsx  # OBS 状态刷新、场景选择和人工录制控制界面
 │   │   │   └── index.ts  # OBS 功能模块的公开组件出口
-│   │   ├── training/  # 音色训练素材审核、任务版本和离线测量界面
+│   │   ├── training/  # 仅音频与可选文本训练、转写校对、任务版本和离线测量界面
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   │   ├── TrainingPanel.saved.test.tsx  # 音色保存、重开复用、跨音色版本切换和失败重试交互回归测试
-│   │   │   ├── TrainingPanel.test.tsx  # 训练提交审核、任务取消、试听确认和音频释放交互测试
-│   │   │   ├── TrainingPanel.tsx  # 训练素材审核、任务取消、版本试听保存、音色选择切换及离线预设面板
+│   │   │   ├── TrainingPanel.audio.test.tsx  # 训练片段多格式转换上传、异步重选、容量与导入失败回归测试
+│   │   │   ├── TrainingPanel.feedback.test.tsx  # 验证 GPU 失败提示、训练与测量结果弹窗、终态竞态去重及过期请求隔离
+│   │   │   ├── TrainingPanel.saved.test.tsx  # 音色保存重开切换、删除确认及清理失败重试交互测试
+│   │   │   ├── TrainingPanel.test.tsx  # 训练配置独立选择、服务忙碌时编辑、提交审核与试听取消交互测试
+│   │   │   ├── TrainingPanel.transcription.test.tsx  # 训练声音与文本模式、空白转写汇总弹窗、审核及过期请求回归测试
+│   │   │   ├── TrainingPanel.tsx  # 训练性能设置、记录分页、音色版本、模型开关及结果弹窗工作区
+│   │   │   ├── TrainingPanel.workspace.test.tsx  # 训练页签与素材分页、音色归组、性能参数及独立模型启停测试
+│   │   │   ├── TrainingResultDialog.tsx  # 训练成功失败结果弹窗、建议提示及键盘焦点恢复
+│   │   │   ├── TrainingVoiceLibrary.tsx  # 按参考音色归组的训练音色库、版本选择与单版本操作
 │   │   │   ├── index.ts  # 训练面板公开组件导出
+│   │   │   ├── trainingFeedback.ts  # 训练操作结果、任务终态通知及失败原因对应的改正建议
 │   │   │   ├── useTraining.test.tsx  # 训练轮询独立更新、故障恢复与取消迟到结果测试
-│   │   │   └── useTraining.ts  # 训练资源预设独立轮询、音色保存切换及取消生命周期
+│   │   │   └── useTraining.ts  # 训练资源与模型状态轮询、操作反馈、终态通知及异步取消保护
 │   │   ├── voices/  # 参考素材、音色试听和训练任务界面
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   │   ├── VoicePanel.test.tsx  # 音色上传、选择、试听与缺失资源交互测试
-│   │   │   ├── VoicePanel.tsx  # 音色列表、参考音频上传校验、试听及已保存训练音色入口
+│   │   │   ├── VoicePanel.test.tsx  # 多格式音色上传选择试听、删除确认失败及空状态交互测试
+│   │   │   ├── VoicePanel.tsx  # 音色导入校验、选择试听和删除管理及训练音色入口
 │   │   │   ├── index.ts  # 音色管理：参考素材、试听与训练任务展示；不在浏览器执行模型推理。
-│   │   │   ├── types.ts  # 音色面板需要的状态与操作接口
-│   │   │   ├── wav.test.ts  # 参考音频格式、时长、容量与静音边界测试
-│   │   │   └── wav.ts  # 浏览器端参考 PCM16 WAV 结构与有效性校验
+│   │   │   └── types.ts  # 音色列表选择试听、上传删除及文件清理重试能力契约
 │   │   └── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   ├── services/  # 前端访问主服务、Linux 启动管理与 Windows 桌面能力的统一边界
+│   │   ├── audio/  # 参考音频与训练片段的浏览器解码、格式转换和音频校验
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   ├── index.test.ts  # 多格式音频转换、PCM 编码、文件大小、时长与解码失败测试
+│   │   │   ├── index.ts  # MP3 等多格式音频导入、离线解码与兼容 PCM16 WAV 转换
+│   │   │   ├── wav.test.ts  # 参考与训练音频的 WAV 格式、时长、容量与静音边界测试
+│   │   │   └── wav.ts  # 参考音频与训练片段的 PCM16 WAV 结构及有效性校验
 │   │   ├── desktop/  # Tauri 命令客户端与桌面能力边界
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   ├── index.test.ts  # 桌面 IPC 状态校验、来源约束和超时回归测试
@@ -121,15 +144,17 @@ desktop/  # React 控制面板及 Windows 桌面外壳
 │   │   │   ├── live.failures.test.ts  # 直播快照边界、HTTP 错误、网络失败、超时及取消测试
 │   │   │   ├── live.requests.test.ts  # 直播连接查询、连接及断开请求契约测试
 │   │   │   ├── live.ts  # 直播连接 HTTP 客户端、超时取消与运行时快照校验
+│   │   │   ├── llm.test.ts  # LLM 客户端路由、校验、错误与超时测试
+│   │   │   ├── llm.ts  # LLM 设置与连接测试 HTTP 客户端及响应校验
 │   │   │   ├── obs.test.ts  # OBS HTTP 响应校验、失败和超时且不重放控制请求的测试
 │   │   │   ├── obs.ts  # OBS 主服务请求、超时处理和状态契约校验
 │   │   │   ├── requests.test.ts  # HTTP 请求与成功响应测试
 │   │   │   ├── resources.failures.test.ts  # 资源响应边界、请求失败、超时与取消测试
-│   │   │   ├── resources.requests.test.ts  # 资源接口路径、JSON 与音频上传负载测试
+│   │   │   ├── resources.requests.test.ts  # 资源增删接口负载、空绑定及安装模型响应关联测试
 │   │   │   ├── resources.ts  # 资源 HTTP 与桌面操作客户端及运行时响应校验
 │   │   │   ├── responses.ts  # 生成契约的运行时响应校验与错误映射
-│   │   │   ├── training.test.ts  # 训练契约、音色保存请求、测量证据、超时取消及试听响应测试
-│   │   │   └── training.ts  # 训练音色保存与运行预设 HTTP 客户端、严格响应校验和取消超时
+│   │   │   ├── training.test.ts  # 训练与转写契约、请求校验、保存删除及取消超时测试
+│   │   │   └── training.ts  # 训练性能、任务版本、模型启停与离线测量客户端及响应校验
 │   │   └── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   ├── shared/  # 跨功能复用且不持有业务流程的前端能力
 │   │   ├── lib/  # 与业务状态无关的公共纯函数
@@ -190,4 +215,4 @@ desktop/  # React 控制面板及 Windows 桌面外壳
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: ce159847329d009596ce7b10b50c84555bc9d6cca5b272e00be99d675f946899 -->
+<!-- directory-tree-sha256: ef961d1c95f1341615be28c262535f08088b4bce10601530cb4f215ff409a5bf -->

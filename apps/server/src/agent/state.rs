@@ -93,7 +93,7 @@ impl AppState {
             return Err(ApiError::new(
                 StatusCode::CONFLICT,
                 "llm_unconfigured",
-                "请在主服务配置 LLM 地址、模型和密钥环境变量后重启",
+                "请在 LLM 接入页配置接口、模型和密钥，保存后重启主服务",
             ));
         }
         if !inner.queue.is_connected() {

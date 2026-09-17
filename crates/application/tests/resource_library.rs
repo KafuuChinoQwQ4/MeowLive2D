@@ -15,6 +15,7 @@ struct TestStore {
     fail_save: Mutex<bool>,
     removed: Mutex<Vec<String>>,
     stored: Mutex<usize>,
+    fail_remove: Mutex<bool>,
 }
 
 impl ResourceStore for TestStore {
@@ -43,6 +44,9 @@ impl ResourceStore for TestStore {
         })
     }
     fn remove_reference(&self, reference: &ReferenceAsset) -> Result<(), ResourceStoreError> {
+        if *self.fail_remove.lock().unwrap() {
+            return Err(ResourceStoreError::new("cleanup failed"));
+        }
         self.removed.lock().unwrap().push(reference.as_str().into());
         Ok(())
     }
@@ -143,4 +147,85 @@ fn default_voice_resolves_without_a_reference() {
         library.resolve_voice("default").unwrap(),
         ResolvedVoice::Default
     );
+}
+
+#[test]
+fn deleting_voice_clears_selection_and_character_binding_and_persists() {
+    let store = Arc::new(TestStore::default());
+    let library = ResourceLibrary::open(store.clone()).unwrap();
+    let voice = library
+        .create_voice("voice", "zh", "prompt", b"wav")
+        .unwrap();
+    let mut role = character("hotkey-1");
+    role.voice_id = voice.id.clone();
+    library.create_character(role).unwrap();
+    library.select_character("character-1").unwrap();
+    library.delete_voice(&voice.id).unwrap();
+    let snapshot = library.snapshot();
+    assert!(snapshot.voices.is_empty());
+    assert_eq!(snapshot.active_voice_id, "");
+    assert!(snapshot.active_character_id.is_none());
+    assert_eq!(snapshot.characters[0].voice_id, "");
+    assert_eq!(
+        *store.removed.lock().unwrap(),
+        vec![voice.reference.as_str()]
+    );
+    assert_eq!(ResourceLibrary::open(store).unwrap().snapshot(), snapshot);
+}
+
+#[test]
+fn failed_voice_delete_save_keeps_voice_file_and_selection() {
+    let store = Arc::new(TestStore::default());
+    let library = ResourceLibrary::open(store.clone()).unwrap();
+    let voice = library
+        .create_voice("voice", "zh", "prompt", b"wav")
+        .unwrap();
+    library.select_voice(&voice.id).unwrap();
+    let before = library.snapshot();
+    *store.fail_save.lock().unwrap() = true;
+    assert!(library.delete_voice(&voice.id).is_err());
+    assert_eq!(library.snapshot(), before);
+    assert!(store.removed.lock().unwrap().is_empty());
+}
+
+#[test]
+fn deleting_selected_character_keeps_voice_but_clears_character_selection() {
+    let library = ResourceLibrary::memory();
+    library.create_character(character("hotkey-1")).unwrap();
+    library.select_character("character-1").unwrap();
+    library.delete_character("character-1").unwrap();
+    assert!(library.snapshot().characters.is_empty());
+    assert!(library.snapshot().active_character_id.is_none());
+    assert_eq!(library.snapshot().active_voice_id, "default");
+    assert_eq!(
+        library.delete_character("missing"),
+        Err(ResourceError::CharacterNotFound)
+    );
+    assert!(library.delete_voice("default").is_err());
+}
+
+#[test]
+fn reference_cleanup_can_retry_after_catalog_deletion_and_restart() {
+    let store = Arc::new(TestStore::default());
+    let library = ResourceLibrary::open(store.clone()).unwrap();
+    let voice = library
+        .create_voice("voice", "zh", "prompt", b"wav")
+        .unwrap();
+    *store.fail_remove.lock().unwrap() = true;
+    assert!(
+        library
+            .delete_voice(&voice.id)
+            .unwrap_err()
+            .to_string()
+            .contains("清理失败")
+    );
+    assert!(library.snapshot().voices.is_empty());
+    *store.fail_remove.lock().unwrap() = false;
+    let reopened = ResourceLibrary::open(store.clone()).unwrap();
+    reopened.delete_voice(&voice.id).unwrap();
+    assert_eq!(
+        *store.removed.lock().unwrap(),
+        vec![voice.reference.as_str()]
+    );
+    assert!(reopened.delete_voice("../outside").is_err());
 }

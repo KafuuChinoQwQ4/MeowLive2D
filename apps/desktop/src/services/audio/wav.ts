@@ -6,6 +6,8 @@ export interface ValidatedWav {
 
 export const MAX_VOICE_FILE_BYTES = 2 * 1024 * 1024;
 
+export class UnsupportedWavFormatError extends Error {}
+
 function chunkName(view: DataView, offset: number): string {
   return String.fromCharCode(
     view.getUint8(offset),
@@ -51,11 +53,12 @@ export async function validateVoiceWav(file: File): Promise<ValidatedWav> {
         bitsPerSample !== 16 ||
         ![1, 2].includes(channels) ||
         sampleRate < 8_000 ||
-        sampleRate > 48_000 ||
-        blockAlign !== channels * 2 ||
-        byteRate !== sampleRate * blockAlign
+        sampleRate > 48_000
       ) {
-        throw new Error("仅支持 8–48 kHz、单声道或双声道的 PCM16 WAV");
+        throw new UnsupportedWavFormatError("仅支持 8–48 kHz、单声道或双声道的 PCM16 WAV");
+      }
+      if (blockAlign !== channels * 2 || byteRate !== sampleRate * blockAlign) {
+        throw new Error("WAV 音频格式无效");
       }
       format = { sampleRate, channels, blockAlign };
     } else if (name === "data") {

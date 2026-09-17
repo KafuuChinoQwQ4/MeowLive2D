@@ -1,13 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { WindowsClientSupervisor, managedServices } from './windows-client.mjs';
 
 async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), 'meow-windows-'));
+  const config = join(root, 'target/windows-client/desktop.local.toml');
+  await mkdir(join(root, 'target/windows-client'), { recursive: true });
+  await writeFile(config, '[vtube_studio]\nenabled = false\n[obs]\nenabled = false\n');
   let bridge = { ready: true, connected: false };
   const children = [], calls = [];
   const configuration = { modelSettings: { root, environment: { kind: 'wsl2' } }, definitions: [{ url: 'http://127.0.0.1:19600' }] };
@@ -20,8 +23,88 @@ async function fixture(t) {
   });
   manager.powershell = '/windows/powershell.exe';
   t.after(async () => { const closing = manager.close(); await new Promise(resolve => setTimeout(resolve, 10)); children.forEach(child => child.emit('close')); await closing; await rm(root, { recursive: true, force: true }); });
-  return { manager, children, calls, setBridge: value => { bridge = value; }, root };
+  return { manager, children, calls, setBridge: value => { bridge = value; }, root, config };
 }
+
+test('Windows switch persists VTS enablement in the configuration passed to the helper', async t => {
+  const f = await fixture(t);
+  const before = '\uFEFF# 本机配置\r\nserver_url = "http://127.0.0.1:19600"\r\n[vtube_studio]\r\nenabled = false # VTS\r\ntoken_path = "local/vts-token.json"\r\n[obs]\r\nenabled = false # OBS 保持关闭\r\n';
+  await writeFile(f.config, before);
+  await f.manager.setEnabled(true);
+  assert.equal(await readFile(f.config, 'utf8'), before.replace('enabled = false # VTS', 'enabled = true # VTS'));
+  const job = JSON.parse(await readFile(join(f.manager.session.path, 'job.json'), 'utf8'));
+  assert.equal(job.configuration, `Z:${f.config.replaceAll('/', '\\')}`);
+  assert.equal(f.children.length, 1);
+});
+
+test('an already enabled VTS configuration is not rewritten on startup', async t => {
+  const f = await fixture(t);
+  await writeFile(f.config, '[vtube_studio]\nenabled=true\n[obs]\nenabled=false\n');
+  const before = await stat(f.config);
+  await f.manager.setEnabled(true);
+  const after = await stat(f.config);
+  assert.equal(after.ino, before.ino);
+  assert.equal(after.mtimeMs, before.mtimeMs);
+});
+
+test('repeated starts and external connections do not rewrite VTS configuration', async t => {
+  const f = await fixture(t);
+  f.setBridge({ ready: true, connected: true });
+  await f.manager.setEnabled(true);
+  assert.match(await readFile(f.config, 'utf8'), /enabled = false/);
+  f.setBridge({ ready: true, connected: false });
+  await f.manager.refresh();
+  await f.manager.setEnabled(true);
+  const manual = '[vtube_studio]\nenabled = false\n';
+  await writeFile(f.config, manual);
+  await f.manager.setEnabled(true);
+  assert.equal(await readFile(f.config, 'utf8'), manual);
+  assert.equal(f.children.length, 1);
+});
+
+test('invalid Windows TOML prevents the helper from starting and leaves the configuration intact', async t => {
+  const f = await fixture(t);
+  const invalid = '[vtube_studio]\nenabled = false\nenabled = true\n';
+  await writeFile(f.config, invalid);
+  await assert.rejects(f.manager.setEnabled(true), /VTube Studio.*TOML/);
+  assert.equal(await readFile(f.config, 'utf8'), invalid);
+  assert.equal(f.children.length, 0);
+  assert.equal((await f.manager.snapshot()).state, 'failed');
+  assert.match((await f.manager.snapshot()).message, /VTube Studio/);
+});
+
+test('unreadable Windows configuration does not silently start a disabled client', async t => {
+  const f = await fixture(t);
+  await rm(f.config);
+  await assert.rejects(f.manager.setEnabled(true), /VTube Studio.*TOML/);
+  assert.equal(f.children.length, 0);
+  assert.equal(f.manager.session, null);
+});
+
+for (const [name, original, expected] of [
+  ['quoted section and key', '[ "vtube_studio" ]\n"enabled" = false\n[obs]\nenabled = true\n', '[ "vtube_studio" ]\n"enabled" = true\n[obs]\nenabled = true\n'],
+  ['dotted key', 'vtube_studio.enabled = false\nobs.enabled = false\n', 'vtube_studio.enabled = true\nobs.enabled = false\n'],
+  ['inline table', 'vtube_studio = { enabled = false, token_path = "local/token.json" }\nobs = { enabled = false }\n', 'vtube_studio = { enabled = true, token_path = "local/token.json" }\nobs = { enabled = false }\n'],
+  ['section-like multiline string', 'model_directory = """\n[vtube_studio]\nenabled = false\n"""\n[vtube_studio]\nenabled = false\n', 'model_directory = """\n[vtube_studio]\nenabled = false\n"""\n[vtube_studio]\nenabled = true\n'],
+  ['missing section', 'server_url = "http://127.0.0.1:19600"\n', 'server_url = "http://127.0.0.1:19600"\n[vtube_studio]\nenabled = true\n'],
+  ['missing enable key', '[vtube_studio]\ntoken_path = "local/token.json"\n[obs]\nenabled = false\n', '[vtube_studio]\nenabled = true\ntoken_path = "local/token.json"\n[obs]\nenabled = false\n'],
+]) {
+  test(`Windows switch enables only VTS with ${name}`, async t => {
+    const f = await fixture(t);
+    await writeFile(f.config, original);
+    await f.manager.setEnabled(true);
+    assert.equal(await readFile(f.config, 'utf8'), expected);
+  });
+}
+
+test('Windows switch rejects a non-boolean VTS enable flag without changing it', async t => {
+  const f = await fixture(t);
+  const invalid = '[vtube_studio]\nenabled = "false"\n';
+  await writeFile(f.config, invalid);
+  await assert.rejects(f.manager.setEnabled(true), /VTube Studio.*TOML/);
+  assert.equal(await readFile(f.config, 'utf8'), invalid);
+  assert.equal(f.children.length, 0);
+});
 
 test('Windows start waits for main service and does not duplicate external clients', async t => {
   const f = await fixture(t);
@@ -33,6 +116,28 @@ test('Windows start waits for main service and does not duplicate external clien
   await f.manager.setEnabled(true);
   await assert.rejects(f.manager.setEnabled(false), /其他方式启动/);
   assert.equal(f.children.length, 0);
+});
+
+test('a Windows allocation failure explains memory pressure instead of blaming the speaker', async t => {
+  const f = await fixture(t);
+  await f.manager.setEnabled(true);
+  const path = f.manager.session.path;
+  await writeFile(join(path, 'client.log'), 'memory allocation of 131072 bytes failed\n');
+  await writeFile(join(path, 'status.json'), JSON.stringify({ state: 'failed' }));
+  await f.manager.refresh();
+  f.children[0].emit('close');
+  assert.match((await f.manager.snapshot()).message, /内存不足/);
+});
+
+test('an allocation failure is diagnosed when the helper exits before the next status poll', async t => {
+  const f = await fixture(t);
+  await f.manager.setEnabled(true);
+  const session = f.manager.session;
+  await writeFile(join(session.path, 'client.log'), 'memory allocation of 131072 bytes failed\n');
+  await writeFile(join(session.path, 'status.json'), JSON.stringify({ state: 'failed' }));
+  f.children[0].emit('close');
+  await session.completion;
+  assert.match((await f.manager.snapshot()).message, /内存不足/);
 });
 
 test('switch creates one fixed helper job and reports connected only after Windows and bridge readiness', async t => {

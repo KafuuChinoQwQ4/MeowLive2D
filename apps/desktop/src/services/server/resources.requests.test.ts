@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { pcm16Wav, resourceSnapshot } from "../../test/resource-fixtures";
+import { character, pcm16Wav, resourceSnapshot } from "../../test/resource-fixtures";
 import { jsonResponse } from "../../test/server-fixtures";
 import { createResourceClient } from "./resources";
 
@@ -38,6 +38,8 @@ describe("资源 HTTP 请求", () => {
 
   it.each([
     ["selectVoice", "/api/voices/select", { id: "voice-1" }],
+    ["deleteVoice", "/api/voices/delete", { id: "voice-1" }],
+    ["deleteCharacter", "/api/characters/delete", { id: "character-1" }],
     ["selectCharacter", "/api/characters/select", { id: "character-1" }],
     ["previewCharacter", "/api/characters/preview", { character_id: "character-1", intent: "挥手" }],
   ] as const)("%s 发送对应 JSON 请求", async (method, path, body) => {
@@ -78,5 +80,23 @@ describe("资源 HTTP 请求", () => {
     expect(fetcher).toHaveBeenCalledWith("http://127.0.0.1:19600/api/desktop/resources", expect.objectContaining({
       method: "POST", body: JSON.stringify({ type: "list_models" }),
     }));
+  });
+
+  it("读取删除音色后待重新绑定的角色", async () => {
+    const snapshot = resourceSnapshot({ voices: [], characters: [character({ voice_id: "" })], active_voice_id: "", active_character_id: null });
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(snapshot));
+    await expect(createResourceClient({ fetcher }).getSnapshot()).resolves.toEqual(snapshot);
+  });
+
+  it("读取安装模型列表并校验删除结果对应所选模型", async () => {
+    const id = "a".repeat(64);
+    const listed = { type: "imported_models", models: [{ id, name: "猫咪", model_id: null }] };
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(jsonResponse(listed))
+      .mockResolvedValueOnce(jsonResponse({ type: "model_deleted", id, restart_required: true }))
+      .mockResolvedValueOnce(jsonResponse({ type: "model_deleted", id: "b".repeat(64), restart_required: true }));
+    const client = createResourceClient({ fetcher });
+    await expect(client.desktop({ type: "list_imported_models" })).resolves.toEqual(listed);
+    await expect(client.desktop({ type: "delete_imported_model", id })).resolves.toMatchObject({ type: "model_deleted", id });
+    await expect(client.desktop({ type: "delete_imported_model", id })).rejects.toThrow("桌面资源结果与请求不匹配");
   });
 });

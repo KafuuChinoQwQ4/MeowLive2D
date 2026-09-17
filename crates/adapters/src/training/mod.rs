@@ -4,4 +4,5 @@ mod store;
 mod tests;
 pub use store::FileTrainingStore;
 mod process;
+mod transcription;
 pub use process::{ProcessTrainingConfig, ProcessTrainingEngine};

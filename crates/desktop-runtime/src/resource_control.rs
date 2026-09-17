@@ -6,7 +6,8 @@ use crate::{
     config::ClientConfig,
 };
 use meowlive_protocol::resources::{
-    DesktopResourceOperation as Operation, DesktopResourceResult as Output, VtsHotkey, VtsModel,
+    DesktopResourceOperation as Operation, DesktopResourceResult as Output, ImportedModel,
+    VtsHotkey, VtsModel,
 };
 
 #[derive(Clone)]
@@ -32,6 +33,12 @@ impl ResourceContext {
         }
         if matches!(operation, Operation::ImportModel) {
             return self.import().await;
+        }
+        if matches!(operation, Operation::ListImportedModels) {
+            return self.list_imported().await;
+        }
+        if let Operation::DeleteImportedModel { id } = operation {
+            return self.delete_imported(id).await;
         }
         let mut vts = VtsResources::connect(&self.config.vtube_studio)
             .await
@@ -100,8 +107,56 @@ impl ResourceContext {
                     hotkey_id: selected,
                 })
             }
-            Operation::ImportModel | Operation::Obs { .. } => unreachable!(),
+            Operation::ImportModel
+            | Operation::ListImportedModels
+            | Operation::DeleteImportedModel { .. }
+            | Operation::Obs { .. } => unreachable!(),
         }
+    }
+
+    async fn list_imported(&self) -> Result<Output, String> {
+        let target = self
+            .config
+            .model_directory
+            .clone()
+            .ok_or("请先配置桌面 model_directory")?;
+        tokio::task::spawn_blocking(move || {
+            let models = assets::list_imported_models(&target).map_err(|e| e.to_string())?;
+            Ok(Output::ImportedModels {
+                models: models
+                    .into_iter()
+                    .map(|model| ImportedModel {
+                        id: model.id,
+                        name: model.name,
+                        model_id: model.model_id,
+                    })
+                    .collect(),
+            })
+        })
+        .await
+        .map_err(|_| "模型列表任务失败")?
+    }
+
+    async fn delete_imported(&self, id: String) -> Result<Output, String> {
+        let target = self
+            .config
+            .model_directory
+            .clone()
+            .ok_or("请先配置桌面 model_directory")?;
+        let mut vts = VtsResources::connect(&self.config.vtube_studio)
+            .await
+            .map_err(|e| e.to_string())?;
+        let current_model_id = vts.current_model_id().await.map_err(|e| e.to_string())?;
+        tokio::task::spawn_blocking(move || {
+            assets::delete_imported_model(&target, &id, current_model_id.as_deref())
+                .map_err(|e| e.to_string())?;
+            Ok(Output::ModelDeleted {
+                id,
+                restart_required: true,
+            })
+        })
+        .await
+        .map_err(|_| "模型删除任务失败")?
     }
     async fn import(&self) -> Result<Output, String> {
         let target = self

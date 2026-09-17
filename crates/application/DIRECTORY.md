@@ -21,7 +21,7 @@ application/  # 业务用例编排及外部能力接口定义
 │   │   ├── mod.rs  # 由业务方定义的外部能力接口。实现位于 adapters 或应用入口的传输适配层。
 │   │   ├── speech.rs  # 可动态注入的异步语音合成接口与 PCM 输出类型
 │   │   ├── storage.rs  # 资源快照、参考音频与引擎路径存储接口
-│   │   └── training.rs  # 训练素材存储、成对模型解析与受控进程执行接口
+│   │   └── training.rs  # 训练存储、同音色续训基底与受控进程接口
 │   ├── scheduler/  # 候选事件优先级与礼物分组策略
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   └── selection.rs  # 礼物优先选择和有界原始事件分组
@@ -29,11 +29,11 @@ application/  # 业务用例编排及外部能力接口定义
 │   ├── agent.rs  # Agent 生命周期、决策调度和状态快照
 │   ├── lib.rs  # 业务用例与外部能力接口。通过注入 ports 的实现调用外部能力。
 │   ├── performance.rs  # 协调发言、动作、下发与执行回执；处理代次、取消及重连后未知状态。
-│   ├── resources.rs  # 角色与音色档案用例、持久化事务和映射验证一致性
+│   ├── resources.rs  # 角色与音色档案用例、删除和选择清理、持久化事务及映射一致性
 │   ├── scheduler.rs  # 有界事件存储、独立去重和终态历史裁剪
 │   ├── session.rs  # 会话启动、暂停、恢复与关闭用例，协调在途任务的生命周期。
 │   ├── speech.rs  # 单执行者语音 FIFO 队列、容量历史限制与取消回执状态机
-│   └── training.rs  # 单任务训练生命周期、失败恢复、取消、试听、音色保存与版本启用用例
+│   └── training.rs  # 训练任务调度、同音色续训基底选择及版本保存选用
 ├── tests/  # 应用用例的队列与状态流转集成测试
 │   ├── agent_support/  # Agent 测试公共夹具
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
@@ -46,7 +46,7 @@ application/  # 业务用例编排及外部能力接口定义
 │   ├── agent_lifecycle.rs  # 配置、暂停、停止和播放生命周期测试
 │   ├── agent_memory.rs  # 已完成对话数量及内容长度边界测试
 │   ├── agent_settings.rs  # 人设配置与运行资源上限测试
-│   ├── resource_library.rs  # 资源保存一致性、容量与映射验证并发规则测试
+│   ├── resource_library.rs  # 资源事务失败保护、角色音色删除绑定及清理重试用例测试
 │   ├── scheduler_bounds.rs  # 历史裁剪、去重淘汰、批次容量和克隆隔离测试
 │   ├── scheduler_events.rs  # 事件去重、过期、容量及礼物分组测试
 │   ├── speech_cancellation.rs  # 语音停止代次、迟到结果和断线取消测试
@@ -65,4 +65,4 @@ application/  # 业务用例编排及外部能力接口定义
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 47aa76ab0028bdc2d8843d39b5de495430db41cca9b4119611f49c4df8c12f6c -->
+<!-- directory-tree-sha256: fb427efee47ffccc6a4e777f4d6bb4203df428cea7aefaaa25d9008c38465ef0 -->

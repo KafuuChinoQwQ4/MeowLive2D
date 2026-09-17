@@ -7,7 +7,7 @@
 ```text
 launchers/  # 面向用户的 Windows 双击与 Linux 启动入口及 Windows 进程管理脚本
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-├── README.md  # 新人三开关启动、Windows 双击入口与退出流程
+├── README.md  # 首次环境准备、Windows 执行端构建与日常启动退出说明
 ├── start-windows.cmd  # Windows 双击启动入口，调用 WSL2 检查与控制面板启动脚本
 ├── start-windows.ps1  # 检测 WSL2、选择发行版、启动 Linux 项目并打开浏览器
 ├── start.sh  # Linux 与 WSL 新人控制面板入口，检查依赖并启动网页服务管理器
@@ -18,4 +18,4 @@ launchers/  # 面向用户的 Windows 双击与 Linux 启动入口及 Windows �
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 8ea67d09a49d5afd837fabcdce50788cb3e5273ec5ab5924ac2625899f8dc5c8 -->
+<!-- directory-tree-sha256: dac8653fde62069ffc37b7324b1d8e1f71e5018f809ee18595064d9c12ed8ac4 -->

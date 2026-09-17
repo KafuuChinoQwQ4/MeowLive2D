@@ -27,3 +27,11 @@ fn training_requires_explicit_paths_and_bounded_timeout() {
     assert!(AppConfig::parse(&config.replace("3600", "0")).is_err());
     assert!(AppConfig::parse(&config.replace("/test/python", "relative/python")).is_err());
 }
+
+#[test]
+fn transcription_model_can_use_engine_default_or_explicit_absolute_path() {
+    let default = AppConfig::parse("[training]\nasr_model='' ").unwrap();
+    assert!(default.training.asr_model.as_os_str().is_empty());
+    assert!(AppConfig::parse("[training]\nasr_model='/local/whisper'").is_ok());
+    assert!(AppConfig::parse("[training]\nasr_model='relative/whisper'").is_err());
+}
