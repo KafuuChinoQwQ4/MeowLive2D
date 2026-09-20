@@ -30,9 +30,10 @@ impl LanguageModel for ReplyModel {
     }
 }
 
-struct FixedSpeech;
+struct FixedSpeech(Arc<AtomicUsize>);
 impl SpeechSynthesizer for FixedSpeech {
     fn synthesize(&self, _: SynthesisRequest) -> SynthesisFuture<'_> {
+        self.0.fetch_add(1, Ordering::SeqCst);
         Box::pin(async {
             Ok(PcmAudio {
                 sample_rate: 24000,
@@ -47,6 +48,7 @@ pub struct Harness {
     pub state: AppState,
     pub base: String,
     pub tasks: Vec<JoinHandle<()>>,
+    pub synthesis_calls: Arc<AtomicUsize>,
 }
 impl Harness {
     pub async fn new(model: Arc<dyn LanguageModel>) -> Self {
@@ -54,8 +56,14 @@ impl Harness {
         config.agent.cooldown_ms = 1000;
         Self::configured(config, model).await
     }
-    pub async fn configured(config: AppConfig, model: Arc<dyn LanguageModel>) -> Self {
-        let state = AppState::with_model(config, Arc::new(FixedSpeech), Some(model));
+    pub async fn configured(mut config: AppConfig, model: Arc<dyn LanguageModel>) -> Self {
+        config.viewers.enabled = false;
+        let synthesis_calls = Arc::new(AtomicUsize::new(0));
+        let state = AppState::with_model(
+            config,
+            Arc::new(FixedSpeech(synthesis_calls.clone())),
+            Some(model),
+        );
         // The harness explicitly chooses its fake voice; new installations start empty.
         state.resources.select_voice("default").unwrap();
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -69,7 +77,12 @@ impl Harness {
             tokio::spawn(run_worker(state.clone())),
             tokio::spawn(run_agent(state.clone())),
         ];
-        Self { state, base, tasks }
+        Self {
+            state,
+            base,
+            tasks,
+            synthesis_calls,
+        }
     }
 }
 impl Drop for Harness {
@@ -85,6 +98,8 @@ pub fn event(id: &str) -> LiveEventInput {
         id: id.into(),
         source: "simulator".into(),
         viewer: "观众".into(),
+        viewer_identity: None,
+        gift_metadata: None,
         kind: EventPayload::Chat {
             text: "你好".into(),
         },

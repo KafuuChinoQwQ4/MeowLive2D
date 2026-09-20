@@ -7,3 +7,16 @@ pub mod llm;
 pub mod speech;
 pub mod storage;
 pub mod training;
+pub mod viewers;
+
+pub mod companionship;
+
+pub mod memory;
+
+pub mod memory_store;
+
+pub mod relationships;
+
+pub mod viewer_merge;
+
+pub mod receipt_journal;

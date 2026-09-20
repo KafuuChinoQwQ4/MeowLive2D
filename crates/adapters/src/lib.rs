@@ -7,3 +7,7 @@ pub mod runtime;
 pub mod speech;
 pub mod storage;
 pub mod training;
+
+pub mod memory;
+
+pub mod graph;

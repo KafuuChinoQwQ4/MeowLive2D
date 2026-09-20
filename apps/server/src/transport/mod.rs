@@ -2,6 +2,7 @@
 //! 跨端执行适配在此实现 application::ports::execution，避免业务层依赖协议。
 
 pub mod agent;
+pub mod auth;
 pub mod bridge;
 pub mod error;
 pub mod http;
@@ -15,3 +16,13 @@ pub mod runtime;
 pub mod training;
 pub mod training_models;
 pub mod websocket;
+
+pub mod viewers;
+
+pub mod companionship;
+
+pub mod memory;
+
+mod relationships;
+
+mod viewer_merge;

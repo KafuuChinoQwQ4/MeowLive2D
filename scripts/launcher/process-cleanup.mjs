@@ -40,10 +40,13 @@ function serviceKind(record, root) {
   const { cwd, executable, args } = record;
   const script = args[1] && resolve(cwd, args[1]);
   if (cwd === root && /^node(?:js)?$/.test(basename(executable)) && script === join(root, 'scripts/start-control-panel.mjs')) return '控制面板';
+  if (cwd === root && /^node(?:js)?$/.test(basename(executable)) && script === join(root, 'scripts/launcher/server.mjs')) return '主服务启动进程';
   if (cwd === root && ['debug', 'release'].some(profile => executable === join(root, `target/${profile}/meowlive-server`))) return '主服务';
   if (cwd === root && basename(executable) === 'cargo' && args[1] === 'run'
       && args.some((arg, index) => arg === '-p' && args[index + 1] === 'meowlive-server')) return '主服务编译进程';
   if (!/^python(?:\d+(?:\.\d+)*)?$/.test(basename(executable))) return null;
+  if (cwd === root && script === join(root, 'scripts/rust_cache.py') && args[2] === 'run'
+      && args.some((arg, index) => arg === '-p' && args[index + 1] === 'meowlive-server')) return '主服务编译进程';
   const inferenceRoot = join(root, 'data/control-panel-inference');
   if (cwd === root && script === join(root, 'scripts/start-managed-inference.py')) return 'TTS 启动进程';
   const api = args[1] === '-s' ? args[2] : args[1];

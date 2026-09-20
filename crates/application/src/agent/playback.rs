@@ -54,6 +54,13 @@ impl AgentSession {
             .take()
             .expect("matched active speech remains present");
         if task.status == SpeechStatus::Completed {
+            self.scheduler
+                .completed(&speech.events, &speech.turn.assistant, now_ms);
+            self.completed.push(super::CompletedInteraction {
+                speech_id: speech.id,
+                events: speech.events,
+                assistant: speech.turn.assistant.clone(),
+            });
             self.history.push_back(speech.turn);
             while self.history.len() > self.scheduler.limits.conversation_limit {
                 self.history.pop_front();

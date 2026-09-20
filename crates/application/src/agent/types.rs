@@ -43,6 +43,7 @@ impl EventStatus {
 #[derive(Clone, Debug)]
 pub struct EventRecord {
     pub event: LiveEvent,
+    pub(crate) expires_at_ms: u64,
     pub status: EventStatus,
     pub speech_id: Option<String>,
     pub error: Option<String>,
@@ -69,4 +70,12 @@ pub struct PreparedSpeech {
 pub enum SubmitOutcome {
     Accepted,
     Duplicate,
+}
+
+/// Actual playback completion; consumers drain this for persistent accounting.
+#[derive(Clone, Debug)]
+pub struct CompletedInteraction {
+    pub speech_id: String,
+    pub events: Vec<LiveEvent>,
+    pub assistant: String,
 }

@@ -7,6 +7,7 @@
 ```text
 scheduler/  # 候选事件优先级与礼物分组策略
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+├── fairness.rs  # 完成驱动的观众公平、有限重选和追问焦点
 └── selection.rs  # 礼物优先选择和有界原始事件分组
 ```
 
@@ -14,4 +15,4 @@ scheduler/  # 候选事件优先级与礼物分组策略
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 0a6003bf85904cdffc64eabc63ca33ae150a2c0b4564b576998d53d9374ee1e0 -->
+<!-- directory-tree-sha256: b0e8524c747749474665fd2ca7288aa14e746a8c567dc57148f021aaa2146c7d -->

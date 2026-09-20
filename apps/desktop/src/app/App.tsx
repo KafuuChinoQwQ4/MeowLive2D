@@ -2,6 +2,7 @@ import { ModelLibraryManualGuide } from "../features/model-library/ModelLibraryP
 import { SpeechPanel } from "../features/live";
 import { AgentPanel } from "../features/agent";
 import { LlmPanel } from "../features/llm";
+import { ViewerPanel } from "../features/viewers";
 import { ConnectionPanel } from "../features/connections";
 import { TrainingPanel } from "../features/training";
 import { ResourcesPanel } from "./resources";
@@ -14,6 +15,8 @@ import { createResourceClient } from "../services/server/resources";
 import { createTrainingClient } from "../services/server/training";
 import { createObsClient } from "../services/server/obs";
 import { createLlmClient } from "../services/server/llm";
+import { createViewerClient } from "../services/server/viewers";
+import { createAdminSessionClient } from "../services/server/auth";
 import { ObsPanel } from "../features/obs";
 import { ManagedWorkspace } from "./ManagedWorkspace";
 import { Workspace, type WorkspaceProps } from "./Workspace";
@@ -59,7 +62,8 @@ function AppContent() {
     speech: createServerClient({ baseUrl }), agent: createAgentClient({ baseUrl }),
     live: createLiveClient({ baseUrl }), resources: createResourceClient({ baseUrl }),
     training: createTrainingClient({ baseUrl }), obs: createObsClient({ baseUrl }),
-    llm: createLlmClient({ baseUrl }),
+    llm: createLlmClient({ baseUrl }), viewers: createViewerClient({ baseUrl }),
+    auth: createAdminSessionClient({ baseUrl }),
   }), [baseUrl]);
   const panels: WorkspaceProps["pages"] = {
     live: <ConnectionPanel client={clients.live} />,
@@ -68,14 +72,15 @@ function AppContent() {
     training: <TrainingPanel client={clients.training} resources={clients.resources} />,
     speech: <SpeechPanel client={clients.speech} />,
     agent: <AgentPanel client={clients.agent} />,
+    viewers: <ViewerPanel client={clients.viewers} />,
     llm: <LlmPanel client={clients.llm} />,
   };
   const errorNotice = error && <div className="error-banner" role="alert">{error} <button onClick={() => setAttempt(value => value + 1)}>重试桌面连接</button></div>;
   if (desktop === undefined) return <main className="studio-initial"><h1>MeowLive2D</h1>{errorNotice || <p role="status">正在读取桌面配置…</p>}</main>;
-  if (desktop === null && import.meta.env.VITE_MEOWLIVE_LAUNCHER === "true") return <ManagedWorkspace pages={panels} />;
-  return <Workspace pages={panels} setup={<ModelLibraryManualGuide />} ready status={[{ label: desktop ? (desktop.runtime.running ? "桌面执行端运行中" : "桌面执行端已停止") : "手动服务模式", available: desktop?.runtime.running ?? null }]}
+  if (desktop === null && import.meta.env.VITE_MEOWLIVE_LAUNCHER === "true") return <ManagedWorkspace pages={panels} adminClient={clients.auth} />;
+  return <Workspace pages={panels} adminClient={clients.auth} setup={<ModelLibraryManualGuide />} ready status={[{ label: desktop ? (desktop.runtime.running ? "桌面执行端运行中" : "桌面执行端已停止") : "手动服务模式", available: desktop?.runtime.running ?? null }]}
     notice={errorNotice} overview={<>{errorNotice}{desktop ? <section className="connection-card" aria-label="桌面执行端">
       <div><h2>{desktop.runtime.running ? "桌面执行端运行中" : "桌面执行端已停止"}</h2><p className="server-address">{desktop.server_url}</p><p className="muted">{desktop.runtime.simulation ? "静音模拟：不输出设备声音" : "系统音频输出"}</p></div>
       {!desktop.runtime.running && <p role="alert">执行端已停止，请关闭并重新启动桌面程序。{desktop.runtime.last_error}</p>}
-    </section> : <section className="panel studio-manual"><h2>从导航开始</h2><p className="muted">当前为手动服务模式。从左侧选择功能，即可进入对应的工作区。</p><p className="availability-note">需要在网页启停主服务、TTS 和 Windows 执行端时，在项目目录使用 <code>./launchers/start.sh</code> 启动控制面板。</p></section>}</>} />;
+    </section> : <section className="panel studio-manual"><h2>从导航开始</h2><p className="muted">手动服务模式，请从左侧选择功能。</p><p className="availability-note">网页管理服务：运行 <code>./launchers/start.sh</code>。</p></section>}</>} />;
 }

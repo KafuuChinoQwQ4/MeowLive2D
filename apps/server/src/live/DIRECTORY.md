@@ -7,7 +7,7 @@
 ```text
 live/  # 官方直播源组装及异步连接、接收、清理与重连驱动
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-├── bootstrap.rs  # 从主服务环境变量组装官方直播适配器
+├── bootstrap.rs  # 使用面板本机凭据或兼容环境变量组装官方直播源
 └── worker.rs  # 直播事件接收、去重入队、取消、会话清理和退避重连
 ```
 
@@ -15,4 +15,4 @@ live/  # 官方直播源组装及异步连接、接收、清理与重连驱动
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: c42ac01dec0e0fcc883f8f19288b41d9224fd0d462db82aa9a8c2cc01091daca -->
+<!-- directory-tree-sha256: 96cf1d32b6a02875797c22bf66d88beb8bcbf3e9e052011b2bf17c78aa728837 -->

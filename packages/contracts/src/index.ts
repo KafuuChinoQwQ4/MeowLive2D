@@ -2,6 +2,82 @@
 
 export const PROTOCOL_VERSION = 3 as const;
 
+export type MergeViewerSummary = { viewer_id: string, alias: string | null, identities: number, events: number, memories: number, relationships: number, familiarity_milli: number, affinity_milli: number, };
+
+export type ViewerMergePreview = { source: MergeViewerSummary, target: MergeViewerSummary, revision: number, fingerprint: string, resulting_familiarity_milli: number, resulting_affinity_milli: number, risks: Array<string>, };
+
+export type ViewerMergePreviewRequest = { source_viewer_id: string, target_viewer_id: string, };
+
+export type ViewerMergeRequest = { source_viewer_id: string, target_viewer_id: string, expected_revision: number, fingerprint: string, request_key: string, reason: string, confirmed: boolean, };
+
+export type ViewerMergeOutcome = { canonical_viewer_id: string, revision: number, };
+
+export type RelationshipEntity = { kind: string, id: string, };
+
+export type RelationshipEvidence = { source: string, event_id: string, quote: string, };
+
+export type ViewerRelationship = { id: string, version: number, source: RelationshipEntity, target: RelationshipEntity, kind: string, confirmation: string, evidence: Array<RelationshipEvidence>, expires_at_ms: number | null, deleted: boolean, };
+
+export type RelationshipPage = { relationships: Array<ViewerRelationship>, degraded: boolean, };
+
+export type RelationshipCreateRequest = { source: RelationshipEntity, target: RelationshipEntity, kind: string, evidence: Array<RelationshipEvidence>, expires_at_ms: number | null, admin_confirmed: boolean, reason: string, request_key: string, };
+
+export type RelationshipChangeRequest = { expected_version: number, action: string, reason: string, request_key: string, };
+
+export type KnowledgeMaintenanceRequest = { request_key: string, reason: string, };
+
+export type GraphStatus = { pending: number, leased: number, failed: number, oldest_pending_age_ms: number | null, connected: boolean, };
+
+export type AffinityLedgerEntry = { ledger_id: string, kind: string, computed_delta_milli: number, applied_delta_milli: number, reason: string, actor: string, created_at_ms: number, reversed_ledger_id: string | null, reversible: boolean, };
+
+export type GiftLedgerEntry = { source: string, event_id: string, name: string, count: number, metadata: GiftMetadataInput | null, value_cents: number | null, value_kind: string, occurred_at_ms: number, };
+
+export type CompanionshipDetail = { viewer_id: string, familiarity_milli: number, affinity_milli: number, observed_days: number, observed_sessions: number, last_seen_at_ms: number, medal_level: number | null, guard_level: number | null, gifts: Array<GiftLedgerEntry>, ledger: Array<AffinityLedgerEntry>, };
+
+export type AffinityAdjustmentRequest = { request_key: string, reason: string, delta_milli: number, };
+
+export type AffinityReversalRequest = { request_key: string, reason: string, ledger_id: string, };
+
+export type GiftConfirmationRequest = { request_key: string, reason: string, source: string, event_id: string, value_cents: number, value_kind: string, };
+
+export type AdminMutationResult = { record_id: string, };
+
+export type CompanionshipHealth = { durable_receipts: boolean, failed_receipts: Array<ReceiptProblem>, pending_receipts: number, failed_receipt_attempts: number, };
+
+export type ReceiptProblem = { speech_id: string, attempts: number, };
+
+export type MemoryEvidence = { source: string, event_id: string, quote: string, occurred_at_ms: number, };
+
+export type ViewerMemory = { id: string, viewer_id: string, key: string, value: string, kind: string, status: string, version: number, locked: boolean, deleted: boolean, expires_at_ms: number | null, evidence: Array<MemoryEvidence>, };
+
+export type MemoryPage = { memories: Array<ViewerMemory>, };
+
+export type MemoryMutationRequest = { request_key: string, reason: string, expected_version: number, operation: string, value: string | null, frozen: boolean | null, };
+
+export type MemoryJobsStatus = { pending: number, running: number, failed: number, embedding_pending: number, embedding_failed: number, };
+
+export type AdminSessionRequest = { token: string, };
+
+export type AdminSessionStatus = { enabled: boolean, authenticated: boolean, };
+
+export type AdminSessionToken = { token: string, expires_in_seconds: number, };
+
+export type ViewerAlias = { alias: string, first_seen_at_ms: number, last_seen_at_ms: number, };
+
+export type ViewerIdentity = { platform: string, namespace: string, id_kind: string, external_id: string, last_confirmed_at_ms: number, };
+
+export type ViewerSummary = { viewer_id: string, current_alias: string | null, alias_observed_at_ms: number | null, identities: Array<ViewerIdentity>, aliases: Array<ViewerAlias>, };
+
+export type PersistedViewerEvent = { event_id: string, source: string, session_id: string, viewer_id: string | null, viewer: string, occurred_at_ms: number, received_at_ms: number, kind: EventPayload, gift_metadata: GiftMetadataInput | null, };
+
+export type ViewerPage = { scope_id: string, viewers: Array<ViewerSummary>, offset: number, };
+
+export type ViewerEventPage = { scope_id: string, events: Array<PersistedViewerEvent>, offset: number,
+/**
+ * Since this server process started; absence of a counter is not proof of complete upstream data.
+ */
+unconfirmed_events: number, };
+
 export type LlmSettings = { provider: string, api_format: string, base_url: string, model: string, mode: string, timeout_seconds: number, max_tokens: number, json_mode: boolean, };
 
 export type LlmSettingsSnapshot = { settings: LlmSettings, key_configured: boolean, restart_required: boolean, active_model: string, storage_available: boolean, };
@@ -88,23 +164,45 @@ export type ObsOperation = { "type": "status" } | { "type": "set_scene", scene_n
 
 export type ObsSnapshot = { connected: boolean, recording: boolean, current_scene: string, scenes: Array<string>, };
 
-export type DesktopResourceOperation = { "type": "obs", operation: ObsOperation, } | { "type": "list_models" } | { "type": "load_model", model_id: string, mouth_parameter: string, } | { "type": "list_hotkeys", model_id: string, } | { "type": "trigger_hotkey", model_id: string, hotkey_id: string, fallback_hotkey_id: string | null, } | { "type": "import_model" } | { "type": "list_imported_models" } | { "type": "delete_imported_model", id: string, };
+export type ObsSettingsSnapshot = { enabled: boolean, websocket_url: string, password_configured: boolean, storage_available: boolean, };
 
-export type DesktopResourceResult = { "type": "obs", snapshot: ObsSnapshot, } | { "type": "models", models: Array<VtsModel>, } | { "type": "model_loaded", model_id: string, } | { "type": "hotkeys", model_id: string, hotkeys: Array<VtsHotkey>, } | { "type": "hotkey_triggered", hotkey_id: string, } | { "type": "model_imported", model_name: string, model_file: string, files: number, bytes: number, restart_required: boolean, } | { "type": "imported_models", models: Array<ImportedModel>, } | { "type": "model_deleted", id: string, restart_required: boolean, } | { "type": "error", code: string, message: string, };
+export type ObsSettingsRequest = { enabled: boolean, websocket_url: string,
+/**
+ * None retains the current credential; clearing is always explicit.
+ */
+password: string | null, clear_password: boolean, };
+
+export type DesktopResourceOperation = { "type": "obs_settings" } | { "type": "save_obs_settings", settings: ObsSettingsRequest, } | { "type": "obs", operation: ObsOperation, } | { "type": "list_models" } | { "type": "load_model", model_id: string, mouth_parameter: string, } | { "type": "list_hotkeys", model_id: string, } | { "type": "trigger_hotkey", model_id: string, hotkey_id: string, fallback_hotkey_id: string | null, } | { "type": "import_model" } | { "type": "list_imported_models" } | { "type": "delete_imported_model", id: string, };
+
+export type DesktopResourceResult = { "type": "obs_settings", settings: ObsSettingsSnapshot, } | { "type": "obs", snapshot: ObsSnapshot, } | { "type": "models", models: Array<VtsModel>, } | { "type": "model_loaded", model_id: string, } | { "type": "hotkeys", model_id: string, hotkeys: Array<VtsHotkey>, } | { "type": "hotkey_triggered", hotkey_id: string, } | { "type": "model_imported", model_name: string, model_file: string, files: number, bytes: number, restart_required: boolean, } | { "type": "imported_models", models: Array<ImportedModel>, } | { "type": "model_deleted", id: string, restart_required: boolean, } | { "type": "error", code: string, message: string, };
 
 export type LiveConnectionPhase = "disabled" | "disconnected" | "connecting" | "connected" | "reconnecting" | "disconnecting" | "failed";
 
 export type LiveConnectionSnapshot = { platform: string, configured: boolean, phase: LiveConnectionPhase, room_id: string | null, accepted_events: number, duplicate_events: number, rejected_events: number, reconnect_attempts: number, last_error: string | null, };
 
+export type LiveSettingsSnapshot = { enabled: boolean,
+/**
+ * A decimal string preserves application IDs larger than JavaScript's safe integers.
+ */
+app_id: string, access_key_id_configured: boolean, access_key_secret_configured: boolean, identity_code_configured: boolean, storage_available: boolean, };
+
+export type LiveSettingsRequest = { enabled: boolean, app_id: string, access_key_id: string | null, access_key_secret: string | null, identity_code: string | null, clear_credentials: boolean, };
+
 export type AgentSettings = { persona: string, topic: string, proactive_enabled: boolean, cooldown_ms: number, };
 
 export type EventPayload = { "type": "chat", text: string, } | { "type": "gift", name: string, count: number, };
 
-export type LiveEventInput = { id: string, source: string, viewer: string, kind: EventPayload, };
+export type ViewerIdentityKind = "open_id" | "uid";
+
+export type ViewerIdentityInput = { namespace: string, kind: ViewerIdentityKind, external_id: string, };
+
+export type GiftMetadataInput = { price?: number, paid?: boolean, medal_level?: number, guard_level?: number, };
+
+export type LiveEventInput = { id: string, source: string, viewer: string, viewer_identity?: ViewerIdentityInput, gift_metadata?: GiftMetadataInput, kind: EventPayload, };
 
 export type EventBatchRequest = { events: Array<LiveEventInput>, };
 
-export type EventBatchResult = { accepted: number, duplicates: number, };
+export type EventBatchResult = { accepted: number, duplicates: number, persisted?: number, unscheduled?: number, };
 
 export type AgentPhase = "paused" | "waiting" | "deciding" | "speaking";
 
@@ -125,6 +223,8 @@ export type SpeechStatus = "queued" | "synthesizing" | "ready" | "playing" | "co
 export type SpeechSnapshot = { id: string, generation: number, text: string, voice_id: string, status: SpeechStatus, error: string | null, };
 
 export type ServerStatus = { protocol_version: number, session_id: string, bridge_connected: boolean, generation: number, speeches: Array<SpeechSnapshot>, };
+
+export type ServerHealth = { service: string, protocol_version: number, bridge_connected: boolean, };
 
 export type ErrorResponse = { code: string, message: string, };
 

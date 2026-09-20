@@ -1,5 +1,7 @@
 use meowlive_application::agent::{AgentPhase, AgentView, EventStatus};
-use meowlive_domain::event::{EventKind, LiveEvent};
+use meowlive_domain::event::{
+    EventKind, GiftMetadata, LiveEvent, ViewerIdentity, ViewerIdentityKind,
+};
 use meowlive_protocol::agent as dto;
 
 pub(super) fn event(input: dto::LiveEventInput, now_ms: u64) -> LiveEvent {
@@ -7,7 +9,21 @@ pub(super) fn event(input: dto::LiveEventInput, now_ms: u64) -> LiveEvent {
         id: input.id,
         source: input.source,
         viewer: input.viewer,
+        viewer_identity: input.viewer_identity.map(|identity| ViewerIdentity {
+            namespace: identity.namespace,
+            kind: match identity.kind {
+                dto::ViewerIdentityKind::OpenId => ViewerIdentityKind::OpenId,
+                dto::ViewerIdentityKind::Uid => ViewerIdentityKind::Uid,
+            },
+            external_id: identity.external_id,
+        }),
         occurred_at_ms: now_ms,
+        gift_metadata: input.gift_metadata.map(|metadata| GiftMetadata {
+            price: metadata.price,
+            paid: metadata.paid,
+            medal_level: metadata.medal_level,
+            guard_level: metadata.guard_level,
+        }),
         kind: match input.kind {
             dto::EventPayload::Chat { text } => EventKind::Chat { text },
             dto::EventPayload::Gift { name, count } => EventKind::Gift { name, count },
@@ -38,6 +54,8 @@ pub(super) fn snapshot(view: AgentView, configured: bool, connected: bool) -> dt
                     id: r.event.id,
                     source: r.event.source,
                     viewer: r.event.viewer,
+                    viewer_identity: None,
+                    gift_metadata: None,
                     kind: match r.event.kind {
                         EventKind::Chat { text } => dto::EventPayload::Chat { text },
                         EventKind::Gift { name, count } => dto::EventPayload::Gift { name, count },

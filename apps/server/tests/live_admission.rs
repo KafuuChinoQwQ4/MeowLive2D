@@ -24,6 +24,7 @@ impl SpeechSynthesizer for Speech {
 async fn invalid_and_over_capacity_events_are_counted_without_losing_the_connection() {
     let (source, senders) = source(1, None);
     let mut config = AppConfig::default();
+    config.viewers.enabled = false;
     config.live.enabled = true;
     config.live.app_id = 1;
     config.agent.pending_capacity = 1;

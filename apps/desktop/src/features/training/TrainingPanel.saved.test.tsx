@@ -56,7 +56,7 @@ describe("保存的训练音色", () => {
     expect(save).toBeDisabled();
     await user.click(screen.getByRole("button", { name: "生成版本试听" }));
     await screen.findByLabelText("版本试听音频");
-    await user.click(await screen.findByRole("button", { name: "知道了" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(save).toBeDisabled();
     await user.click(screen.getByLabelText("我已试听并确认此版本效果"));
     await user.click(save);
@@ -87,7 +87,7 @@ describe("保存的训练音色", () => {
       await user.selectOptions(screen.getByLabelText("选择已保存版本"), id);
       await user.click(screen.getByRole("button", { name: "使用所选音色" }));
       await screen.findByText(`当前选用：${voiceId === "voice-1" ? "温柔旁白" : "活泼声音"} · ${name}`);
-      await user.click(await screen.findByRole("button", { name: "知道了" }));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
       expect(deps.resources.selectVoice).toHaveBeenLastCalledWith({ id: voiceId }, expect.any(AbortSignal));
     }
     expect(deps.client.audition).not.toHaveBeenCalled();
@@ -100,7 +100,7 @@ describe("保存的训练音色", () => {
     const user = userEvent.setup(); render(<TrainingPanel {...deps} />);
     fireEvent.click(screen.getByRole("tab", { name: /已训练音色/ }));
     await user.click(await screen.findByRole("button", { name: "生成版本试听" }));
-    await user.click(await screen.findByRole("button", { name: "知道了" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     await user.click(await screen.findByLabelText("我已试听并确认此版本效果"));
     await user.click(screen.getByRole("button", { name: "保存音色" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("磁盘不可写");
@@ -184,7 +184,7 @@ describe("删除训练音色", () => {
     await user.selectOptions(screen.getByLabelText("温柔旁白 的训练版本"), "version-1");
     await user.click(screen.getByRole("button", { name: "生成版本试听" }));
     await screen.findByLabelText("版本试听音频");
-    await user.click(await screen.findByRole("button", { name: "知道了" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "删除所选版本" }));
     await waitFor(() => expect(screen.queryByRole("option", { name: /温柔训练音色/ })).not.toBeInTheDocument());
     expect(select).toHaveValue("voice-1");

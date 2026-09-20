@@ -1,4 +1,4 @@
-//! OBS 本地控制公开契约；仅包含状态、场景与录制，不暴露凭据或输出路径。
+//! OBS 本地控制与设置契约；查询仅返回密码是否配置，不返回凭据或输出路径。
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -39,4 +39,33 @@ pub struct ObsSnapshot {
     pub recording: bool,
     pub current_scene: String,
     pub scenes: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ObsSettingsSnapshot {
+    pub enabled: bool,
+    pub websocket_url: String,
+    pub password_configured: bool,
+    pub storage_available: bool,
+}
+
+#[derive(Clone, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ObsSettingsRequest {
+    pub enabled: bool,
+    pub websocket_url: String,
+    /// None retains the current credential; clearing is always explicit.
+    pub password: Option<String>,
+    pub clear_password: bool,
+}
+
+impl std::fmt::Debug for ObsSettingsRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ObsSettingsRequest")
+            .field("enabled", &self.enabled)
+            .field("password_provided", &self.password.is_some())
+            .field("clear_password", &self.clear_password)
+            .finish_non_exhaustive()
+    }
 }

@@ -25,7 +25,6 @@ export function AgentPanel({ client = defaultClient, pollIntervalMs = 1_000 }: {
     <div className="agent-workspace" aria-labelledby="agent-heading">
       <section className="connection-card agent-status-card">
         <div>
-          <p className="eyebrow">自动互动</p>
           <h2 id="agent-heading">{phase ? phaseLabels[phase] : "正在读取 Agent 状态…"}</h2>
           <p className="server-address">{client.baseUrl}</p>
         </div>
@@ -49,8 +48,8 @@ export function AgentPanel({ client = defaultClient, pollIntervalMs = 1_000 }: {
         {actionError && <p>{actionError}</p>}
         {status?.last_error && <p>{status.last_error}</p>}
       </div>}
-      {status && !status.llm_configured && <p className="availability-note">请先<a href="#llm">前往 LLM 接入</a>填写连接参数，按提示重启主服务后再恢复 Agent。</p>}
-      {status && status.llm_configured && !status.bridge_connected && <p className="availability-note">请先启动桌面执行客户端；连接恢复后仍需手动恢复 Agent。</p>}
+      {status && !status.llm_configured && <p className="availability-note">请先<a href="#llm">前往 LLM 接入</a>，重启主服务后恢复 Agent。</p>}
+      {status && status.llm_configured && !status.bridge_connected && <p className="availability-note">请连接桌面执行端，再恢复 Agent。</p>}
 
       {status ? <>
         <div className="workspace-columns agent-config-grid">

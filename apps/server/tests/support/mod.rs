@@ -23,7 +23,12 @@ impl SpeechSynthesizer for FixedSpeech {
 }
 
 pub fn state() -> AppState {
-    AppState::new(AppConfig::default(), Arc::new(FixedSpeech))
+    let mut config = AppConfig::default();
+    config.viewers.enabled = false;
+    AppState::new(config, Arc::new(FixedSpeech))
+}
+pub fn state_with_config(config: AppConfig) -> AppState {
+    AppState::new(config, Arc::new(FixedSpeech))
 }
 pub async fn request(app: Router, method: &str, path: &str, body: Value) -> (u16, Value) {
     let response = app

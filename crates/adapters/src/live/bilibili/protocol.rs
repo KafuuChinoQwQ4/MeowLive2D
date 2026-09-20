@@ -1,6 +1,8 @@
 //! 16 字节大端 WS 包解析、有界解压和开放平台通知映射。
 
-use meowlive_domain::event::{EventKind, LiveEvent};
+use meowlive_domain::event::{
+    EventKind, GiftMetadata, LiveEvent, ViewerIdentity, ViewerIdentityKind,
+};
 use serde::Deserialize;
 use std::io::Read;
 
@@ -63,7 +65,16 @@ pub fn decode_events(
     room_id: &str,
     limits: DecodeLimits,
 ) -> Result<Vec<LiveEvent>, String> {
-    Ok(decode_frame(bytes, room_id, None, limits)?.events)
+    Ok(decode_frame(bytes, room_id, None, None, limits)?.events)
+}
+
+pub fn decode_events_with_app_id(
+    bytes: &[u8],
+    room_id: &str,
+    app_id: u64,
+    limits: DecodeLimits,
+) -> Result<Vec<LiveEvent>, String> {
+    Ok(decode_frame(bytes, room_id, None, Some(app_id), limits)?.events)
 }
 
 pub(crate) struct DecodedFrame {
@@ -75,6 +86,7 @@ pub(crate) fn decode_frame(
     bytes: &[u8],
     room_id: &str,
     game_id: Option<&str>,
+    app_id: Option<u64>,
     limits: DecodeLimits,
 ) -> Result<DecodedFrame, String> {
     limits.validate()?;
@@ -93,6 +105,7 @@ pub(crate) fn decode_frame(
         bytes,
         room_id,
         game_id,
+        app_id,
         limits,
         0,
         &mut budget,
@@ -110,6 +123,7 @@ fn decode_into(
     bytes: &[u8],
     room_id: &str,
     game_id: Option<&str>,
+    app_id: Option<u64>,
     limits: DecodeLimits,
     depth: usize,
     budget: &mut DecodeBudget,
@@ -133,7 +147,7 @@ fn decode_into(
         }
         let body = &bytes[offset + header..offset + length];
         match version {
-            0 | 1 if operation == OP_NOTIFY => match map_notice(body, room_id, game_id) {
+            0 | 1 if operation == OP_NOTIFY => match map_notice(body, room_id, game_id, app_id) {
                 NoticeOutcome::Event(event) => decoded.events.push(event),
                 NoticeOutcome::InteractionEnded => decoded.interaction_ended = true,
                 NoticeOutcome::Ignored => {}
@@ -149,6 +163,7 @@ fn decode_into(
                     &expanded,
                     room_id,
                     game_id,
+                    app_id,
                     limits,
                     depth + 1,
                     budget,
@@ -231,6 +246,18 @@ struct NoticeData {
     gift_name: Option<String>,
     #[serde(default)]
     gift_num: Option<u64>,
+    #[serde(default)]
+    open_id: Option<String>,
+    #[serde(default)]
+    uid: Option<u64>,
+    #[serde(default)]
+    price: Option<u64>,
+    #[serde(default)]
+    paid: Option<bool>,
+    #[serde(default)]
+    fans_medal_level: Option<u32>,
+    #[serde(default)]
+    guard_level: Option<u32>,
 }
 
 enum NoticeOutcome {
@@ -239,7 +266,12 @@ enum NoticeOutcome {
     Ignored,
 }
 
-fn map_notice(body: &[u8], expected_room: &str, game_id: Option<&str>) -> NoticeOutcome {
+fn map_notice(
+    body: &[u8],
+    expected_room: &str,
+    game_id: Option<&str>,
+    app_id: Option<u64>,
+) -> NoticeOutcome {
     let Ok(envelope) = serde_json::from_slice::<serde_json::Value>(body) else {
         return NoticeOutcome::Ignored;
     };
@@ -277,11 +309,24 @@ fn map_notice(body: &[u8], expected_room: &str, game_id: Option<&str>) -> Notice
         },
         _ => return NoticeOutcome::Ignored,
     };
+    let gift_metadata = matches!(kind, EventKind::Gift { .. })
+        && (data.price.is_some()
+            || data.paid.is_some()
+            || data.fans_medal_level.is_some()
+            || data.guard_level.is_some());
+    let gift_metadata = gift_metadata.then(|| GiftMetadata {
+        price: data.price,
+        paid: data.paid,
+        medal_level: data.fans_medal_level,
+        guard_level: data.guard_level,
+    });
     let event = LiveEvent {
         id,
         source: "bilibili".into(),
         viewer: data.uname,
+        viewer_identity: viewer_identity(data.uid, data.open_id, app_id),
         occurred_at_ms: data.timestamp.saturating_mul(1000),
+        gift_metadata,
         kind,
     };
     if event.validate().is_ok() {
@@ -289,4 +334,25 @@ fn map_notice(body: &[u8], expected_room: &str, game_id: Option<&str>) -> Notice
     } else {
         NoticeOutcome::Ignored
     }
+}
+
+fn viewer_identity(
+    uid: Option<u64>,
+    open_id: Option<String>,
+    app_id: Option<u64>,
+) -> Option<ViewerIdentity> {
+    if let Some(uid) = uid.filter(|uid| *uid > 0) {
+        return Some(ViewerIdentity {
+            namespace: "bilibili:global".into(),
+            kind: ViewerIdentityKind::Uid,
+            external_id: uid.to_string(),
+        });
+    }
+    let open_id = open_id?.trim().to_owned();
+    let app_id = app_id?;
+    (!open_id.is_empty()).then(|| ViewerIdentity {
+        namespace: format!("bilibili:app:{app_id}"),
+        kind: ViewerIdentityKind::OpenId,
+        external_id: open_id,
+    })
 }

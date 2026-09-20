@@ -30,6 +30,7 @@ pub fn config(base_url: String) -> LlmConfig {
 
 pub fn request(events: Vec<LiveEvent>) -> DecisionRequest {
     DecisionRequest {
+        memory_context: vec![],
         persona: "你是可靠而友好的猫娘主播。".into(),
         topic: "测试直播".into(),
         events,
@@ -45,7 +46,9 @@ pub fn chat(id: &str, text: &str) -> LiveEvent {
         id: id.into(),
         source: "simulator".into(),
         viewer: "观众甲".into(),
+        viewer_identity: None,
         occurred_at_ms: 1234,
+        gift_metadata: None,
         kind: EventKind::Chat { text: text.into() },
     }
 }
@@ -55,7 +58,9 @@ pub fn gift(id: &str, count: u32) -> LiveEvent {
         id: id.into(),
         source: "simulator".into(),
         viewer: "观众甲".into(),
+        viewer_identity: None,
         occurred_at_ms: 1234,
+        gift_metadata: None,
         kind: EventKind::Gift {
             name: "小鱼干".into(),
             count,

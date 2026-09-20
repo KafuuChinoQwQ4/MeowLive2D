@@ -1,7 +1,9 @@
 import type { LiveConnectionPhase } from "@meowlive/contracts";
+import { useState } from "react";
 import { createLiveClient } from "../../services/server/live";
 import type { LiveClient } from "../../services/server/live";
 import { useConnectionController } from "./useConnectionController";
+import { LiveSettingsForm } from "./LiveSettingsForm";
 
 const defaultClient = createLiveClient();
 const phaseLabels: Record<LiveConnectionPhase, string> = {
@@ -20,20 +22,20 @@ function platformLabel(platform: string): string {
 
 export function ConnectionPanel({ client = defaultClient, pollIntervalMs = 1_000 }: { client?: LiveClient; pollIntervalMs?: number }) {
   const controller = useConnectionController(client, pollIntervalMs);
+  const [settingsSaving, setSettingsSaving] = useState(false);
   const { status, connectionError, actionError, pendingAction } = controller;
   const canConnect = Boolean(status?.configured
     && (status.phase === "disconnected" || status.phase === "failed")
-    && !pendingAction);
+    && !pendingAction && !settingsSaving);
   const canDisconnect = Boolean(status
     && ["connecting", "connected", "reconnecting"].includes(status.phase)
-    && !pendingAction);
+    && !pendingAction && !settingsSaving);
   const showDisconnect = status?.phase === "disconnecting" || canDisconnect || pendingAction === "disconnect";
 
   return (
     <section className="live-workspace" aria-labelledby="live-connection-heading">
       <div className="connection-card live-status-card">
         <div>
-          <p className="eyebrow">直播来源</p>
           <h2 id="live-connection-heading">{status ? phaseLabels[status.phase] : "正在读取直播连接状态…"}</h2>
           <p className="server-address">{client.baseUrl}</p>
         </div>
@@ -60,8 +62,10 @@ export function ConnectionPanel({ client = defaultClient, pollIntervalMs = 1_000
         {status?.last_error && <p>{status.last_error}</p>}
       </div>}
       {status && (!status.configured || status.phase === "disabled") && <p className="availability-note">
-        请先在主服务配置中启用直播平台并完成凭据配置，重启服务后再手动连接。
+        请在下方填写直播配置并启用接入，保存后即可连接直播间。
       </p>}
+
+      <LiveSettingsForm client={client} phase={status?.phase} actionPending={Boolean(pendingAction)} onSaved={controller.refresh} onSavingChange={setSettingsSaving} />
 
       {status && <dl className="live-metrics" aria-label="直播事件统计">
         <div><dt>平台</dt><dd>{platformLabel(status.platform)}</dd></div>

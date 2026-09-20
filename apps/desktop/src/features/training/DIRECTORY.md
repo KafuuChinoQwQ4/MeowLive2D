@@ -8,13 +8,14 @@
 training/  # 仅音频与可选文本训练、转写校对、任务版本和离线测量界面
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 ├── TrainingPanel.audio.test.tsx  # 训练片段多格式转换上传、异步重选、容量与导入失败回归测试
-├── TrainingPanel.feedback.test.tsx  # 验证 GPU 失败提示、训练与测量结果弹窗、终态竞态去重及过期请求隔离
+├── TrainingPanel.feedback.test.tsx  # 验证训练测量行内结果、异常弹窗、模型中断提示与终态竞态去重
+├── TrainingPanel.preferences.test.tsx  # 验证训练偏好恢复、服务隔离和存储异常回退
 ├── TrainingPanel.saved.test.tsx  # 音色保存重开切换、删除确认及清理失败重试交互测试
 ├── TrainingPanel.test.tsx  # 训练配置独立选择、服务忙碌时编辑、提交审核与试听取消交互测试
-├── TrainingPanel.transcription.test.tsx  # 训练声音与文本模式、空白转写汇总弹窗、审核及过期请求回归测试
-├── TrainingPanel.tsx  # 训练性能设置、记录分页、音色版本、模型开关及结果弹窗工作区
+├── TrainingPanel.transcription.test.tsx  # 训练声音与文本模式、空白转写行内结果及错误弹窗、审核与过期请求回归测试
+├── TrainingPanel.tsx  # 本地训练偏好、性能设置、记录分页、音色版本、模型开关及结果弹窗工作区
 ├── TrainingPanel.workspace.test.tsx  # 训练页签与素材分页、音色归组、性能参数及独立模型启停测试
-├── TrainingResultDialog.tsx  # 训练成功失败结果弹窗、建议提示及键盘焦点恢复
+├── TrainingResultDialog.tsx  # 训练成功行内提示、错误弹窗、建议提示及键盘焦点恢复
 ├── TrainingVoiceLibrary.tsx  # 按参考音色归组的训练音色库、版本选择与单版本操作
 ├── index.ts  # 训练面板公开组件导出
 ├── trainingFeedback.ts  # 训练操作结果、任务终态通知及失败原因对应的改正建议
@@ -26,4 +27,4 @@ training/  # 仅音频与可选文本训练、转写校对、任务版本和离�
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 15c85f1efbf8e8176644b3a24712c656881a35faf2cde3e9b7f70ef44e2c116d -->
+<!-- directory-tree-sha256: f3792326a6f6f6a7f9082b04dc25366f962ee64c7098bb0fbfa1d3f327bbfbbc -->

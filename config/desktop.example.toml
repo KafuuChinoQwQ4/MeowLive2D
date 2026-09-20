@@ -3,6 +3,8 @@ server_url = "http://127.0.0.1:19600"
 max_buffer_samples = 5760000
 handshake_timeout_ms = 5000
 reconnect_delay_ms = 2000
+# 主服务启用 auth 时填写仅用于执行端的凭据文件；相对于本配置所在目录。
+# device_token_file = "local/device-token.txt"
 # Windows 使用默认音频设备；Linux 调试必须显式 --simulate，模拟不产生声音。
 
 # 模型导入：取消注释并填写 VTS 安装中的现存 Live2DModels 目录。

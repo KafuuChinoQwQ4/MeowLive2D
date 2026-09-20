@@ -2,15 +2,32 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { StrictMode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { createLiveClient } from "../../services/server/live";
-import { liveSnapshot } from "../../test/live-fixtures";
+import { liveSnapshot, withLiveSettingsResponses } from "../../test/live-fixtures";
 import { deferred, jsonResponse } from "../../test/server-fixtures";
 import { ConnectionPanel } from "./ConnectionPanel";
 
 describe("直播连接状态刷新", () => {
+  it("连接中断一次未完成的轮询后仍继续刷新连接进度", async () => {
+    vi.useFakeTimers();
+    let polls = 0;
+    const late = deferred<Response>();
+    const fetcher = vi.fn<typeof fetch>(async (url) => {
+      if (String(url).endsWith("/connect")) return jsonResponse(liveSnapshot({ phase: "connecting" }));
+      polls += 1;
+      if (polls === 2) return late.promise;
+      return jsonResponse(liveSnapshot({ phase: polls === 1 ? "disconnected" : "connected" }));
+    });
+    render(<ConnectionPanel client={createLiveClient({ fetcher: withLiveSettingsResponses(fetcher) })} pollIntervalMs={100} />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(100); });
+    fireEvent.click(screen.getByRole("button", { name: "连接直播间" }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(100); });
+    expect(screen.getByRole("heading", { name: "直播间已连接" })).toBeVisible();
+  });
+
   it("严格模式重新挂载后只保留一条轮询链", async () => {
     vi.useFakeTimers();
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(liveSnapshot()));
-    render(<StrictMode><ConnectionPanel client={createLiveClient({ fetcher })} pollIntervalMs={100} /></StrictMode>);
+    render(<StrictMode><ConnectionPanel client={createLiveClient({ fetcher: withLiveSettingsResponses(fetcher) })} pollIntervalMs={100} /></StrictMode>);
 
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
     const callsAfterMount = fetcher.mock.calls.length;
@@ -27,7 +44,7 @@ describe("直播连接状态刷新", () => {
       pendingSignal = init?.signal;
       return first.promise;
     });
-    const view = render(<ConnectionPanel client={createLiveClient({ fetcher, timeoutMs: 30_000 })} pollIntervalMs={100} />);
+    const view = render(<ConnectionPanel client={createLiveClient({ fetcher: withLiveSettingsResponses(fetcher), timeoutMs: 30_000 })} pollIntervalMs={100} />);
 
     await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
     expect(fetcher).toHaveBeenCalledTimes(1);
@@ -52,7 +69,7 @@ describe("直播连接状态刷新", () => {
         ? jsonResponse(liveSnapshot({ phase: "disconnected" }))
         : late.promise;
     });
-    render(<ConnectionPanel client={createLiveClient({ fetcher })} pollIntervalMs={100} />);
+    render(<ConnectionPanel client={createLiveClient({ fetcher: withLiveSettingsResponses(fetcher) })} pollIntervalMs={100} />);
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
     await act(async () => { await vi.advanceTimersByTimeAsync(100); });
 
@@ -77,7 +94,7 @@ describe("直播连接状态刷新", () => {
       }
       return jsonResponse(liveSnapshot());
     });
-    const view = render(<ConnectionPanel client={createLiveClient({ fetcher })} />);
+    const view = render(<ConnectionPanel client={createLiveClient({ fetcher: withLiveSettingsResponses(fetcher) })} />);
     const connect = screen.getByRole("button", { name: "连接直播间" });
     await waitFor(() => expect(connect).toBeEnabled());
     fireEvent.click(connect);

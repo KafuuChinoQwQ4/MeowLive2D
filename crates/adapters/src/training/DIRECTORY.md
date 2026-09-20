@@ -18,4 +18,4 @@ training/  # 独立训练进程、进度及产物的适配
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: d9c755cf0ddba19f1926f538e9b0aff046c795250ad7cbf48fa843d749b7caf9 -->
+<!-- directory-tree-sha256: faa049822829a85f0efcd586c59269a666c3408ce5ccd33d60ad03c28ed95565 -->

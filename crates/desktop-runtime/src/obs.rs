@@ -1,6 +1,8 @@
 //! OBS WebSocket v5 的本地有界控制；音频采集和推流由 OBS 本身负责。
 mod config;
+mod settings;
 pub use config::ObsConfig;
+pub use settings::{save_settings, settings};
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use futures_util::{SinkExt, StreamExt};
@@ -18,6 +20,7 @@ const MAX_FRAME: usize = 256 * 1024;
 static NEXT_REQUEST_ID: AtomicU64 = AtomicU64::new(1);
 
 pub async fn execute(config: &ObsConfig, operation: ObsOperation) -> Result<ObsSnapshot, String> {
+    let (config, password) = settings::resolve(config).await?;
     config.validate()?;
     if !config.enabled {
         return Ok(ObsSnapshot {
@@ -29,13 +32,17 @@ pub async fn execute(config: &ObsConfig, operation: ObsOperation) -> Result<ObsS
     }
     tokio::time::timeout(
         Duration::from_millis(config.timeout_ms),
-        execute_inner(config, operation),
+        execute_inner(&config, password.as_deref(), operation),
     )
     .await
     .map_err(|_| "OBS 操作超时".to_owned())?
 }
 
-async fn execute_inner(config: &ObsConfig, operation: ObsOperation) -> Result<ObsSnapshot, String> {
+async fn execute_inner(
+    config: &ObsConfig,
+    password: Option<&str>,
+    operation: ObsOperation,
+) -> Result<ObsSnapshot, String> {
     let limits = WebSocketConfig::default()
         .max_message_size(Some(MAX_FRAME))
         .max_frame_size(Some(MAX_FRAME));
@@ -69,12 +76,9 @@ async fn execute_inner(config: &ObsConfig, operation: ObsOperation) -> Result<Ob
         if salt.is_empty() || challenge.is_empty() {
             return Err("OBS 鉴权挑战无效".into());
         }
-        let env = std::env::var(&config.password_env)
-            .map_err(|_| "OBS 要求鉴权，但密码环境变量缺失".to_owned())?;
-        if env.is_empty() {
-            return Err("OBS 要求鉴权，但密码为空".into());
-        }
-        identify["d"]["authentication"] = json!(authentication(&env, salt, challenge));
+        let password =
+            password.ok_or("OBS 要求鉴权，请在连接设置中保存密码（初始密码环境变量缺失）")?;
+        identify["d"]["authentication"] = json!(authentication(password, salt, challenge));
     }
     send(&mut ws, identify).await?;
     let identified = recv(&mut ws).await?;

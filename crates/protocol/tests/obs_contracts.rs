@@ -51,3 +51,24 @@ fn obs_snapshot_round_trips_on_resource_channel() {
     assert!(parsed.is_ok(), "OBS snapshot rejected: {parsed:?}");
     assert_eq!(serde_json::to_value(parsed.unwrap()).unwrap(), value);
 }
+
+#[test]
+fn obs_settings_cross_resource_channel_without_exposing_password_in_debug() {
+    let value = serde_json::json!({"type":"save_obs_settings","settings":{
+        "enabled":true,"websocket_url":"ws://127.0.0.1:4455",
+        "password":"private-test-password","clear_password":false
+    }});
+    let parsed = serde_json::from_value::<DesktopResourceOperation>(value.clone());
+    assert!(
+        parsed.is_ok(),
+        "OBS settings operation rejected: {parsed:?}"
+    );
+    let parsed = parsed.unwrap();
+    assert!(!format!("{parsed:?}").contains("private-test-password"));
+    assert_eq!(serde_json::to_value(parsed).unwrap(), value);
+    let snapshot = serde_json::json!({"type":"obs_settings","settings":{
+        "enabled":true,"websocket_url":"ws://127.0.0.1:4455",
+        "password_configured":true,"storage_available":true
+    }});
+    assert!(serde_json::from_value::<DesktopResourceResult>(snapshot).is_ok());
+}

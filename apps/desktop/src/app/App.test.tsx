@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { agentStatus } from "../test/agent-fixtures";
-import { liveSnapshot } from "../test/live-fixtures";
+import { liveSettingsSnapshot, liveSnapshot } from "../test/live-fixtures";
 import { resourceSnapshot } from "../test/resource-fixtures";
 import { jsonResponse, serverStatus } from "../test/server-fixtures";
 
@@ -15,6 +15,8 @@ afterEach(() => {
 describe("桌面控制台", () => {
   it("按导航展示单个功能，并在切页后保留播报与 Agent 输入", async () => {
     vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockImplementation(async (url) => {
+      if (String(url).endsWith("/api/admin/session")) return jsonResponse({ enabled: false, authenticated: false });
+      if (String(url).endsWith("/api/live/settings")) return jsonResponse(liveSettingsSnapshot());
       if (String(url).endsWith("/api/live")) return jsonResponse(liveSnapshot());
       if (String(url).endsWith("/api/resources")) return jsonResponse(resourceSnapshot());
       return String(url).endsWith("/api/agent") ? jsonResponse(agentStatus()) : jsonResponse(serverStatus());

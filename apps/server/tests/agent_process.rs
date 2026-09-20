@@ -14,6 +14,47 @@ use std::{
 };
 
 #[tokio::test]
+async fn saved_agent_settings_survive_server_restart_and_remain_paused() {
+    let mut process = ServerProcess::start(
+        "[server]\nlisten_address=\"127.0.0.1:0\"\n[agent]\npersona=\"初始人设\"\ncooldown_ms=30000\n",
+    )
+    .await;
+    let client = reqwest::Client::new();
+    let mut settings = json!({
+        "persona": "温柔猫咪，用简短中文回应。\n喜欢聊音乐。",
+        "topic": "夜间电台",
+        "proactive_enabled": true,
+        "cooldown_ms": 12000,
+    });
+    // A second save must replace the previous file, including on Windows.
+    for cooldown in [12000, 45000] {
+        settings["cooldown_ms"] = json!(cooldown);
+        let response = client
+            .post(format!("{}/api/agent/settings", process.base))
+            .json(&settings)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 200);
+        let snapshot: Value = response.json().await.unwrap();
+        assert_eq!(snapshot["settings"], settings);
+    }
+    process.restart().await;
+    let snapshot: Value = client
+        .get(format!("{}/api/agent", process.base))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(snapshot["settings"], settings);
+    assert_eq!(snapshot["paused"], true);
+    assert_eq!(snapshot["phase"], "paused");
+    assert_eq!(snapshot["events"], json!([]));
+}
+
+#[tokio::test]
 async fn server_executable_wires_model_environment_events_and_real_speech_worker() {
     let calls = Arc::new(AtomicUsize::new(0));
     let observed = calls.clone();

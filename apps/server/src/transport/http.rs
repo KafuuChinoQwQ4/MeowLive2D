@@ -21,7 +21,69 @@ pub fn router(state: AppState) -> Router {
         .filter_map(|s| s.parse::<header::HeaderValue>().ok())
         .collect();
     Router::new()
+        .route(
+            "/api/admin/viewers/merge/preview",
+            post(super::viewer_merge::preview),
+        )
+        .route(
+            "/api/admin/viewers/merge/apply",
+            post(super::viewer_merge::apply),
+        )
+        .route(
+            "/api/admin/viewers/{id}/relationships",
+            get(super::relationships::list),
+        )
+        .route(
+            "/api/admin/relationships",
+            post(super::relationships::create),
+        )
+        .route(
+            "/api/admin/relationships/{id}",
+            post(super::relationships::change),
+        )
+        .route("/api/admin/graph/status", get(super::relationships::status))
+        .route(
+            "/api/admin/graph/rebuild",
+            post(super::relationships::rebuild),
+        )
+        .route("/api/admin/viewers", get(super::viewers::viewers))
+        .route("/api/admin/events", get(super::viewers::events))
+        .route("/api/admin/viewers/{id}/memories", get(super::memory::list))
+        .route(
+            "/api/admin/viewers/{id}/memories/{memory}",
+            post(super::memory::mutate),
+        )
+        .route("/api/admin/memories/status", get(super::memory::status))
+        .route("/api/admin/memories/retry", post(super::memory::retry))
+        .route(
+            "/api/admin/memories/rebuild-vectors",
+            post(super::memory::rebuild_vectors),
+        )
+        .route("/api/admin/viewers/{id}", get(super::companionship::detail))
+        .route(
+            "/api/admin/viewers/{id}/adjust",
+            post(super::companionship::adjust),
+        )
+        .route(
+            "/api/admin/viewers/{id}/reverse",
+            post(super::companionship::reverse),
+        )
+        .route(
+            "/api/admin/viewers/{id}/gifts/confirm",
+            post(super::companionship::confirm_gift),
+        )
+        .route(
+            "/api/admin/companionship/status",
+            get(super::companionship::health),
+        )
+        .route(
+            "/api/admin/session",
+            get(super::auth::status)
+                .post(super::auth::login)
+                .delete(super::auth::logout),
+        )
         .route("/api/status", get(status))
+        .route("/api/health", get(health))
         .route(
             "/api/llm/settings",
             get(super::llm::settings).post(super::llm::save),
@@ -75,7 +137,15 @@ pub fn router(state: AppState) -> Router {
         )
         .route("/api/characters/preview", post(super::resources::preview))
         .route("/api/desktop/resources", post(super::resources::desktop))
+        .route(
+            "/api/obs/settings",
+            get(super::obs::settings).post(super::obs::save_settings),
+        )
         .route("/api/live", get(super::live::status))
+        .route(
+            "/api/live/settings",
+            get(super::live::settings).post(super::live::save_settings),
+        )
         .route("/api/live/connect", post(super::live::connect))
         .route("/api/live/disconnect", post(super::live::disconnect))
         .route("/api/speech", post(speak))
@@ -93,13 +163,17 @@ pub fn router(state: AppState) -> Router {
         .layer(DefaultBodyLimit::max(16 * 1024))
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
+            super::auth::guard,
+        ))
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
             super::origin::guard,
         ))
         .layer(
             CorsLayer::new()
                 .allow_origin(origins)
-                .allow_methods([Method::GET, Method::POST])
-                .allow_headers([header::CONTENT_TYPE]),
+                .allow_methods([Method::GET, Method::POST, Method::DELETE])
+                .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION]),
         )
         .with_state(state)
 }
@@ -183,4 +257,13 @@ async fn speak(
         })?;
     state.wake.notify_one();
     Ok((StatusCode::ACCEPTED, Json(mapping::speech(&task))))
+}
+
+async fn health(State(state): State<AppState>) -> Json<meowlive_protocol::control::ServerHealth> {
+    let inner = state.inner.lock().await;
+    Json(meowlive_protocol::control::ServerHealth {
+        service: "meowlive".into(),
+        protocol_version: meowlive_protocol::PROTOCOL_VERSION,
+        bridge_connected: inner.queue.is_connected(),
+    })
 }

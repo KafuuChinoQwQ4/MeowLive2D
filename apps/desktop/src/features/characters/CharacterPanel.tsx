@@ -80,12 +80,12 @@ export function CharacterPanel({ controller }: { controller: CharacterController
 
   return <section className="panel" aria-labelledby="characters-heading">
     <div className="section-title">
-      <div><p className="eyebrow">形象资源</p><h2 id="characters-heading">角色管理</h2></div>
+      <div><h2 id="characters-heading">角色管理</h2></div>
       <button type="button" disabled={busy} onClick={() => { void controller.refreshModels(); }}>
         {controller.pendingAction === "models" ? "正在刷新…" : "刷新 VTS 模型"}
       </button>
     </div>
-    <p className="muted">保存角色配置后，选择角色会在 VTube Studio 中加载对应模型。</p>
+    <p className="muted">选择角色即可加载 VTS 模型。</p>
 
     <ul className="resource-list" aria-label="已保存角色">
       {snapshot?.characters.map((character) => <li className="resource-row" key={character.id}>
@@ -122,7 +122,7 @@ export function CharacterPanel({ controller }: { controller: CharacterController
     </p>}
     {controller.modelNotice && <p className="success-banner" role="status">{controller.modelNotice}</p>}
     {controller.installedModels !== null && <>
-      <p className="field-hint">此列表来自 VTS 模型目录。删除会移除已安装的模型副本，请先在 VTS 中卸载当前模型；删除后重启 VTS。</p>
+      <p className="field-hint">删除会移除模型副本。请先在 VTS 卸载，删除后重启 VTS。</p>
       <ul className="resource-list" aria-label="已安装模型">{controller.installedModels.map(model => <li className="resource-row" key={model.id}>
         <div className="resource-row-heading"><strong>{model.name}</strong>
           <button type="button" className="stop-button" disabled={busy} aria-label={`删除模型 ${model.name}`} onClick={() => {
@@ -162,13 +162,13 @@ export function CharacterPanel({ controller }: { controller: CharacterController
         {form.voice_id && !voiceOptions.some((voice) => voice.id === form.voice_id) && <option value={form.voice_id}>当前音色不可用</option>}
         {voiceOptions.map((voice) => <option key={voice.id} value={voice.id}>{voice.name}</option>)}
       </select>
-      {snapshot && voiceOptions.length === 0 && <p className="field-hint">请先在音色管理中上传参考声音，再为角色选择音色。</p>}
+      {snapshot && voiceOptions.length === 0 && <p className="field-hint">请先上传参考音色。</p>}
 
       <label htmlFor="mouth-parameter">嘴型参数</label>
       <input id="mouth-parameter" value={form.mouth_parameter} disabled={busy}
         aria-invalid={!/^[A-Za-z0-9]{4,32}$/u.test(form.mouth_parameter)}
         onChange={(event) => change({ mouth_parameter: event.target.value })} />
-      <p className="field-hint">使用 4–32 位字母或数字，与模型的嘴型参数保持一致。</p>
+      <p className="field-hint">4–32 位字母或数字，与 VTS 输入参数一致。</p>
 
       <div className="mapping-heading"><h4>意图与热键</h4><button type="button" disabled={busy || form.mappings.length >= 32}
         onClick={() => change({ mappings: [...form.mappings, { intent: "", hotkey_id: "", fallback_hotkey_id: null, validated: false }] })}>添加映射</button></div>

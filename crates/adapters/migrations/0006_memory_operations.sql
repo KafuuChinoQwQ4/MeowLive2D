@@ -1,0 +1,1 @@
+CREATE TABLE memory_operations(scope_id TEXT NOT NULL,request_key TEXT NOT NULL,operation TEXT NOT NULL,reason TEXT NOT NULL,actor TEXT NOT NULL,created_at_ms BIGINT NOT NULL,PRIMARY KEY(scope_id,request_key));

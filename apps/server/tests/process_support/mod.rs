@@ -24,29 +24,52 @@ impl ServerProcess {
                 serde_json::to_string(&root.join("resources")).unwrap()
             )
         };
+        // Process tests without a database explicitly opt out of default persistence.
+        let configuration = if config.contains("[viewers]") {
+            configuration
+        } else {
+            format!("{configuration}\n[viewers]\nenabled=false\n")
+        };
         std::fs::write(&path, configuration).unwrap();
-        let log = root.join("server.log");
-        let child = Command::new(env!("CARGO_BIN_EXE_meowlive-server"))
-            .args(["--config"])
-            .arg(path)
-            .env("MEOWLIVE_TEST_MODEL_KEY", "fake-process-test-key")
-            .stdout(Stdio::null())
-            .stderr(std::fs::File::create(&log).unwrap())
-            .spawn()
-            .unwrap();
+        let child = Self::spawn(&root);
         let mut process = Self {
             child,
             root,
             base: String::new(),
         };
-        process.base = tokio::time::timeout(Duration::from_secs(5), async {
+        process.wait_until_ready().await;
+        process
+    }
+
+    fn spawn(root: &std::path::Path) -> Child {
+        Command::new(env!("CARGO_BIN_EXE_meowlive-server"))
+            .args(["--config"])
+            .arg(root.join("server.toml"))
+            .env("MEOWLIVE_TEST_MODEL_KEY", "fake-process-test-key")
+            .stdout(Stdio::null())
+            .stderr(std::fs::File::create(root.join("server.log")).unwrap())
+            .spawn()
+            .unwrap()
+    }
+
+    #[allow(dead_code)]
+    pub async fn restart(&mut self) {
+        self.child.kill().unwrap();
+        self.child.wait().unwrap();
+        self.child = Self::spawn(&self.root);
+        self.wait_until_ready().await;
+    }
+
+    async fn wait_until_ready(&mut self) {
+        let log = self.root.join("server.log");
+        self.base = tokio::time::timeout(Duration::from_secs(5), async {
             loop {
                 let text = std::fs::read_to_string(&log).unwrap();
                 if let Some(line) = text.lines().find(|line| line.contains("主服务：http://")) {
                     return format!("http://{}", line.split("http://").nth(1).unwrap());
                 }
                 assert!(
-                    process.child.try_wait().unwrap().is_none(),
+                    self.child.try_wait().unwrap().is_none(),
                     "server stopped before listening: {text}"
                 );
                 tokio::time::sleep(Duration::from_millis(10)).await;
@@ -54,7 +77,6 @@ impl ServerProcess {
         })
         .await
         .expect("server must start");
-        process
     }
 }
 impl Drop for ServerProcess {

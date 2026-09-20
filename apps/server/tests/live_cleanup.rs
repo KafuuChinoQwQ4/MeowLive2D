@@ -143,6 +143,7 @@ impl LanguageModel for Model {
 
 fn state(source: Arc<dyn LiveSource>, reconnect_ms: u64, model: bool) -> AppState {
     let mut config = AppConfig::default();
+    config.viewers.enabled = false;
     config.live.enabled = true;
     config.live.app_id = 1;
     config.live.reconnect_initial_ms = reconnect_ms;

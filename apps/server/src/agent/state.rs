@@ -66,7 +66,15 @@ impl AppState {
             proactive_enabled: settings.proactive_enabled,
             cooldown_ms: u64::from(settings.cooldown_ms),
         };
+        settings.validate().map_err(invalid)?;
         let mut inner = self.inner.lock().await;
+        self.agent_settings.save(&settings).map_err(|message| {
+            ApiError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "agent_settings_save_failed",
+                message,
+            )
+        })?;
         inner
             .agent
             .configure(settings, self.now_ms())
@@ -119,10 +127,25 @@ impl AppState {
         let events: Vec<_> = batch
             .events
             .into_iter()
-            .map(|e| mapping::event(e, now))
+            .map(|e| {
+                mapping::event(
+                    e,
+                    if self.viewer_store.is_some() {
+                        crate::viewers::utc_ms()
+                    } else {
+                        now
+                    },
+                )
+            })
             .collect();
         for event in &events {
             event.validate().map_err(invalid)?;
+        }
+        if self.viewer_store.is_some() {
+            return self.submit_persisted_events(events).await;
+        }
+        if self.config.viewers.enabled {
+            return Err(crate::viewers::unavailable());
         }
         let mut inner = self.inner.lock().await;
         // Bounded copy makes batch admission all-or-nothing even on capacity errors.
@@ -130,6 +153,8 @@ impl AppState {
         let mut result = EventBatchResult {
             accepted: 0,
             duplicates: 0,
+            persisted: None,
+            unscheduled: None,
         };
         for event in events {
             match staged.submit(event, now).map_err(|message| {

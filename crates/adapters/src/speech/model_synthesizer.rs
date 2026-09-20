@@ -200,6 +200,10 @@ impl SpeechSynthesizer for ModelSynthesizer {
     fn synthesize(&self, request: SynthesisRequest) -> SynthesisFuture<'_> {
         Box::pin(self.generate(Some(request.voice_id), None, request.text))
     }
+
+    fn owns_synthesis_lifetime(&self) -> bool {
+        true
+    }
 }
 impl Engine {
     async fn runtime_request(

@@ -1,4 +1,4 @@
-//! OBS 配置只保存环境变量名，连接仅允许本机字面量 IP。
+//! OBS 启动配置与本地设置文件位置；连接仅允许本机字面量 IP。
 use serde::Deserialize;
 
 #[derive(Clone, Debug, Deserialize)]
@@ -8,6 +8,9 @@ pub struct ObsConfig {
     pub websocket_url: String,
     pub password_env: String,
     pub timeout_ms: u64,
+    /// Derived from the selected desktop configuration, never accepted from a remote caller.
+    #[serde(skip)]
+    pub settings_path: Option<std::path::PathBuf>,
 }
 
 impl Default for ObsConfig {
@@ -17,6 +20,7 @@ impl Default for ObsConfig {
             websocket_url: "ws://127.0.0.1:4455".into(),
             password_env: "MEOWLIVE_OBS_PASSWORD".into(),
             timeout_ms: 5000,
+            settings_path: None,
         }
     }
 }

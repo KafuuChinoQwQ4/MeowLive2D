@@ -6,6 +6,16 @@
 
 ```text
 adapters/  # 外部服务和存储实现，适配 application 定义的能力
+├── migrations/  # PostgreSQL 观众身份与直播事件模式迁移
+│   ├── 0001_viewer_identity_events.sql  # 观众、稳定身份、昵称、直播场次和幂等原始事件的 PostgreSQL 初始模式
+│   ├── 0002_companionship.sql  # 来访礼物陪伴账本及完成回执数据迁移
+│   ├── 0003_memories.sql  # 记忆事实证据向量及持久提取任务迁移
+│   ├── 0004_relationships.sql  # 关系事实审计与图事务发件箱迁移
+│   ├── 0005_memory_cleanup.sql  # 观众记忆外键级联清理规则增量迁移
+│   ├── 0006_memory_operations.sql  # 记忆任务恢复和向量重建审计迁移
+│   ├── 0007_viewer_merge.sql  # 身份合并墓碑和原始账本归属审计迁移
+│   ├── 0008_memory_graph_invalidation.sql  # 记忆失效同事务生成关系墓碑与图同步任务的触发器
+│   └── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 ├── src/  # 按外部能力组织的适配器源码
 │   ├── live/  # 直播源连接、事件标准化与模拟输入
 │   │   ├── bilibili/  # 哔哩哔哩官方直播开放平台的授权、签名、连接与事件适配
@@ -25,7 +35,7 @@ adapters/  # 外部服务和存储实现，适配 application 定义的能力
 │   │   ├── mod.rs  # 模型协议适配。兼容同一协议的云端与本地服务复用实现，其他协议独立添加。
 │   │   ├── multi_provider.rs  # OpenAI Responses、Anthropic Messages、Gemini 与兼容聊天的协议适配
 │   │   ├── openai_compatible.rs  # 非流式 Chat Completions 传输、认证、响应大小与临时错误分类
-│   │   ├── prompt.rs  # 跨 LLM 协议共享的结构化 Agent 提示与输入校验
+│   │   ├── prompt.rs  # 跨 LLM 协议共享的事件回复与主动发言提示隔离及输入校验
 │   │   └── response.rs  # LLM 文本决策内容与 OpenAI 聊天响应的严格校验
 │   ├── speech/  # GPT-SoVITS 等语音引擎的请求和音频格式适配
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
@@ -34,7 +44,26 @@ adapters/  # 外部服务和存储实现，适配 application 定义的能力
 │   │   ├── model_synthesizer.rs  # 模型内存启停、成对权重加载与合成互斥及取消事务保护
 │   │   ├── resource_synthesizer.rs  # 根据音色档案解析参考音频并调用 GPT-SoVITS
 │   │   └── wav.rs  # 完整 RIFF/WAV 边界与 PCM16 格式校验解码
-│   ├── storage/  # SQLite 记录与 Linux 素材文件存储
+│   ├── storage/  # PostgreSQL 观众事件与 Linux 素材文件存储
+│   │   ├── postgres/  # 观众持久业务、记忆与关系的 PostgreSQL 实现
+│   │   │   ├── memory/  # 记忆记录、后台租约和向量分层持久实现
+│   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   │   ├── operations.rs  # 审计化任务恢复与向量重建事务
+│   │   │   │   ├── queue.rs  # 记忆提取任务租约、重试及来源复核
+│   │   │   │   ├── records.rs  # 记忆证据合并、时效检索和管理失效事务
+│   │   │   │   └── vectors.rs  # 模型维度正文版本隔离的 pgvector 存取
+│   │   │   ├── relationships/  # 关系图投影租约与恢复实现目录
+│   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   │   ├── derived.rs  # 从可靠记忆派生明确兴趣、活动及未解析提及的事务规则
+│   │   │   │   └── queue.rs  # 关系图事务发件箱认领重试和重建
+│   │   │   ├── viewer_merge/  # 身份合并内部数据迁移实现
+│   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   │   └── migrate.rs  # 合并身份时的去重迁移与账本对账
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   ├── companionship.rs  # 原子来访礼物计分及幂等完成回执账本
+│   │   │   ├── memory.rs  # 记忆持久端口实现与事务通用约束
+│   │   │   ├── relationships.rs  # 权威关系事实、来源确认和版本化管理事务
+│   │   │   └── viewer_merge.rs  # 有预览指纹与审计保护的身份合并事务
 │   │   ├── resources/  # 资源快照转换与参考音频校验实现
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   ├── snapshot.rs  # 资源快照版本化转换及音色参考标识一致性验证
@@ -42,6 +71,8 @@ adapters/  # 外部服务和存储实现，适配 application 定义的能力
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   ├── files.rs  # Linux 素材文件存储，负责文件落盘及引擎可访问路径；Windows 模型导入另属 desktop-runtime。
 │   │   ├── mod.rs  # 持久化和本地素材存储实现；应用层只看存取接口。
+│   │   ├── postgres.rs  # 观众身份事件幂等接收与查询、迁移连接及业务存储集成
+│   │   ├── receipt_journal.rs  # 同步持久、容量有界及公平重试的本地完成回执日志
 │   │   ├── resources.rs  # 原子资源快照、音色与参考标识一致性校验及参考 WAV 存取清理
 │   │   └── sqlite.rs  # SQLite 记录存储适配入口。表结构和迁移随首个持久化用例加入。
 │   ├── training/  # 独立训练进程、进度及产物的适配
@@ -52,7 +83,9 @@ adapters/  # 外部服务和存储实现，适配 application 定义的能力
 │   │   ├── tests.rs  # 训练音色持久化、音频模式、转写进程、删除清理及存储故障测试
 │   │   └── transcription.rs  # 单片音频自动转写的有界子进程、私有临时素材与退出清理
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   ├── graph.rs  # Neo4j Query API 参数化投影和有界邻居检索
 │   ├── lib.rs  # 外部能力实现：依赖业务层定义的 ports，不反向定义业务规则。
+│   ├── memory.rs  # 独立 HTTP 记忆提取和嵌入服务适配器
 │   └── runtime.rs  # GPU 采样、WSL 工具查找与有界错误诊断
 ├── tests/  # GPT-SoVITS、WAV 与 LLM 适配器的集成和输入输出边界测试
 │   ├── bilibili_support/  # 受控官方直播 HTTP 和 WebSocket 协议测试服务
@@ -78,9 +111,18 @@ adapters/  # 外部服务和存储实现，适配 application 定义的能力
 │   ├── llm_limits.rs  # 配置请求响应上限、总超时、错误分类与敏感信息脱敏测试
 │   ├── llm_multi_provider.rs  # 多 LLM 协议的请求认证、输出校验和边界测试
 │   ├── llm_output_validation.rs  # 严格决策字段、事件子集、工具调用、截断及内容约束测试
-│   ├── llm_transport.rs  # 路径、认证、JSON 模式、消息角色、礼物分组提示与重定向测试
+│   ├── llm_transport.rs  # 路径认证、消息角色、主动发言历史隔离、礼物分组提示与重定向测试
+│   ├── memory_http.rs  # 提取嵌入 HTTP 格式限额与来源校验测试
 │   ├── model_runtime.rs  # 模型关闭拒绝合成、启停后恢复及不污染权重状态的 HTTP 测试
 │   ├── model_synthesizer.rs  # 取消后的权重合成互斥与默认模型恢复链路测试
+│   ├── neo4j_graph.rs  # 真实 Neo4j 版本墓碑范围隔离及恢复测试
+│   ├── postgres_companionship.rs  # 真实 PostgreSQL 陪伴日预算并发幂等测试
+│   ├── postgres_derived_relations.rs  # 真实 PostgreSQL 记忆派生关系与删除撤销不复活测试
+│   ├── postgres_memories.rs  # 真实 PostgreSQL 记忆生命周期租约和管理抑制测试
+│   ├── postgres_relationships.rs  # 真实 PostgreSQL 关系证据图发件箱与隔离测试
+│   ├── postgres_viewer_merge.rs  # 真实 PostgreSQL 身份合并预览去重和陈旧请求测试
+│   ├── postgres_viewers.rs  # PostgreSQL 观众身份、事件去重、并发、范围隔离和批次原子性容器测试
+│   ├── receipt_journal.rs  # 回执日志重启幂等、文件权限、容量和损坏诊断测试
 │   ├── resource_store.rs  # 参考音频存储持久化、删除重启、路径及标识一致性测试
 │   ├── resource_synthesizer.rs  # 上传音色的引擎路径解析与默认音色回退测试
 │   ├── wav_decoding.rs  # 完整 WAV 的基础 PCM 解码与无效输入测试
@@ -91,6 +133,7 @@ adapters/  # 外部服务和存储实现，适配 application 定义的能力
 
 可继续查看各子目录的索引：
 
+- [migrations/](migrations/DIRECTORY.md)：PostgreSQL 观众身份与直播事件模式迁移
 - [src/](src/DIRECTORY.md)：按外部能力组织的适配器源码
 - [tests/](tests/DIRECTORY.md)：GPT-SoVITS、WAV 与 LLM 适配器的集成和输入输出边界测试
 
@@ -98,4 +141,4 @@ adapters/  # 外部服务和存储实现，适配 application 定义的能力
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 859b222dca4970312a4e5a6af099f4df164300d63437de1a6c98aa36b71567c8 -->
+<!-- directory-tree-sha256: 2a1f2c2a4024027daf3bb13e213b1f14f2390b43b836c9e5a403b3ea2e6ba231 -->

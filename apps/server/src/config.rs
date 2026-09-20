@@ -3,26 +3,38 @@ use serde::Deserialize;
 use std::{net::SocketAddr, path::Path};
 
 mod agent;
+mod auth;
+mod graph;
 mod live;
 mod llm;
+mod memory;
 mod resources;
 mod training;
+mod viewers;
 pub use agent::AgentConfig;
-pub use live::LiveConfig;
+pub use auth::AuthConfig;
+pub use graph::GraphConfig;
+pub use live::{LiveConfig, LiveCredentials};
 pub use llm::LlmConfig;
+pub use memory::MemoryConfig;
 pub use resources::ResourcesConfig;
 pub use training::TrainingConfig;
+pub use viewers::ViewersConfig;
 
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct AppConfig {
     pub server: ServerConfig,
+    pub auth: AuthConfig,
     pub speech: SpeechConfig,
     pub agent: AgentConfig,
     pub llm: LlmConfig,
     pub live: LiveConfig,
     pub resources: ResourcesConfig,
     pub training: TrainingConfig,
+    pub viewers: ViewersConfig,
+    pub memory: MemoryConfig,
+    pub graph: GraphConfig,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -90,15 +102,28 @@ impl AppConfig {
         if let Some(llm) = crate::llm_settings::load_override(path)? {
             config.llm = llm;
         }
+        if let Some(live) = crate::live_settings::load_override(path, &config.live)? {
+            config.live = live;
+        }
+        if let Some(agent) = crate::agent_settings::load_override(path)? {
+            config.agent.persona = agent.persona;
+            config.agent.topic = agent.topic;
+            config.agent.proactive_enabled = agent.proactive_enabled;
+            config.agent.cooldown_ms = agent.cooldown_ms;
+        }
         config.validate()?;
         Ok(config)
     }
     pub fn validate(&self) -> Result<(), String> {
+        self.auth.validate()?;
         self.agent.validate()?;
         self.llm.validate()?;
         self.live.validate()?;
         self.resources.validate()?;
         self.training.validate()?;
+        self.viewers.validate()?;
+        self.memory.validate(self.viewers.enabled)?;
+        self.graph.validate(self.viewers.enabled)?;
         if self.llm.mode == "local" {
             let uri = self
                 .speech

@@ -1,7 +1,9 @@
 """Explicit lifetime for the project-owned GPT-SoVITS inference pipeline."""
 import gc
 import asyncio
+import ast
 import copy
+from functools import wraps
 from pathlib import Path
 import shutil
 import sys
@@ -162,6 +164,15 @@ def install_model_runtime(app, pipeline_type, config):
     return runtime
 
 
+def run_blocking(function):
+    @wraps(function)
+    async def run(*args, **kwargs):
+        # Upstream inference/weight loading is synchronous even in async routes.
+        # Keep the ASGI loop available for model status and readiness probes.
+        return await asyncio.to_thread(function, *args, **kwargs)
+    return run
+
+
 def prepare_runtime(work):
     work = Path(work)
     api = work / "api_v2.py"
@@ -170,7 +181,20 @@ def prepare_runtime(work):
     replacement = ('APP = FastAPI()\nfrom _meowlive_model_runtime import install_model_runtime\n'
                    'tts_pipeline = install_model_runtime(APP, TTS, tts_config)')
     if source.count(marker) == 1:
-        api.write_text(source.replace(marker, replacement))
+        source = source.replace(marker, replacement)
     elif replacement not in source:
         raise ValueError("上游推理入口已变化，无法配置模型启停")
+    handlers = {"tts_handle", "set_gpt_weights", "set_sovits_weights", "set_refer_aduio"}
+    lines = source.splitlines(keepends=True)
+    for node in reversed(ast.parse(source).body):
+        if not isinstance(node, ast.AsyncFunctionDef) or node.name not in handlers:
+            continue
+        if any(isinstance(child, (ast.Await, ast.AsyncFor, ast.AsyncWith)) for child in ast.walk(node)):
+            raise ValueError("上游推理处理函数已变化，无法安全转移到工作线程")
+        lines[node.lineno - 1] = "@run_blocking\n" + lines[node.lineno - 1].replace("async def ", "def ", 1)
+    source = "".join(lines)
+    helper_import = "from _meowlive_model_runtime import run_blocking\n"
+    if helper_import not in source:
+        source = source.replace(replacement, replacement + "\n" + helper_import)
+    api.write_text(source)
     shutil.copyfile(Path(__file__), work / "_meowlive_model_runtime.py")

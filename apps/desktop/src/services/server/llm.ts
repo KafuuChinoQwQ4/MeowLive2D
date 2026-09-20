@@ -1,5 +1,6 @@
 import type { LlmSettings, LlmSettingsRequest, LlmSettingsSnapshot, LlmTestResult } from "@meowlive/contracts";
 import { readServerError, ServerRequestError } from "./responses";
+import { createAuthenticatedFetch } from "./auth";
 
 export interface LlmClient {
   readonly baseUrl: string;
@@ -44,7 +45,7 @@ function readTestResult(value: unknown): LlmTestResult {
 
 export function createLlmClient(options: { baseUrl?: string; fetcher?: typeof fetch; timeoutMs?: number } = {}): LlmClient {
   const baseUrl = (options.baseUrl ?? import.meta.env.VITE_MEOWLIVE_SERVER_URL ?? "http://127.0.0.1:19600").replace(/\/+$/u, "");
-  const fetcher = options.fetcher ?? globalThis.fetch.bind(globalThis);
+  const fetcher = options.fetcher ?? createAuthenticatedFetch(baseUrl);
 
   async function request<T>(path: string, method: "GET" | "POST", read: (value: unknown) => T, signal?: AbortSignal, body?: LlmSettingsRequest): Promise<T> {
     signal?.throwIfAborted();

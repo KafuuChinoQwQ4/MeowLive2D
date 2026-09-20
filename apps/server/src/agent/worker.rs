@@ -4,10 +4,14 @@ use std::time::Duration;
 
 pub async fn run_agent(state: AppState) {
     loop {
+        state.expire_knowledge().await;
         let notified = state.agent_wake.notified();
         let work = {
             let mut inner = state.inner.lock().await;
             state.sync_agent(&mut inner);
+            if state.companionship_store.is_none() {
+                inner.agent.take_completed();
+            }
             if !state
                 .resource_changing
                 .load(std::sync::atomic::Ordering::Acquire)
@@ -16,6 +20,10 @@ pub async fn run_agent(state: AppState) {
                     .model_synthesizer
                     .as_ref()
                     .is_some_and(|synthesizer| synthesizer.is_busy())
+                && state
+                    .receipts_pending
+                    .load(std::sync::atomic::Ordering::Acquire)
+                    < 4095
                 && state.model.is_some()
                 && inner.queue.is_connected()
                 && !inner.queue.tasks().any(|task| !task.status.is_terminal())
@@ -28,10 +36,14 @@ pub async fn run_agent(state: AppState) {
                 None
             }
         };
-        let Some((work, cancel, generation)) = work else {
+        let Some((mut work, cancel, generation)) = work else {
             tokio::select! {_=notified=>{},_=tokio::time::sleep(Duration::from_millis(100))=>{}}
             continue;
         };
+        let context_epoch = state
+            .knowledge_epoch
+            .load(std::sync::atomic::Ordering::Acquire);
+        let context_stamp = state.enrich_memories(&mut work.request).await;
         let model = state
             .model
             .as_ref()
@@ -52,7 +64,26 @@ pub async fn run_agent(state: AppState) {
                 Ok(id) => id,
                 Err(_) => String::new(),
             };
+        let _knowledge = state.knowledge_gate.read().await;
+        let stale_revision = if let Some(stamp) = context_stamp {
+            !state.knowledge_current(stamp).await
+        } else {
+            false
+        };
         let mut inner = state.inner.lock().await;
+        if stale_revision
+            || context_epoch
+                != state
+                    .knowledge_epoch
+                    .load(std::sync::atomic::Ordering::Acquire)
+        {
+            inner.agent.fail(
+                work.id,
+                "观众资料已更新，本次生成作废".into(),
+                state.now_ms(),
+            );
+            continue;
+        }
         if cancel.is_cancelled() || generation != inner.queue.generation() {
             continue;
         }
@@ -65,12 +96,52 @@ pub async fn run_agent(state: AppState) {
                     .resolve(work.id, decision, speech_id.clone(), now)
                 {
                     Ok(Some(prepared)) => {
+                        let selected = inner.agent.prepared_events(&speech_id);
+                        drop(inner);
+                        let registration = if let Some(store) = &state.companionship_store {
+                            store
+                                .register_reply(
+                                    &state.config.viewers.scope_id,
+                                    &speech_id,
+                                    &selected,
+                                    crate::viewers::utc_ms(),
+                                )
+                                .await
+                        } else {
+                            Ok(())
+                        };
+                        let mut inner = state.inner.lock().await;
+                        if cancel.is_cancelled() || generation != inner.queue.generation() {
+                            continue;
+                        }
+                        if registration.is_err() {
+                            inner.agent.speech_failed(
+                                &speech_id,
+                                "回应关联保存失败，未安排播报".into(),
+                                state.now_ms(),
+                            );
+                            continue;
+                        }
                         if let Err(error) = inner.queue.enqueue(&speech_id, prepared.text, voice_id)
                         {
                             inner
                                 .agent
                                 .speech_failed(&speech_id, error.to_string(), now);
                         } else {
+                            if let Some(stamp) = context_stamp {
+                                state.knowledge_deadline.fetch_min(
+                                    stamp.expires_at_ms,
+                                    std::sync::atomic::Ordering::AcqRel,
+                                );
+                                let alive = inner
+                                    .queue
+                                    .tasks()
+                                    .filter(|t| !t.status.is_terminal())
+                                    .map(|t| t.id.clone())
+                                    .collect::<std::collections::HashSet<_>>();
+                                inner.knowledge.retain(|id, _| alive.contains(id));
+                                inner.knowledge.insert(speech_id, stamp);
+                            }
                             state.wake.notify_one();
                         }
                     }
@@ -150,7 +221,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn agent_waits_for_owned_tts_after_speech_worker_timeout() {
+    async fn managed_tts_is_not_failed_by_the_outer_worker_timeout() {
         async fn weights() -> Json<serde_json::Value> {
             Json(serde_json::json!({"message":"success"}))
         }
@@ -205,7 +276,9 @@ mod tests {
                         id: "pending-event".into(),
                         source: "test".into(),
                         viewer: "观众".into(),
+                        viewer_identity: None,
                         occurred_at_ms: 0,
+                        gift_metadata: None,
                         kind: EventKind::Chat {
                             text: "请回应我".into(),
                         },
@@ -220,10 +293,27 @@ mod tests {
         tokio::time::timeout(Duration::from_secs(2), entered.notified())
             .await
             .unwrap();
+        tokio::time::sleep(Duration::from_millis(1_100)).await;
+        assert_eq!(
+            state.snapshot().await.speeches[0].status,
+            meowlive_protocol::control::SpeechStatus::Synthesizing
+        );
+        assert!(
+            synth.is_busy(),
+            "managed TTS must still hold ownership while synthesis is running"
+        );
+        assert!(state.acquire_model_selection().await.is_err());
+        tokio::time::sleep(Duration::from_millis(150)).await;
+        assert_eq!(
+            calls.load(Ordering::SeqCst),
+            0,
+            "Agent must not start LLM while managed TTS is still running"
+        );
+        release.notify_one();
         tokio::time::timeout(Duration::from_secs(2), async {
             loop {
                 if state.snapshot().await.speeches[0].status
-                    == meowlive_protocol::control::SpeechStatus::Failed
+                    == meowlive_protocol::control::SpeechStatus::Ready
                 {
                     break;
                 }
@@ -231,27 +321,8 @@ mod tests {
             }
         })
         .await
-        .unwrap();
-        assert!(
-            synth.is_busy(),
-            "detached TTS must still hold ownership after timeout"
-        );
-        assert!(state.acquire_model_selection().await.is_err());
-        tokio::time::sleep(Duration::from_millis(150)).await;
-        assert_eq!(
-            calls.load(Ordering::SeqCst),
-            0,
-            "Agent started LLM while detached TTS was still running"
-        );
-        release.notify_one();
-        tokio::time::timeout(Duration::from_secs(2), async {
-            while calls.load(Ordering::SeqCst) == 0 {
-                tokio::time::sleep(Duration::from_millis(10)).await;
-            }
-        })
-        .await
-        .expect("Agent must resume after owned TTS finishes");
-        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        .expect("managed synthesis must be delivered after it finishes");
+        assert_eq!(calls.load(Ordering::SeqCst), 0);
         worker.abort();
         agent.abort();
         server.abort();

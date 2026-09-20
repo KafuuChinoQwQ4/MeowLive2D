@@ -12,7 +12,7 @@ impl EventScheduler {
             .filter(|row| row.status == EventStatus::Pending)
             .map(|row| row.event.clone())
             .collect();
-        candidates.sort_by_key(|event| !matches!(event.kind, EventKind::Gift { .. }));
+        let targets = self.prioritize(&mut candidates, now_ms);
         let mut events = Vec::new();
         let mut groups = Vec::new();
         while !candidates.is_empty() && events.len() < self.limits.batch_size {
@@ -34,14 +34,19 @@ impl EventScheduler {
         }
         let ids: Vec<_> = events.iter().map(|event| event.id.clone()).collect();
         self.update(&ids, EventStatus::Deciding, None, None);
-        EventBatch { events, groups }
+        EventBatch {
+            events,
+            groups,
+            targets,
+        }
     }
 }
 
 fn mergeable(first: &LiveEvent, other: &LiveEvent, window: u64) -> bool {
     window > 0
         && first.source == other.source
-        && first.viewer == other.viewer
+        && first.viewer_identity.is_some()
+        && first.viewer_identity == other.viewer_identity
         && first.occurred_at_ms.abs_diff(other.occurred_at_ms) <= window
         && matches!((&first.kind, &other.kind), (EventKind::Gift { name: a, .. }, EventKind::Gift { name: b, .. }) if a == b)
 }

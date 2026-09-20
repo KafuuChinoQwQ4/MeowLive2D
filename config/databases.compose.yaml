@@ -1,0 +1,63 @@
+name: meowlive2d-memory
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.6-pg16-bookworm
+    container_name: meowlive2d-postgres
+    restart: "no"
+    environment:
+      POSTGRES_DB: meowlive
+      POSTGRES_USER: meowlive_admin
+      POSTGRES_PASSWORD: ${MEOWLIVE_POSTGRES_ADMIN_PASSWORD:?需要生成本项目数据库管理密码}
+      MEOWLIVE_POSTGRES_APP_PASSWORD: ${MEOWLIVE_POSTGRES_APP_PASSWORD:?需要生成本项目数据库应用密码}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    command: [postgres, -c, shared_buffers=64MB, -c, max_connections=30]
+    ports:
+      - "127.0.0.1:25432:5432"
+    volumes:
+      - ../data/databases/postgres:/var/lib/postgresql/data
+      - ./postgres-init.sql:/docker-entrypoint-initdb.d/10-meowlive.sql:ro
+    mem_limit: 512m
+    cpus: 1.0
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -h 127.0.0.1 -U meowlive_admin -d meowlive"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  neo4j:
+    image: neo4j:5.26.30-community
+    container_name: meowlive2d-neo4j
+    restart: "no"
+    environment:
+      NEO4J_AUTH: neo4j/${MEOWLIVE_NEO4J_PASSWORD:?需要生成本项目图数据库密码}
+      NEO4J_server_memory_heap_initial__size: 256m
+      NEO4J_server_memory_heap_max__size: 512m
+      NEO4J_server_memory_pagecache_size: 128m
+      NEO4J_server_http_advertised__address: localhost:17474
+      NEO4J_server_bolt_advertised__address: localhost:17687
+    ports:
+      - "127.0.0.1:17474:7474"
+      - "127.0.0.1:17687:7687"
+    volumes:
+      - ../data/databases/neo4j:/data
+      - ../logs/databases/neo4j:/logs
+    mem_limit: 1g
+    cpus: 1.0
+    healthcheck:
+      test: [CMD-SHELL, "cypher-shell -a bolt://localhost:7687 -u neo4j -p \"$${NEO4J_AUTH#*/}\" 'RETURN 1;' >/dev/null"]
+      interval: 30s
+      timeout: 20s
+      retries: 5
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

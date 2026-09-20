@@ -5,6 +5,7 @@ pub const PROTOCOL_VERSION: u16 = 3;
 
 pub mod agent;
 pub mod audio;
+pub mod auth;
 pub mod control;
 pub mod event;
 pub mod execution;
@@ -16,3 +17,13 @@ pub mod obs;
 pub mod resources;
 pub mod training;
 pub mod training_runtime;
+
+pub mod viewers;
+
+pub mod companionship;
+
+pub mod memory;
+
+pub mod relationships;
+
+pub mod viewer_merge;

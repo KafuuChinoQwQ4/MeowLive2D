@@ -5,7 +5,7 @@ import { launcherSnapshot } from "../test/launcher-fixtures";
 import { jsonResponse, serverStatus } from "../test/server-fixtures";
 import { agentStatus } from "../test/agent-fixtures";
 import { resourceSnapshot } from "../test/resource-fixtures";
-import { liveSnapshot } from "../test/live-fixtures";
+import { liveSettingsSnapshot, liveSnapshot } from "../test/live-fixtures";
 import { App } from "./App";
 
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); window.history.replaceState(null, "", "/"); });
@@ -21,8 +21,10 @@ it("the launcher survives stopping the main service and does not poll inactive b
       return jsonResponse(status);
     }
     if (path === "/api/launcher/status") return jsonResponse(status);
+    if (path.endsWith("/api/admin/session")) return jsonResponse({ enabled: false, authenticated: false });
     businessCalls.push(path);
     if (path.endsWith("/api/agent")) return jsonResponse(agentStatus());
+    if (path.endsWith("/api/live/settings")) return jsonResponse(liveSettingsSnapshot());
     if (path.endsWith("/api/live")) return jsonResponse(liveSnapshot());
     if (path.endsWith("/api/resources")) return jsonResponse(resourceSnapshot());
     return jsonResponse(serverStatus());

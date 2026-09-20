@@ -16,4 +16,4 @@ llm/  # LLM 接入配置功能
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 487e7b558930f94a418e4f4219afc14ef71cb0570b23b2050adf70458df1403f -->
+<!-- directory-tree-sha256: 6c1f2ed8260a6b7fd6bc2260a328a38e945c7a5d8c558e7be13f8edc32bb498e -->

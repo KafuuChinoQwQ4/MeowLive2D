@@ -14,6 +14,7 @@ import type {
 } from "@meowlive/contracts";
 
 import { readServerError, ServerRequestError } from "./responses";
+import { createAuthenticatedFetch } from "./auth";
 
 const DEFAULT_BASE_URL = "http://127.0.0.1:19600";
 const DEFAULT_TIMEOUT_MS = 8_000;
@@ -337,7 +338,7 @@ function jsonRequest(body: unknown): RequestInit {
 
 export function createResourceClient(options: ResourcesClientOptions = {}): ResourcesClient {
   const baseUrl = (options.baseUrl ?? import.meta.env.VITE_MEOWLIVE_SERVER_URL ?? DEFAULT_BASE_URL).replace(/\/+$/u, "");
-  const fetcher = options.fetcher ?? globalThis.fetch.bind(globalThis);
+  const fetcher = options.fetcher ?? createAuthenticatedFetch(baseUrl);
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const request = (path: string, init: RequestInit, signal?: AbortSignal) =>
     requestJson(fetcher, timeoutMs, `${baseUrl}${path}`, init, signal);

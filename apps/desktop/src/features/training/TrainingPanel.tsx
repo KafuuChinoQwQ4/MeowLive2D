@@ -1,8 +1,9 @@
 import type { TrainingPerformance } from "@meowlive/contracts";
 import { useEffect, useRef, useState } from "react";
-import { AUDIO_FILE_ACCEPT, AUDIO_FORMAT_LABEL, MAX_AUDIO_SOURCE_BYTES, prepareAudioFile } from "../../services/audio";
-import { createTrainingClient, defaultTrainingPerformance, type TrainingClient } from "../../services/server/training";
+import { AUDIO_FILE_ACCEPT, MAX_AUDIO_SOURCE_BYTES, prepareAudioFile } from "../../services/audio";
+import { createTrainingClient, type TrainingClient } from "../../services/server/training";
 import { createResourceClient, type ResourcesClient } from "../../services/server/resources";
+import { loadTrainingPreferences, saveTrainingPreferences, type TrainingPerformancePreset } from "../../services/trainingPreferences";
 import { useTraining } from "./useTraining";
 import { TrainingResultDialog } from "./TrainingResultDialog";
 import { terminalFeedback } from "./trainingFeedback";
@@ -32,14 +33,19 @@ function Pagination({ label, count, page, onPage }: { label: string; count: numb
 }
 
 export function TrainingPanel({ client = defaultClient, resources = defaultResources }: { client?: TrainingClient; resources?: ResourcesClient }) {
+  return <TrainingPanelContent key={resources.baseUrl} client={client} resources={resources} />;
+}
+
+function TrainingPanelContent({ client, resources }: { client: TrainingClient; resources: ResourcesClient }) {
   const c = useTraining(client, resources);
   const feedback = useFeedback();
+  const [initialPreferences] = useState(() => loadTrainingPreferences(resources.baseUrl));
   const [tab, setTab] = useState<TrainingTab>("create");
   const [clipPage, setClipPage] = useState(0);
   const [clipsExpanded, setClipsExpanded] = useState(true);
   const [jobPage, setJobPage] = useState(0);
-  const [performancePreset, setPerformancePreset] = useState("low");
-  const [performance, setPerformance] = useState<TrainingPerformance>({ ...defaultTrainingPerformance });
+  const [performancePreset, setPerformancePreset] = useState(initialPreferences.performancePreset);
+  const [performance, setPerformance] = useState<TrainingPerformance>(initialPreferences.performance);
   const jobs = c.snapshot?.jobs.slice().reverse() ?? [];
   const versions = c.snapshot?.versions ?? [];
   const currentJobPage = Math.min(jobPage, Math.max(0, Math.ceil(jobs.length / PAGE_SIZE) - 1));
@@ -60,7 +66,7 @@ export function TrainingPanel({ client = defaultClient, resources = defaultResou
     return () => { if (importError) feedback.clearIssue(`training-import-${importError}`); };
   }, [importError, feedback]);
   const importGeneration = useRef(0);
-  const [textMode, setTextMode] = useState(false);
+  const [textMode, setTextMode] = useState(initialPreferences.textMode);
   const [transcribing, setTranscribing] = useState(false);
   const [transcriptionErrors, setTranscriptionErrors] = useState<Record<number, string>>({});
   const transcription = useRef<AbortController | null>(null);
@@ -72,8 +78,11 @@ export function TrainingPanel({ client = defaultClient, resources = defaultResou
     setPreparing(false); setTranscribing(false); setTranscriptionErrors({}); setReviewed(false);
     return () => { importGeneration.current++; transcriptionGeneration.current++; transcription.current?.abort(); transcription.current = null; };
   }, [client]);
-  const [epochs, setEpochs] = useState(1);
-  const [text, setText] = useState("你好，欢迎来到直播间，希望你今天过得愉快。");
+  const [epochs, setEpochs] = useState(initialPreferences.epochs);
+  const [text, setText] = useState(initialPreferences.auditionText);
+  useEffect(() => {
+    saveTrainingPreferences(resources.baseUrl, { epochs, performancePreset, performance, textMode, auditionText: text });
+  }, [resources.baseUrl, epochs, performancePreset, performance, textMode, text]);
   const voiceAvailable = c.voices.some(item => item.id === voice && item.available);
   useEffect(() => { if (!voiceAvailable) { setVoice(""); setReviewed(false); } }, [voiceAvailable]);
   const disabled = c.pending || c.snapshot?.busy || !c.snapshot;
@@ -159,15 +168,15 @@ export function TrainingPanel({ client = defaultClient, resources = defaultResou
     }
   }
   return <section className="live-workspace" aria-labelledby="training-heading">
-    <div className="connection-card"><div><p className="eyebrow">音色进阶</p><h2 id="training-heading">音色微调与离线预设</h2></div><span className="connection-pill">{c.snapshot?.busy ? "训练运行中" : c.snapshot?.enabled ? "训练就绪" : "训练未配置"}</span></div>
+    <div className="connection-card"><div><h2 id="training-heading">训练状态</h2></div><span className="connection-pill">{c.snapshot?.busy ? "训练运行中" : c.snapshot?.enabled ? "训练就绪" : "训练未配置"}</span></div>
     {c.queryError && <p className="error-banner" role={feedback.enabled ? undefined : "alert"}>{c.queryError}</p>}
     {c.notice && <TrainingResultDialog key={c.notice.id} notice={c.notice} onClose={c.dismissNotice} />}
     {c.failedDelete && <button type="button" disabled={disabled} onClick={() => { if (c.failedDelete) void c.deleteVersion(c.failedDelete); }}>重试删除</button>}
     {tab === "create" && importError && <p className="error-banner" role={feedback.enabled ? undefined : "alert"}>{importError}</p>}
     <section className="connection-card training-model-runtime" aria-labelledby="training-models-heading">
-      <div><h3 id="training-models-heading">语音模型内存开关</h3>
+      <div><h3 id="training-models-heading">语音模型</h3>
         <p role="status">{runtime?.message ?? "正在读取模型状态…"}</p>
-        <p className="field-hint">TTS 服务启动后，模型需要单独启用。关闭会释放模型内存与显存，训练文件和选用音色会保留。</p>
+        <p className="field-hint">播报前启用，训练前关闭。</p>
         {runtime?.state === "unsupported" && <p className="field-hint">当前引擎不支持独立启停；本机 TTS 更新后请重启服务。</p>}
       </div>
       <div className="form-actions"><button type="button" className={modelsLoaded ? undefined : "primary-button"} disabled={modelSwitchDisabled}
@@ -186,11 +195,10 @@ export function TrainingPanel({ client = defaultClient, resources = defaultResou
     <div role="tabpanel" id={`training-pane-${tab}`} aria-labelledby={`training-tab-${tab}`}>
     {tab === "create" && <section className="panel" aria-labelledby="training-config-heading">
       <h3 id="training-config-heading">新建训练配置</h3>
-      <p className="muted">先选择本次要训练的音色，再填写名称、轮次和训练素材。导入音色后不会自动选中，本次训练由你主动配置。</p>
       {c.activeVoiceId !== undefined && !c.voices.some(item => item.available) && <p className="availability-note">
-        开始训练前，请先前往音色管理<a href="#resources">上传参考声音</a>并填写对应文本，再回到这里选择音色、上传至少两个训练片段。
+        请先<a href="#resources">上传参考声音</a>。
       </p>}
-      <p className="availability-note">训练前请结束直播、关闭上方语音模型，并停止本地 LLM 推理以释放显存；TTS 服务可保持打开。可选择 {AUDIO_FORMAT_LABEL}，每片需 3–10 秒、非静音，选择 2–32 个片段。每个原文件不超过 20 MiB，原文件总量及转换后的音频总量均不超过 32 MiB。格式支持取决于当前浏览器，训练结果需要试听确认后选用。</p>
+      <p className="availability-note">训练前结束直播，关闭语音模型与本地 LLM，释放显存。</p>
       <form onSubmit={e => {
         e.preventDefault();
         if (hasBlankText) { void transcribeBlankClips(); return; }
@@ -204,29 +212,30 @@ export function TrainingPanel({ client = defaultClient, resources = defaultResou
         <div className="training-fields">
           <label>训练音色<select value={voice} onChange={e => { setVoice(e.target.value); setReviewed(false); }} disabled={c.pending} aria-describedby="training-voice-hint"><option value="">请选择本次训练的音色</option>{c.voices.filter(v => v.available).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</select></label>
           <label>训练名称<input value={name} maxLength={80} onChange={e => setName(e.target.value)} disabled={c.pending} /></label>
-          <label>GPT / SoVITS 轮次<input type="number" min={1} max={20} value={epochs} onChange={e => setEpochs(Math.min(20, Math.max(1, Number(e.target.value) || 1)))} disabled={c.pending} /></label>
+          <label>GPT / SoVITS 轮次<input type="number" min={1} max={20} value={epochs} onChange={e => setEpochs(bounded(e.target.value, 1, 20))} disabled={c.pending} /></label>
           <label>训练片段<input type="file" accept={AUDIO_FILE_ACCEPT} multiple disabled={c.pending} onChange={e => {
             const files = Array.from(e.target.files ?? []); e.target.value = "";
             void prepareClips(files);
           }} /></label>
         </div>
+        <p className="field-hint">2–32 段录音 · 每段 3–10 秒 · 单文件 ≤20 MiB · 原文件及转换后总量均 ≤32 MiB</p>
         <fieldset className="training-performance" disabled={c.pending}><legend>硬件与性能</legend>
           <label>性能预设<select value={performancePreset} onChange={event => {
-            const key = event.target.value; setPerformancePreset(key);
+            const key = event.target.value as TrainingPerformancePreset; setPerformancePreset(key);
             if (key in performancePresets) setPerformance(previous => ({ ...previous, ...performancePresets[key as keyof typeof performancePresets] }));
           }}><option value="low">省内存</option><option value="balanced">均衡</option><option value="high">高吞吐</option><option value="custom">自定义</option></select></label>
-          <p className="field-hint">省内存适合资源紧张时起步；更大的批量通常需要更多显存。以下是可选配置，尚未进行不同硬件的速度实测。</p>
+          <p className="field-hint">显存较小时选择“省内存”。</p>
           <details className="training-details" open={performancePreset === "custom"}><summary>高级训练参数</summary><div className="training-fields">
             {([["batch_size", "每批片段数", 1, 16], ["data_workers", "数据加载进程", 0, 8], ["cpu_threads", "CPU 线程数", 1, 16]] as const).map(([key, title, min, max]) => <label key={key}>{title}<input type="number" min={min} max={max} value={performance[key]} onChange={event => { setPerformancePreset("custom"); setPerformance(previous => ({ ...previous, [key]: bounded(event.target.value, min, max) })); }} /></label>)}
           </div></details>
           <div className="training-fields"><label>GPU 编号<input type="number" min={0} max={15} value={performance.gpu_index} onChange={event => setPerformance(previous => ({ ...previous, gpu_index: bounded(event.target.value, 0, 15) }))} /></label>
             <label className="training-checkbox"><input type="checkbox" checked={performance.low_memory} onChange={event => setPerformance(previous => ({ ...previous, low_memory: event.target.checked }))} />节省显存</label></div>
-          <p className="field-hint">当前：每批 {performance.batch_size} 个片段 · {performance.data_workers} 个加载进程 · {performance.cpu_threads} 个 CPU 线程。GPU 从 0 开始编号；显存不足时可降低批量并打开节省显存。</p>
+          <p className="field-hint">每批 {performance.batch_size} 段 · {performance.data_workers} 个加载进程 · {performance.cpu_threads} 个 CPU 线程</p>
         </fieldset>
-        <p id="training-voice-hint" className="field-hint">同一参考音色的训练归为一个音色。已有成功版本时继续学习其权重；没有时从通用模型开始。训练名称用于区分各次版本。</p>
+        <p id="training-voice-hint" className="field-hint">已有成功版本时会继续训练，新版本单独保存。</p>
         <label><input type="checkbox" checked={textMode} disabled={c.pending} onChange={e => { cancelTranscription(); setTextMode(e.target.checked); }} />输入并校对文本</label>
-        <p className="field-hint">{textMode ? "可手工填写每个片段的文本；留空时先提取文本，再逐片校对并确认。" : "上传声音即可直接训练，无需填写或校对训练片段文本。"}</p>
-        {c.snapshot?.enabled === false && <p className="availability-note">训练服务尚未配置，可先选择音色和准备素材，配置完成后再开始训练。</p>}
+        <p className="field-hint">{textMode ? "留空可先提取文本，训练前逐片校对。" : "仅声音训练需配置本地语音识别。"}</p>
+        {c.snapshot?.enabled === false && <p className="availability-note">训练未配置，可先准备素材。</p>}
         {preparing && <p role="status">正在准备音频，请稍候…可以重新选择片段。</p>}
         {transcribing && <p role="status">正在提取空白片段文本，请稍候…你仍可手工填写文本。</p>}
         {clips.length > 0 && <p><button type="button" aria-expanded={clipsExpanded} aria-controls="training-clip-editor" onClick={() => setClipsExpanded(previous => !previous)}>{clipsExpanded ? "收起片段编辑" : "展开片段编辑"}</button><span className="field-hint"> 已准备 {clips.length} 个片段</span></p>}
@@ -245,7 +254,7 @@ export function TrainingPanel({ client = defaultClient, resources = defaultResou
       </form>
     </section>}
     {tab === "history" && <section className="panel" aria-labelledby="training-history-heading"><h3 id="training-history-heading">训练记录</h3>
-    <p className="muted">每次训练的素材数量、进度和参数保存在对应记录中。完成后的音色在“已训练音色”中管理。</p>
+    <p className="muted">完成后前往“已训练音色”试听。</p>
     {jobs.length === 0 && <p className="field-hint">还没有训练记录。</p>}
     <ul className="training-list" aria-label="训练任务">{jobs.slice(currentJobPage * PAGE_SIZE, (currentJobPage + 1) * PAGE_SIZE).map(job => <li key={job.id}>
       <strong>{job.name}</strong> · {phases[job.status] ?? job.status} <progress max={100} value={job.progress} aria-label={`${job.name} 进度`} />

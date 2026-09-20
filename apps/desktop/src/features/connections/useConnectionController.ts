@@ -20,6 +20,7 @@ export function useConnectionController(client: LiveClient, pollIntervalMs: numb
   const revision = useRef(0);
   const mounted = useRef(false);
   const previousPhase = useRef<LiveConnectionSnapshot["phase"] | null>(null);
+  const refreshNow = useRef<() => Promise<void>>(async () => {});
   useEffect(() => {
     if (status?.last_error || status?.phase === "failed") feedback.reportIssue("live:connection", "直播连接失败", status.last_error || "直播连接失败，请检查平台和房间配置。");
     else if (status) feedback.clearIssue("live:connection");
@@ -33,6 +34,7 @@ export function useConnectionController(client: LiveClient, pollIntervalMs: numb
   useEffect(() => {
     let disposed = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let refreshGeneration = 0;
     mounted.current = true;
     setStatus(null);
     setConnectionError(null);
@@ -41,6 +43,7 @@ export function useConnectionController(client: LiveClient, pollIntervalMs: numb
 
     async function refresh() {
       if (disposed) return;
+      const startedGeneration = refreshGeneration;
       if (!actionController.current) {
         const controller = new AbortController();
         pollController.current = controller;
@@ -61,9 +64,17 @@ export function useConnectionController(client: LiveClient, pollIntervalMs: numb
           if (pollController.current === controller) pollController.current = null;
         }
       }
-      if (!disposed) timer = setTimeout(() => { void refresh(); }, pollIntervalMs);
+      if (!disposed && startedGeneration === refreshGeneration) timer = setTimeout(() => { void refresh(); }, pollIntervalMs);
     }
 
+    refreshNow.current = async () => {
+      refreshGeneration += 1;
+      revision.current += 1;
+      pollController.current?.abort();
+      clearTimeout(timer);
+      setStatus(null);
+      await refresh();
+    };
     void refresh();
     return () => {
       disposed = true;
@@ -114,6 +125,7 @@ export function useConnectionController(client: LiveClient, pollIntervalMs: numb
     connectionError,
     actionError,
     pendingAction,
+    refresh: () => refreshNow.current(),
     connect: () => mutate("connect"),
     disconnect: () => mutate("disconnect"),
   };

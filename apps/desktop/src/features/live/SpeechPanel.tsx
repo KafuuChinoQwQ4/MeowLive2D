@@ -59,9 +59,7 @@ export function SpeechPanel({ client = defaultClient, pollIntervalMs = 1_000 }: 
 
       <div className="workspace-columns">
         <section className="panel" aria-labelledby="speech-heading">
-          <p className="eyebrow">人工控制</p>
           <h2 id="speech-heading">文字播报</h2>
-          <p className="muted">输入文字，交给桌面执行端播报。</p>
           <form aria-labelledby="speech-heading" onSubmit={(event) => { void submit(event); }}>
             <label htmlFor="speech-text">播报文本</label>
             <textarea id="speech-text" value={text} onChange={(event) => setText(event.target.value)} rows={7}
@@ -71,8 +69,8 @@ export function SpeechPanel({ client = defaultClient, pollIntervalMs = 1_000 }: 
             <label htmlFor="speech-voice">声音 ID</label>
             <input id="speech-voice" value={voiceId} onChange={(event) => setVoiceId(event.target.value)}
               disabled={pendingAction === "speech"} aria-describedby="voice-hint" aria-invalid={!validVoice} />
-            <p id="voice-hint" className={validVoice ? "field-hint" : "field-error"}>使用已配置的声音；1–64 位字母、数字、下划线或连字符。</p>
-            {status && !status.bridge_connected && !connectionError && <p className="availability-note">请先启动桌面执行客户端，连接后即可加入播报队列。</p>}
+            <p id="voice-hint" className={validVoice ? "field-hint" : "field-error"}>{validVoice ? "active 使用当前音色。" : "请输入 1–64 位字母、数字、下划线或连字符。"}</p>
+            {status && !status.bridge_connected && !connectionError && <p className="availability-note">请先启动桌面执行客户端。</p>}
             <div className="form-actions">
               <button type="submit" className="primary-button" disabled={!canSubmit}>{pendingAction === "speech" ? "正在提交…" : "加入播报队列"}</button>
               <button type="button" className="stop-button" disabled={!canStop} onClick={() => { void controller.stop(); }}>{pendingAction === "stop" ? "正在停止…" : "停止全部播报"}</button>
@@ -83,11 +81,10 @@ export function SpeechPanel({ client = defaultClient, pollIntervalMs = 1_000 }: 
         <section className="panel history-panel" aria-labelledby="history-heading">
           <div className="section-title">
             <h2 id="history-heading">播报记录</h2>
-            <span className="field-hint">进行中与最近 50 条历史</span>
+            <span className="field-hint">进行中 · 最近 50 条</span>
           </div>
-          <p className="muted">状态随服务更新，播放结束后显示完成。</p>
           {connectionError && speeches.length > 0 && <p className="availability-note">当前展示上次连接时的记录。</p>}
-          {speeches.length === 0 ? <div className="empty-state"><p>还没有播报任务</p><span>提交第一段文字，记录会显示在这里。</span></div> :
+          {speeches.length === 0 ? <div className="empty-state"><p>还没有播报任务</p><span>提交文字后显示记录。</span></div> :
             <ol className="speech-list" aria-label="播报任务">
               {speeches.map((task) => <li key={task.id}>
                 <div className="task-heading"><span className={`task-status task-${task.status}`}>{statusLabels[task.status]}</span><span className="field-hint">声音 {task.voice_id}</span></div>

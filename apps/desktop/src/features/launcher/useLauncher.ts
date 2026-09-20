@@ -15,7 +15,6 @@ export function useLauncher(client: LauncherClient) {
   const action = useRef<AbortController | null>(null);
   const mounted = useRef(false);
   const refreshRequested = useRef(false);
-  const serviceStates = useRef(new Map<LauncherServiceId, string>());
   const serviceNames = { server: "主服务", tts: "TTS 语音引擎", windows: "Windows 执行端" };
 
   useEffect(() => {
@@ -23,11 +22,7 @@ export function useLauncher(client: LauncherClient) {
       const key = `launcher:service:${service.id}`;
       if (service.state === "failed") feedback.reportIssue(key, `${serviceNames[service.id]}运行失败`, service.message);
       else feedback.clearIssue(key);
-      const previous = serviceStates.current.get(service.id);
-      if (previous === "starting" && ["running", "external"].includes(service.state)) feedback.success(`${serviceNames[service.id]}${service.id === "windows" ? "已连接" : "已就绪"}`, service.message);
-      if (previous === "stopping" && service.state === "stopped") feedback.success(`${serviceNames[service.id]}已停止`, service.message);
     }
-    serviceStates.current = new Map(snapshot?.services.map(service => [service.id, service.state]) ?? []);
   }, [snapshot, feedback]);
 
   useEffect(() => {
@@ -45,7 +40,7 @@ export function useLauncher(client: LauncherClient) {
           if (!cancelled && !controller.signal.aborted && generation === sequence.current) {
             setSnapshot(value); setStale(false); setError(null);
             feedback.clearIssue("launcher:status");
-            if (refreshRequested.current) { refreshRequested.current = false; feedback.success("启动管理状态已刷新", "已读取最新服务状态。"); }
+            if (refreshRequested.current) { refreshRequested.current = false; }
           }
         } catch (failure) {
           if (!cancelled && !controller.signal.aborted && generation === sequence.current) {
@@ -76,7 +71,7 @@ export function useLauncher(client: LauncherClient) {
         if (service?.state === "failed") {
           feedback.clearIssue(`launcher:service:${id}`);
           feedback.reportIssue(`launcher:service:${id}`, `${serviceNames[id]}操作失败`, service.message);
-        } else feedback.notify({ kind: "info", title: `${serviceNames[id]}${enabled ? "启动" : "停止"}请求已提交`, message: service?.message || "请查看服务状态确认最终结果。" });
+        }
       }
     } catch (failure) {
       if (mounted.current && !controller.signal.aborted) {

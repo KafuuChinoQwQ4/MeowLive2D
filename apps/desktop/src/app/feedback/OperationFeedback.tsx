@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useId, useMemo, useRef, useState,
 import { createPortal } from "react-dom";
 import "./feedback.css";
 
-export type OperationNotice = { kind: "success" | "error" | "info"; title: string; message: string; tips?: string[]; restoreFocus?: Element | null };
+export type OperationNotice = { kind: "success" | "error" | "info"; title: string; message: string; tips?: string[]; restoreFocus?: Element | null; scope?: string };
 const fallback = {
   enabled: false,
   notify: (_notice: OperationNotice) => {},
@@ -12,7 +12,25 @@ const fallback = {
   clearIssue: (_key: string) => {},
 };
 const FeedbackContext = createContext(fallback);
-export function useFeedback() { return useContext(FeedbackContext); }
+const FeedbackScopeContext = createContext("global");
+const InlineNoticesContext = createContext<Record<string, OperationNotice>>({});
+export function useFeedback() {
+  const feedback = useContext(FeedbackContext);
+  const scope = useContext(FeedbackScopeContext);
+  return useMemo(() => ({ ...feedback,
+    notify: (notice: OperationNotice) => feedback.notify({ ...notice, scope }),
+    success: (title: string, message: string) => feedback.notify({ kind: "success", title, message, scope }),
+  }), [feedback, scope]);
+}
+
+export function FeedbackScope({ name, children }: { name: string; children: ReactNode }) {
+  return <FeedbackScopeContext.Provider value={name}>{children}<InlineFeedback scope={name} /></FeedbackScopeContext.Provider>;
+}
+
+function InlineFeedback({ scope }: { scope: string }) {
+  const notice = useContext(InlineNoticesContext)[scope];
+  return notice ? <p className="operation-inline-feedback" role="status" aria-label={notice.title} aria-live="polite"><strong>{notice.title}</strong>：{notice.message}</p> : null;
+}
 
 function messageOf(error: unknown, fallbackMessage = "操作失败，请稍后重试。") {
   return error instanceof Error ? error.message : typeof error === "string" ? error : fallbackMessage;
@@ -20,6 +38,7 @@ function messageOf(error: unknown, fallbackMessage = "操作失败，请稍后�
 
 export function FeedbackProvider({ children }: { children?: ReactNode }) {
   const [queue, setQueue] = useState<Array<OperationNotice & { id: number }>>([]);
+  const [inlineNotices, setInlineNotices] = useState<Record<string, OperationNotice>>({});
   const sequence = useRef(0);
   const issues = useRef(new Set<string>());
   const lastControl = useRef<Element | null>(null);
@@ -33,6 +52,10 @@ export function FeedbackProvider({ children }: { children?: ReactNode }) {
   }, []);
   const feedback = useMemo(() => {
     const notify = (notice: OperationNotice) => {
+      if (notice.kind !== "error") {
+        setInlineNotices(current => ({ ...current, [notice.scope ?? "global"]: notice }));
+        return;
+      }
       const active = document.activeElement;
       const restoreFocus = notice.restoreFocus ?? (active !== document.body && !active?.closest("dialog") ? active : lastControl.current);
       setQueue(current => [...current, { ...notice, restoreFocus, id: ++sequence.current }]);
@@ -50,9 +73,10 @@ export function FeedbackProvider({ children }: { children?: ReactNode }) {
     };
   }, []);
   const notice = queue[0];
-  return <FeedbackContext.Provider value={feedback}>{children}
+  return <FeedbackContext.Provider value={feedback}><InlineNoticesContext.Provider value={inlineNotices}>{children}
+    <InlineFeedback scope="global" />
     {notice && <OperationResultDialog key={notice.id} notice={notice} onClose={() => setQueue(current => current.slice(1))} />}
-  </FeedbackContext.Provider>;
+  </InlineNoticesContext.Provider></FeedbackContext.Provider>;
 }
 
 export function OperationResultDialog({ notice, onClose }: { notice: OperationNotice; onClose: () => void }) {

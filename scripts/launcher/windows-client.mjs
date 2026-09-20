@@ -28,12 +28,12 @@ async function clientFailure(path) {
 
 export async function inspectBridge(url) {
   try {
-    const response = await fetch(`${url}/api/status`, { signal: AbortSignal.timeout(800), redirect: 'error' });
+    const response = await fetch(`${url}/api/health`, { signal: AbortSignal.timeout(800), redirect: 'error' });
     if (!response.ok) { await response.body?.cancel(); return { ready: false, connected: false }; }
     let size = 0; const chunks = [];
     for await (const chunk of response.body) { size += chunk.length; if (size > 512 * 1024) throw new Error('oversize'); chunks.push(chunk); }
     const data = JSON.parse(Buffer.concat(chunks).toString());
-    const ready = data.protocol_version === 3 && typeof data.session_id === 'string' && typeof data.bridge_connected === 'boolean';
+    const ready = data.protocol_version === 3 && data.service === 'meowlive' && typeof data.bridge_connected === 'boolean';
     return { ready, connected: ready && data.bridge_connected };
   } catch { return { ready: false, connected: false }; }
 }

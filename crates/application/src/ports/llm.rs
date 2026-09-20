@@ -14,6 +14,8 @@ pub struct DecisionRequest {
     pub topic: String,
     pub events: Vec<LiveEvent>,
     pub history: Vec<ConversationTurn>,
+    /// Confirmed viewer context, untrusted data; contains no internal scores.
+    pub memory_context: Vec<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

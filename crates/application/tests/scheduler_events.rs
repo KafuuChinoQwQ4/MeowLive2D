@@ -1,5 +1,6 @@
 mod agent_support;
-use agent_support::{chat, gift, session};
+use agent_support::stable_gift as gift;
+use agent_support::{chat, session};
 use meowlive_application::agent::{
     AgentLimits, AgentSession, AgentSettings, EventStatus, SubmitOutcome,
 };
@@ -79,7 +80,7 @@ fn gift_batches_take_priority_and_merge_group_selection_is_atomic() {
         )
         .unwrap();
     let view = agent.view(200);
-    assert_eq!(view.events[0].status, EventStatus::Skipped);
+    assert_eq!(view.events[0].status, EventStatus::Pending);
     assert_eq!(view.events[1].status, EventStatus::Queued);
     assert_eq!(view.events[2].status, EventStatus::Queued);
 }
@@ -91,6 +92,7 @@ fn gift_groups_do_not_cross_viewers_or_merge_window() {
     agent.submit(gift("later", 3001, 1), 3001).unwrap();
     let mut other = gift("other", 3001, 1);
     other.viewer = "别人".into();
+    other.viewer_identity.as_mut().unwrap().external_id = "other".into();
     agent.submit(other, 3001).unwrap();
     agent.set_paused(false, 3001);
     let work = agent.begin(3001).unwrap();
@@ -111,8 +113,8 @@ fn gift_groups_do_not_cross_viewers_or_merge_window() {
             .collect::<Vec<_>>(),
         vec![
             EventStatus::Queued,
-            EventStatus::Skipped,
-            EventStatus::Skipped
+            EventStatus::Pending,
+            EventStatus::Pending
         ]
     );
 }

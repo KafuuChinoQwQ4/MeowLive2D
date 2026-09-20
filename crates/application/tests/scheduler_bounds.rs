@@ -1,5 +1,6 @@
 mod agent_support;
-use agent_support::{answer, chat, gift, ignore};
+use agent_support::stable_gift as gift;
+use agent_support::{answer, chat, ignore};
 use meowlive_application::agent::{
     AgentLimits, AgentSession, AgentSettings, EventStatus, SubmitOutcome,
 };
@@ -26,10 +27,12 @@ fn history_pruning_preserves_dedup_and_pending_records() {
     agent.submit(chat("one", 0), 0).unwrap();
     agent.submit(chat("two", 0), 0).unwrap();
     agent.set_paused(false, 0);
-    let work = agent.begin(0).unwrap();
-    agent
-        .resolve(work.id, ignore(), "unused".into(), 0)
-        .unwrap();
+    for now in [0, 1000, 2000] {
+        let work = agent.begin(now).unwrap();
+        agent
+            .resolve(work.id, ignore(), "unused".into(), now)
+            .unwrap();
+    }
     assert_eq!(agent.view(0).events.len(), 1);
     assert_eq!(
         agent.submit(chat("one", 0), 0).unwrap(),

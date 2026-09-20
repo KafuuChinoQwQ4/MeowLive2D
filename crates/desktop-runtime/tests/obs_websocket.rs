@@ -726,6 +726,7 @@ async fn authentication_fixture_child() {
         websocket_url: address,
         password_env: "MEOWLIVE_OBS_FIXTURE_PASSWORD".into(),
         timeout_ms: 1_000,
+        ..ObsConfig::default()
     };
     let result = obs::execute(&config, ObsOperation::Status).await;
     if std::env::var("MEOWLIVE_OBS_FIXTURE_EXPECT_ERROR").is_ok() {
@@ -802,4 +803,89 @@ async fn authenticated_session_uses_challenge_response_and_rejects_empty_or_deni
             String::from_utf8_lossy(&output.stdout)
         );
     }
+}
+
+#[tokio::test]
+async fn saved_obs_password_is_used_immediately_and_after_configuration_reload() {
+    use meowlive_desktop_runtime::config::ClientConfig;
+    use meowlive_protocol::obs::ObsSettingsRequest;
+    let root = std::env::temp_dir().join(format!("meowlive-obs-saved-auth-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = format!("ws://{}", listener.local_addr().unwrap());
+    let mut config = ClientConfig::default();
+    config.resolve_paths(&root.join("desktop.toml"));
+    let saved = ObsSettingsRequest {
+        enabled: true,
+        websocket_url: address,
+        password: Some("supersecretpassword".into()),
+        clear_password: false,
+    };
+    obs::save_settings(&config.obs, saved.clone())
+        .await
+        .unwrap();
+    let server = tokio::spawn(async move {
+        for attempt in 0..3 {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut socket = accept_async(stream).await.unwrap();
+            send_json(&mut socket, json!({"op":0,"d":{"rpcVersion":1,"authentication":{"salt":"lM1GncleQOaCu9lT1yeUZhFYnqhsLLP1G5lAGo3ixaI=","challenge":"+IxH4CnCiqpX1rM9scsNynZzbOe4KhDeYcTNS3PDaeY="}}})).await;
+            if attempt == 2 {
+                assert_disconnected(&mut socket).await;
+                break;
+            }
+            let identify = receive_json(&mut socket).await;
+            assert_eq!(
+                identify["d"]["authentication"],
+                "1Ct943GAT+6YQUUX47Ia/ncufilbe6+oD6lY+5kaCu4="
+            );
+            send_json(&mut socket, json!({"op":2,"d":{"negotiatedRpcVersion":1}})).await;
+            let request = receive_json(&mut socket).await;
+            assert_eq!(request["d"]["requestType"], "GetRecordStatus");
+            reply(&mut socket, &request, json!({"outputActive":false})).await;
+            let request = receive_json(&mut socket).await;
+            assert_eq!(request["d"]["requestType"], "GetSceneList");
+            reply(
+                &mut socket,
+                &request,
+                json!({"currentProgramSceneName":"直播","scenes":[{"sceneName":"直播"}]}),
+            )
+            .await;
+        }
+    });
+    assert!(
+        obs::execute(&config.obs, ObsOperation::Status)
+            .await
+            .unwrap()
+            .connected
+    );
+    let mut restarted = ClientConfig::default();
+    restarted.resolve_paths(&root.join("desktop.toml"));
+    assert!(
+        obs::execute(&restarted.obs, ObsOperation::Status)
+            .await
+            .unwrap()
+            .connected
+    );
+    obs::save_settings(
+        &config.obs,
+        ObsSettingsRequest {
+            password: None,
+            clear_password: true,
+            ..saved
+        },
+    )
+    .await
+    .unwrap();
+    assert!(
+        obs::execute(&restarted.obs, ObsOperation::Status)
+            .await
+            .unwrap_err()
+            .contains("密码")
+    );
+    tokio::time::timeout(std::time::Duration::from_secs(5), server)
+        .await
+        .unwrap()
+        .unwrap();
+    std::fs::remove_dir_all(root).unwrap();
 }

@@ -5,7 +5,8 @@ mod settings;
 mod types;
 pub use settings::{AgentLimits, AgentSettings};
 pub use types::{
-    AgentPhase, AgentView, DecisionWork, EventRecord, EventStatus, PreparedSpeech, SubmitOutcome,
+    AgentPhase, AgentView, CompletedInteraction, DecisionWork, EventRecord, EventStatus,
+    PreparedSpeech, SubmitOutcome,
 };
 
 use crate::{
@@ -24,6 +25,7 @@ pub struct AgentSession {
     flight: Option<Flight>,
     current: Option<ActiveSpeech>,
     history: VecDeque<ConversationTurn>,
+    completed: Vec<CompletedInteraction>,
     last_error: Option<String>,
     next_decision_ms: u64,
     proactive_after_ms: u64,
@@ -37,6 +39,7 @@ struct Flight {
 struct ActiveSpeech {
     id: String,
     event_ids: Vec<String>,
+    events: Vec<LiveEvent>,
     turn: ConversationTurn,
 }
 
@@ -52,6 +55,7 @@ impl AgentSession {
             flight: None,
             current: None,
             history: VecDeque::new(),
+            completed: Vec::new(),
             last_error: None,
             next_decision_ms: 0,
             proactive_after_ms: 0,
@@ -60,6 +64,17 @@ impl AgentSession {
 
     pub fn submit(&mut self, event: LiveEvent, now_ms: u64) -> Result<SubmitOutcome, String> {
         self.scheduler.submit(event, now_ms)
+    }
+
+    /// Preserve the source event's elapsed UTC age when crossing into the
+    /// process-relative scheduler, including ages greater than process uptime.
+    pub fn submit_with_age(
+        &mut self,
+        event: LiveEvent,
+        now_ms: u64,
+        age_ms: u64,
+    ) -> Result<SubmitOutcome, String> {
+        self.scheduler.submit_with_age(event, now_ms, age_ms)
     }
 
     pub fn configure(&mut self, settings: AgentSettings, now_ms: u64) -> Result<(), String> {
@@ -87,6 +102,7 @@ impl AgentSession {
     pub fn begin(&mut self, now_ms: u64) -> Option<DecisionWork> {
         self.scheduler.expire(now_ms);
         if self.paused
+            || self.completed.len() >= self.scheduler.limits.history_limit
             || self.flight.is_some()
             || self.current.is_some()
             || now_ms < self.next_decision_ms
@@ -103,6 +119,7 @@ impl AgentSession {
         let work = DecisionWork {
             id: self.next_work_id,
             request: DecisionRequest {
+                memory_context: vec![],
                 persona: self.settings.persona.clone(),
                 topic: self.settings.topic.clone(),
                 events: batch.events.clone(),
@@ -112,6 +129,44 @@ impl AgentSession {
         self.flight = Some(Flight { id: work.id, batch });
         self.last_error = None;
         Some(work)
+    }
+
+    /// Events selected by reply_to, bounded by batch_size, available before queue submission.
+    pub fn prepared_events(&self, speech_id: &str) -> Vec<LiveEvent> {
+        self.current
+            .as_ref()
+            .filter(|s| s.id == speech_id)
+            .map(|s| s.events.clone())
+            .unwrap_or_default()
+    }
+
+    /// Drain at most history_limit completions. A full buffer blocks begin rather than dropping facts.
+    pub fn take_completed(&mut self) -> Vec<CompletedInteraction> {
+        std::mem::take(&mut self.completed)
+    }
+
+    /// Fence old model results and return the speech the service must stop.
+    /// Accepted event records and completion facts remain available.
+    pub fn invalidate_context(&mut self, now_ms: u64) -> Option<String> {
+        if let Some(flight) = self.flight.take() {
+            let ids = flight
+                .batch
+                .events
+                .iter()
+                .map(|e| e.id.clone())
+                .collect::<Vec<_>>();
+            self.scheduler
+                .update(&ids, EventStatus::Pending, None, None);
+        }
+        self.scheduler.clear_context();
+        self.history.clear();
+        let stopped = self.current.take().map(|speech| {
+            self.scheduler
+                .update(&speech.event_ids, EventStatus::Pending, None, None);
+            speech.id
+        });
+        self.cooldown(now_ms);
+        stopped
     }
 
     pub fn view(&mut self, now_ms: u64) -> AgentView {

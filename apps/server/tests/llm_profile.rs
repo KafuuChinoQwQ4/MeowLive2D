@@ -287,6 +287,7 @@ async fn bootstrap_selects_the_configured_protocol_for_agent_decisions() {
         .unwrap();
         let reply = model
             .decide(DecisionRequest {
+                memory_context: vec![],
                 persona: "测试主播".into(),
                 topic: String::new(),
                 history: vec![],

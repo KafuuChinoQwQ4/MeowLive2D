@@ -1,5 +1,47 @@
 # 配置边界
 
+## 观众记忆数据库环境
+
+`databases.compose.yaml` 为观众记忆功能提供独立数据库环境。PostgreSQL 默认保存观众身份、幂等事件、陪伴积分和记忆；控制面板用户直接拥有管理权限，无需另行登录。独立模型提取和 Neo4j 图投影按需配置。
+
+| 服务 | 本项目地址 | 数据与账号 |
+| --- | --- | --- |
+| PostgreSQL 16 + pgvector 0.8.6 | `127.0.0.1:25432` | 数据库 `meowlive`；应用账号 `meowlive_app`，默认 schema `app` |
+| Neo4j 5.26.30 Community | HTTP `http://localhost:17474`；Bolt `bolt://localhost:17687` | 数据库 `neo4j`；账号 `neo4j`，使用本项目独立密码 |
+
+MemoChat 的 PostgreSQL 使用 `15432`，Neo4j 使用 `7474/7687`。新环境使用独立容器、网络、账号及绑定目录；不会重用旧数据目录。Community 版本只有一个标准业务数据库，因此这里运行独立 Neo4j 实例。
+
+所有命令在项目根目录执行。凭据位于 Git 忽略的 `config/local/databases.env`，格式见 `databases.env.example`；每个密码应单独生成。通过面板或 `npm run start:server` 启动主服务时，缺少该文件会自动生成随机凭据。手动准备时也可执行以下命令，已有文件会报错并保留原值：
+
+```bash
+python3 - <<'PY'
+from pathlib import Path
+import os, secrets
+directory = Path('config/local')
+directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+fd = os.open(directory / 'databases.env', os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+with os.fdopen(fd, 'w') as output:
+    for key in ('MEOWLIVE_POSTGRES_ADMIN_PASSWORD', 'MEOWLIVE_POSTGRES_APP_PASSWORD', 'MEOWLIVE_NEO4J_PASSWORD'):
+        output.write(key + '=' + secrets.token_hex(32) + '\n')
+PY
+```
+
+启动、查看状态、停止：
+
+```bash
+docker compose --env-file config/local/databases.env -f config/databases.compose.yaml up -d --wait --wait-timeout 180
+docker compose --env-file config/local/databases.env -f config/databases.compose.yaml ps
+docker compose --env-file config/local/databases.env -f config/databases.compose.yaml stop
+```
+
+数据分别位于 `data/databases/postgres`、`data/databases/neo4j`，Neo4j 日志在 `logs/databases/neo4j`；停止服务保留数据。默认开启主服务时会启动并等待本项目 PostgreSQL 就绪；Neo4j 仍需手动启动。关闭主服务或面板会保留数据库运行和数据，不自动随 Docker 重启；需要停止时使用上面的专用命令。显式提供数据库连接变量时使用该数据库，不管理本地容器。
+
+PostgreSQL 内存上限 512 MiB，Neo4j 上限 1 GiB，两者 CPU 上限各为 1 核；这是上限，不是预先占满的内存。两个项目同时运行仍共享 WSL 内存、CPU 和磁盘，语音训练时可停止本项目数据库以释放资源。
+
+`postgres-init.sql` 只在全新数据目录首次初始化时执行：在 `meowlive` 数据库启用 `vector`，建立非超级用户应用账号和 `app` schema。管理账号 `meowlive_admin` 仅用于数据库维护。更改 env 文件不会自动修改已有数据库密码，也不会重新执行初始化 SQL；不要为重设密码删除数据目录。配置展开检查请用 `config --quiet`，避免把含密码的完整配置输出到日志。
+
+## 主服务与执行端配置
+
 示例已由各入口实际解析，未知字段会报错。复制为 `*.local.toml` 或放入 `local/` 保存机器配置；这些路径被忽略。
 
 - `server.example.toml`：监听地址、允许的面板来源、语音队列、GPT-SoVITS、Agent 调度、LLM 请求、直播平台接入、资源和训练。空参考素材允许启动，合成时明确失败；LLM 地址与模型都留空则 Agent 不可恢复。
@@ -8,7 +50,7 @@
 - `VITE_MEOWLIVE_SERVER_URL`：前端服务地址，默认 `http://127.0.0.1:19600`；禁止在前端构建变量放密钥。
 - `launcher.example.json`：`./launchers/start.sh` 首次复制到私有 `config/local/launcher.json`，记录主服务 TOML、TTS Python、引擎目录、cuda/cpu 设备及本地密钥文件路径。相对路径均以项目根为基准，也可用 `~/` 表示当前用户主目录；模板使用 `data/environments/gpt-sovits/bin/python` 与 `data/engines/GPT-SoVITS`，需自行安装或修改为实际位置。JSON 不接受额外字段或任意命令。修改后重启启动器生效。
 
-主服务默认只监听本机。跨 Windows/WSL 联调需调整监听地址和客户端 server_url，并使用受信网络。当前没有原生连接令牌认证。
+主服务默认只监听本机。跨 Windows/WSL 联调需调整监听地址和客户端 server_url，并使用受信网络。主服务启用 `[auth]` 后，Windows 执行端必须通过私有 `device_token_file` 发送独立设备凭据。
 
 通过 `./launchers/start.sh` 打开网页后，GPT-SoVITS、主服务和 Windows 执行端使用“启动与运行”页开关启停。启动器从主服务 TOML 读取监听与 TTS 端口，两者须为回环地址且不得占用面板的 1420；自定义远程服务继续使用手动开发方式。就绪探测、停止和进程组回收由启动器负责，外部终端启动的服务只显示状态。启动器退出不会关闭外部服务。
 
@@ -41,7 +83,7 @@ TTS 默认使用 `ttsMemoryMode="low"`：中文采用引擎自带的轻量拼音
 
 Agent 启动始终暂停。`[agent]` 的 `persona` 为 1–2000 个 Unicode 字符，`topic` 可空、最多 200 字；`cooldown_ms` 为 1000–3600000 毫秒，成功、失败、忽略及播放终态都会进入冷却。只有 `proactive_enabled=true` 且无事件、无播报时才会主动发言，首次恢复后也要等待冷却。
 
-调度上限为 `pending_capacity` 1–512、终态 `history_limit` 1–2000、`dedup_capacity` 1–4096、`batch_size` 1–16、已播完 `conversation_limit` 1–20 轮；`event_ttl_ms` 为 1000–600000，`gift_merge_ms` 为 0–10000（0 禁用分组）。去重 ID 在会话内全局唯一，平台适配器须给原始平台 ID 加来源前缀；活动 ID 不因去重缓存淘汰而失效，终态 ID 超出缓存后可被重新接收。去重不提供跨重启保障。
+调度上限为 `pending_capacity` 1–512、终态 `history_limit` 1–2000、`dedup_capacity` 1–4096、`batch_size` 1–16、已播完 `conversation_limit` 1–20 轮；`event_ttl_ms` 为 1000–600000，`gift_merge_ms` 为 0–10000（0 禁用分组）。去重 ID 在会话内全局唯一，平台适配器须给原始平台 ID 加来源前缀；活动 ID 不因去重缓存淘汰而失效，终态 ID 超出缓存后可被重新接收。默认内存模式不提供跨重启去重；启用下文 PostgreSQL 持久事件后，数据库会阻止已接收事件在重启后重复入队。
 
 `[llm]` 的 `base_url`/`model` 同时留空可保留人工播报模式；填写后会在启动时校验并读取 `api_key_env` 指定的环境变量。环境变量缺失或空值时 Agent 保持未配置，主服务继续运行以便从面板修复；`api_key_env=""` 显式选择无认证模式。此适配器直连配置地址，不自动继承 HTTP 代理、不跟随重定向，错误不公开响应正文或密钥。模型名最多 128 字节，`max_tokens` 为 64–4096，`max_response_bytes` 为 1024–1048576。`timeout_seconds` 为 1–120 秒，覆盖一轮全部尝试及重试等待；`max_retries` 为 0 或 1，只重试超时、连接失败、429 和 5xx 等临时错误。
 
@@ -53,18 +95,28 @@ Agent 启动始终暂停。`[agent]` 的 `persona` 为 1–2000 个 Unicode 字�
 
 首版以完整非流式 JSON 决策生成一条语音：`reply_to` 是本轮候选 ID 子集，`text` 为 1–500 字或 null，`topic` 为最多 200 字或 null。多余动作字段、工具调用、截断、未知 ID 和礼物组部分选择会失败，不执行任意控制命令。输入事件与历史作为 user 数据，人设才进入 system 指令。兼容协议不等于已验证每家提供商；首次真实调用前应使用小批事件核对响应与模型计费。
 
-Agent HTTP 接口为 `GET /api/agent`，`POST /api/agent/settings`、`/api/agent/pause`、`/api/agent/resume`，以及 `POST /api/events`（`{"events":[...]}`，每批 1–100 条，256 KiB 上限，整体校验后接收）。这些入口沿用主服务来源校验。面板修改保留在内存，重启后回到 TOML 配置；原 `/api/stop` 会同时暂停 Agent。
+Agent HTTP 接口为 `GET /api/agent`，`POST /api/agent/settings`、`/api/agent/pause`、`/api/agent/resume`，以及 `POST /api/events`（`{"events":[...]}`，每批 1–100 条，256 KiB 上限，整体校验后接收）。这些入口沿用主服务来源校验；原 `/api/stop` 会同时暂停 Agent。
+
+面板点击“保存设置并暂停”后，人设、话题、冷却时间和主动发言选项保存到 TOML 同级 `local/<文件名去掉扩展名>-agent.json`，例如 `config/local/server.local-agent.json`。保存成功即生效，重启时优先于 `[agent]` 的这四项；队列容量等调度上限仍读取 TOML。文件原子替换，Unix 权限为 `0600`，保存失败保留当前设置并向面板报错。未保存的草稿不写入文件。重启恢复配置但保持暂停，不恢复旧的待播事件。移走该文件并重启可恢复 TOML 配置；文件损坏时启动会报错，不会静默覆盖。
 
 
-`[live]` 是哔哩哔哩官方直播开放平台配置。`enabled` 默认 false，启用时 `app_id` 须为 1–9223372036854775807；访问密钥 ID、密钥、主播身份码仅由 `access_key_id_env`、`access_key_secret_env`、`identity_code_env` 指定的环境变量读取。缺失或空值时直播接入不可用，其他服务可继续运行。启动不自动授权，面板“连接直播间”才调用项目开始接口；官方授权响应决定房间号。
+**推荐直接在控制面板的「直播连接」页设置**：启用直播接入，填写应用 ID、AccessKey ID、AccessKey Secret 和主播身份码，点击保存后即可连接，无需编辑文件、设置环境变量或重启主服务。应用 ID 须为 1–9223372036854775807，页面以字符串提交以避免大整数精度损失。密钥框留空保留已保存值；更换应用 ID 必须重新填写凭据；清除凭据须同时关闭接入。连接进行中或断开清理尚未完成时拒绝修改配置。
 
-`reconnect_initial_ms` 为 10–60000 ms，`reconnect_max_ms` 不小于初始值且不超过 300000 ms；默认从 1 秒指数退避至 30 秒。临时网络错误进入重连，永久鉴权或协议错误进入失败；清理项目失败会停止自动重试并展示错误，避免连续创建无法核对的会话。手动断开期间拒绝新连接，直至旧会话清理结束。平台失联暂停 Agent，恢复连接不自动恢复模型调用。所有状态和计数仅在内存保存。
+`GET /api/live/settings` 仅返回设置及凭据存在标记，`POST /api/live/settings` 校验后原子保存到 TOML 同级 `local/<文件名去掉扩展名>-live.json`，例如 `config/local/server.local-live.json`。Unix 文件权限为 `0600`，查询和调试输出不包含凭据，保存失败保留原设置。下次启动自动读取本机覆盖文件。未通过面板保存时仍兼容 `[live]` 及 `access_key_id_env`、`access_key_secret_env`、`identity_code_env` 指定的环境变量；这些兼容入口不再是普通用户的必填步骤。
+
+启动不自动授权，面板“连接直播间”才调用项目开始接口；官方授权响应决定房间号。
+
+`reconnect_initial_ms` 为 10–60000 ms，`reconnect_max_ms` 不小于初始值且不超过 300000 ms；默认从 1 秒指数退避至 30 秒。临时网络错误进入重连，永久鉴权或协议错误进入失败；清理项目失败会停止自动重试并展示错误，避免连续创建无法核对的会话。手动断开期间拒绝新连接，直至旧会话清理结束。平台失联暂停 Agent，恢复连接不自动恢复模型调用。连接状态和即时计数仅在内存保存；启用持久事件后，收到的观众事件另外保存到 PostgreSQL。
 
 ## M6 桌面与 OBS
 
 Windows Tauri 启动方法见 `apps/desktop/src-tauri/README.md`。主服务的 `allowed_origins` 须包含 `http://tauri.localhost` 以及开发面板地址；桌面 `server_url` 填主服务 HTTP 或 WS origin，不填 `/api` 路径。原生启动地址优先于前端构建变量。跨 WSL 访问时同时调整主服务监听地址与桌面连接地址。
 
-执行端私有 TOML：
+**推荐直接在「OBS 场景与录制」页设置**：先在 OBS 的“工具 → WebSocket 服务器设置”中启用服务，再在面板启用 OBS 控制，填写地址（默认 `ws://127.0.0.1:4455`）和密码后保存。保存由 Windows 执行端完成，后续操作立即使用新设置，重启后自动读取；执行端未连接时需先启动它。密码框留空保留已保存值，可以显式清除；更换地址不会默认复用旧密码。
+
+`GET/POST /api/obs/settings` 通过桌面资源通道读取和保存；私有文件位于执行端配置旁，例如 `target/windows-client/desktop.local.obs.local.json`。查询只返回密码存在标记。Unix 权限为 `0600`，Windows 使用所在目录的访问权限；无密码不代表 OBS 已连接，保存后可在面板测试连接。
+
+高级用户仍可使用执行端私有 TOML 和环境变量作为初始配置：
 
 ```toml
 [obs]
@@ -79,3 +131,63 @@ timeout_ms = 5000
 面板经 `GET /api/obs` 查询、`POST /api/obs` 控制，指令为 `status`、`set_scene`（含 `scene_name`）、`start_recording` 和 `stop_recording`。不支持推流命令，录制和场景修改不自动重试。OBS 配置、密码以及录制输出路径不经 HTTP 返回。
 
 Windows 开关直接读取 `target/windows-client/desktop.local.toml`，无需把程序复制到 Windows 目录。修改这份配置后重新打开第三个开关；不要把旧的 Windows 手动启动目录配置误认为开关正在读取的配置。自定义主服务端口时，将这份配置的 `server_url` 同步为相同地址。
+
+## 启用观众档案与持久事件
+
+`[viewers].enabled` 默认是 `true`，`[auth].enabled` 默认是 `false`；控制面板用户就是软件管理者，可以直接查看和管理观众、事件、陪伴积分、记忆及关系。`scope_id` 表示稳定逻辑角色，重启、重新开播、换音色或 Live2D 外观时保持一致。旧配置若显式写了 `viewers.enabled=false` 或 `auth.enabled=true`，分别改为 `true` 和 `false`，重启主服务即可使用默认体验。
+
+通过面板或 `npm run start:server -- --config config/server.local.toml` 启动时：
+
+1. 若已提供 `MEOWLIVE_DATABASE_URL`（或 `database_url_env` 指定的自定义变量），直接连接该数据库，不启动本地容器。
+2. 未提供默认连接变量时，读取本项目 `config/local/databases.env`；全新安装自动生成随机密码。已有 PostgreSQL 数据却缺失凭据时会要求恢复原凭据，不生成新密码覆盖旧库。
+3. 启动本项目 Compose 的 `postgres` 服务，等待就绪后，使用受限的 `meowlive_app` 账号连接 `127.0.0.1:25432/meowlive`。应用连接只注入主服务环境，不返回前端或传给 TTS。
+4. 主服务检查数据库连接并执行版本化迁移，然后开放观众、事件、积分和记忆接口。缺少 Docker 或连接失败会显示错误，不静默退回临时内存存储。关闭主服务不会删除或停止数据库。
+
+直接运行 Rust 二进制或 `rust_cache.py run` 时，需要自行启动数据库并提供私有连接变量。若显式设置 `[viewers].enabled=false`，可使用不依赖 PostgreSQL 的临时模式。密码含特殊字符时，手工构造连接 URL 须进行 URL 编码；自动准备入口已处理编码。
+
+单独部署需要口令保护的服务时，可以显式设置 `[auth].enabled=true`，通过 `admin_token_env` / `admin_token_file` 和 `device_token_env` / `device_token_file` 分别提供不同的 32–512 字节 ASCII 凭据；文件路径相对主服务 TOML，环境变量优先。此模式会要求面板登录，Windows 执行端通过独立 `device_token_file` 认证。默认单用户控制面板无需准备这些口令。
+
+`GET /api/health` 返回服务标识、协议版本和执行端连接状态；`/api/admin/session` 查询访问模式，默认返回 `enabled=false, authenticated=true`。显式认证模式额外支持 POST 登录和 DELETE 注销。观众与事件查询入口为 `/api/admin/viewers` 与 `/api/admin/events`，分页参数 `limit` 为 1–100，`offset` 为 0–1000000。它们不接受客户端指定其他 scope。
+
+数据库先保存事实，再尝试进入有界回应队列。HTTP 接收结果中的 `persisted` 是本次新落库数量，`accepted` 是安排回应数量，`duplicates` 是已有事件，`unscheduled` 是已落库但未安排回应的数量。直播中断和数据库失败不保证平台重放，事件页的 `unconfirmed_events` 记录本次服务运行期间的未确认接收数量；服务重启会重置此诊断计数，不能用 0 推断无历史缺口。服务重启不会恢复旧事件为待播报。
+
+HTTP 模拟/回放输入在持久化模式中强制隔离为 `simulator` 来源和命名空间，不能伪造 B 站真实档案。B 站有效 UID 使用字符串存储；缺 UID 时仅在已知应用 ID 的命名空间中使用 open_id。没有稳定身份只保存匿名事件，不创建观众档案。昵称不作为身份依据。礼物原始 price/paid/等级字段保留，不推算已支付总额或自动积分。
+
+集成验证需显式为专用测试数据库设置 `MEOWLIVE_TEST_DATABASE_URL`，再运行：
+
+```bash
+python3 scripts/rust_cache.py test -p meowlive-adapters --test postgres_viewers --locked -- --ignored
+python3 scripts/rust_cache.py test -p meowlive-server --test viewer_process --locked -- --ignored
+```
+
+普通 `npm run check` 会把这两类真实数据库测试标为 ignored；不能把该状态算作数据库验证通过。查询返回最近 100 个历史昵称和最多 100 个身份；完整事实仍保存在 PostgreSQL。管理员可在观众详情中管理积分、记忆和关系，并预览和确认身份合并。真实 B 站 open_id 跨场稳定性、礼物金额语义和 Windows 声音仍需授权实机验收。
+
+
+## 陪伴、记忆与图谱
+
+`[viewers].calendar_offset_minutes` 控制日历日边界，默认 `480`（UTC+8），允许 -840 至 840，不跟随主机时区或夏令时。熟悉度按真实观察到的来访日去重；有效交流奖励只在执行端回报 completed 后入账，同正文和原事件不重复奖励。失败、取消、断线或尚未确认的播报不奖励。礼物保留平台原值，只有管理员提供依据确认的人民币分值才参与有限积分；没有真实平台样例时不推测价格单位。
+
+设备完成回执在状态机确认前写入 `[viewers].receipt_directory` 本地同步日志，再异步提交数据库。目录相对 TOML 所在目录，必须保留跨重启、仅服务用户可写；日志只记录 scope、speech ID、完成时间及失败尝试，不保存对话。最多 4096 条，接近上限时暂停新一轮生成；失败按尝试次数轮转，不由一条坏记录阻塞后续回执。服务重启会恢复未入账的真实完成回执，数据库幂等键阻止重复奖励；不根据“已生成”猜测播放完成，也不重播历史内容。磁盘写入失败时断开设备并显示失败诊断，不能伪造已持久状态；设备回执到达前的网络中断仍属于未确认。管理页展示失败 speech ID，排查时保留原日志，不人工补造回执。
+
+PostgreSQL 记忆存储随 `[viewers]` 默认开启，可直接查询、纠正、冻结和删除已保存的记忆。`[memory].enabled` 仅控制独立模型的后台提取，默认关闭；开启时配置独立的 OpenAI 兼容接口 `endpoint`/`model`；`api_key_env` 仅由服务端环境读取，空字符串明确表示无认证。可选嵌入配置使用独立的 `embedding_endpoint`、`embedding_model` 和 `embedding_api_key_env`；模型及维度共同隔离向量。接口使用 chat/completions JSON 和 embeddings，不授予模型工具或数据库执行权限。请求和响应有 64 KiB 限额，`timeout_ms` 为 1–60000。缺少嵌入或请求失败时仍可检索结构化事实。
+
+后台提取并发为 1，每次取一个有 60 秒租约的持久任务，最多尝试 3 次。Agent 正在生成、说话或本地 GPU 被占用时不开始下一次提取；独立外部模型的实际 GPU 调度仍由部署方负责。已接受但未安排回应的聊天也进入提取队列。候选默认 7 天；临时状态默认 24 小时；共同经历有 7 天半衰期、30 天硬期限；长期事实不会因沉默自动删除。自动确认采用保守的中文明确自述模式，其他说法保留候选，不能把规则测试当作真实模型的召回率验收。 HTTP 提取结果自报绝对期限时会拒绝该候选，尚未接入可核对的自然语言日期解析；也未自动将“重要共同经历”晋升为长期事实。
+
+管理纠正会锁定正文；显式解冻后允许新来源更新，但原来源和删除标记继续抑制旧内容。纠正、删除、过期及合并会使旧上下文失效，并取消在途或待播任务；已经播放的部分不能撤回。后台向量提交必须符合模型、维度、正文版本及当前租约。每轮只注入当前观众的最多 8 条有效记忆、3 条已确认关系，文本合计最多 1200 UTF-8 字节，作为保守 token 上界；分数和管理审计不进入模型或执行端。
+
+`[graph]` 开启后以环境变量提供 Neo4j 密码。适配器对应 Compose 固定的 Neo4j 5.26.30 Query API；关系事实和同步 outbox 在 PostgreSQL 中同时提交。图服务断开时后台重连，最多 3 次投影尝试，失败可从管理界面重建。图返回 ID/版本必须再经 SQL 核对有效状态与连通路径；故障降级为 SQL 的有界一跳查询。已确认的明确兴趣和经历可在记忆事务内派生话题/活动关系；“我认识…”或“我和…是朋友”的明确原文仅派生未解析提及，单方声称保持未确认，昵称不自动解析为另一位稳定观众；管理员可以核对原始事件证据后确认或撤销。
+
+身份合并必须先生成预览，再提供理由并明确确认。预览期间任何相关事实变化均应重新预览。合并保留来源身份和历史流水，同日来访去重；好感采用双方当前值的较大值，避免两份同人档案直接相加，互补历史可能被低估，可通过有依据的人工调整补正。合并前的旧流水不再直接撤销，需要以合并后分值为基准填写有理由的人工调整；合并后的新调整仍可正常撤销。旧来源档案留合并记录并退出普通列表，新增事件归入目标身份。
+
+管理恢复接口均需管理员认证和唯一 `request_key`、非空 `reason`。网络失败重试应复用相同请求键和完全相同的参数；修改参数须新建请求键：
+
+| 操作 | 接口 |
+| --- | --- |
+| 提取/嵌入失败重试 | `POST /api/admin/memories/retry` |
+| 从有效记忆重建向量 | `POST /api/admin/memories/rebuild-vectors` |
+| 从关系事实和删除记录重建图 | `POST /api/admin/graph/rebuild` |
+| 任务诊断 | `GET /api/admin/memories/status`、`GET /api/admin/graph/status`、`GET /api/admin/companionship/status` |
+
+原始聊天及提取输入默认保留 30 天；长期记忆仅保留必要证据片段和来源 ID。礼物账本、事件去重依据、积分流水、抑制和删除记录不随聊天清理。
+
+数据库备份和恢复步骤见 [观众数据恢复](viewer-recovery.md)。除常规检查外，真实存储验收需专用 `MEOWLIVE_TEST_DATABASE_URL`；图测试还需 `MEOWLIVE_TEST_NEO4J_PASSWORD`，地址为本项目回环端口 `17474`。测试只使用随机 scope，普通 `npm run check` 中 ignored 项不代表已验证。

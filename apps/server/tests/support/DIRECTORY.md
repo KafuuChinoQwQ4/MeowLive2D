@@ -14,4 +14,4 @@ support/  # 主服务集成测试公共夹具
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: f5c2dde144665bda7fd3372c66966a8292515c42d7152cbad33f5ab035b8a140 -->
+<!-- directory-tree-sha256: 17e68a4594e88be0e3d44f6c055258f96b6b9e5d1c71f167973a014a6495bfe6 -->

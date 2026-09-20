@@ -15,6 +15,7 @@ it("switching away during a speech submission does not cancel or replay it", asy
   const queued = speech({ text: "切页时保留在途播报" });
   let accepted = false;
   vi.stubGlobal("fetch", vi.fn<typeof fetch>(async (url, init) => {
+    if (String(url).endsWith("/api/admin/session")) return jsonResponse({ enabled: false, authenticated: false });
     if (String(url).endsWith("/api/speech")) {
       signals.push(init!.signal!);
       const result = await response.promise;
@@ -40,7 +41,9 @@ it("switching away during a speech submission does not cancel or replay it", asy
 });
 
 it("a speech-history deep link selects the speech page and unknown hashes select overview", async () => {
-  vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockImplementation(async () => jsonResponse(serverStatus())));
+  vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockImplementation(async url => String(url).endsWith("/api/admin/session")
+    ? jsonResponse({ enabled: false, authenticated: false })
+    : jsonResponse(serverStatus())));
   window.history.replaceState(null, "", "#history-heading");
   render(<App />);
   expect(await screen.findByRole("heading", { name: "播报记录" })).toBeInTheDocument();

@@ -59,9 +59,9 @@ describe("Agent HTTP 请求", () => {
     const batch: EventBatchRequest = {
       events: [{ id: "event-1", source: "simulator", viewer: "小猫", kind: { type: "chat", text: "晚上好" } }],
     };
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({ accepted: 0, duplicates: 1 }, 202));
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({ accepted: 0, duplicates: 1, persisted: 1, unscheduled: 0 }, 202));
 
-    await expect(createAgentClient({ fetcher }).submitEvents(batch)).resolves.toEqual({ accepted: 0, duplicates: 1 });
+    await expect(createAgentClient({ fetcher }).submitEvents(batch)).resolves.toEqual({ accepted: 0, duplicates: 1, persisted: 1, unscheduled: 0 });
     expect(fetcher).toHaveBeenCalledWith("http://127.0.0.1:19600/api/events", expect.objectContaining({
       method: "POST",
       headers: { "Content-Type": "application/json" },

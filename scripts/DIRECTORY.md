@@ -8,9 +8,12 @@
 scripts/  # 开发工具、目录用途登记与索引同步检查
 ├── launcher/  # Linux 本机服务启动管理、配置读取、状态探测与控制接口
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   ├── config.mjs  # 私有启动配置、LLM 覆盖元数据及主服务环境的加载与脱敏
+│   ├── config.mjs  # 私有启动配置、默认观众存储元数据及主服务环境的加载与脱敏
 │   ├── config.test.mjs  # 启动配置、缺失环境、密钥隔离和本机地址限制的测试
-│   ├── health.mjs  # 检查主服务及 TTS HTTP 就绪状态和端口占用
+│   ├── database.mjs  # 默认观众存储的私有数据库凭据准备、项目 PostgreSQL 启动和受限应用连接注入
+│   ├── database.test.mjs  # 默认数据库首次准备、凭据复用、外部连接隔离和错误脱敏测试
+│   ├── health.mjs  # 通过公开最小健康接口检查主服务与 TTS 就绪和端口占用
+│   ├── health.test.mjs  # 认证主服务通过公开最小健康接口被启动器和设备探测的测试
 │   ├── http.mjs  # 同源会话保护的三个服务开关及模型管理 HTTP 接口
 │   ├── http.test.mjs  # 启停接口来源、会话、请求形状及大小限制测试
 │   ├── log.mjs  # 受管进程日志限量保存、密钥遮盖及常见启动故障识别
@@ -26,6 +29,7 @@ scripts/  # 开发工具、目录用途登记与索引同步检查
 │   ├── paths.test.mjs  # 项目目录、用户主目录及外部路径解析与显示回归测试
 │   ├── process-cleanup.mjs  # 核对项目与进程身份后清理残留进程组并通知受管 Windows 执行端停止
 │   ├── process-cleanup.test.mjs  # 残留服务正常及强制退出、孤立子进程回收和其他检出隔离测试
+│   ├── server.mjs  # 受管主服务启动入口，等待 PostgreSQL 就绪后通过 Rust 缓存入口启动服务
 │   ├── shutdown.mjs  # 幂等处理重复中断与终端挂断信号，等待启动器完成服务清理
 │   ├── shutdown.test.mjs  # 真实进程验证重复 Ctrl+C、终止和终端挂断时等待受管服务回收
 │   ├── supervisor.mjs  # 固定服务子进程的幂等启停、就绪等待、超时取消和退出回收
@@ -34,7 +38,7 @@ scripts/  # 开发工具、目录用途登记与索引同步检查
 │   ├── windows-client.test.mjs  # Windows 连接门控、重复启动、取消重试、外部保护与关闭顺序回归测试
 │   └── windows-config.mjs  # 安全解析并原子更新实际 Windows 执行端 TOML，仅启用 VTS 插件连接
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-├── README.md  # 开发验证命令、网页启动管理及引擎工具说明
+├── README.md  # 开发命令、Rust 构建缓存回收边界、启动器及模型训练工具说明
 ├── acceptance.mjs  # 只读持续观测、脱敏采样与整体验收 JSON 报告工具
 ├── acceptance.test.mjs  # 只读验收工具的受控 HTTP、限额、去敏和计数测试
 ├── directory-descriptions.json  # 可提交工程的文件和目录用途登记；索引生成的说明源
@@ -42,8 +46,10 @@ scripts/  # 开发工具、目录用途登记与索引同步检查
 ├── directory-tree.test.mjs  # 验证递归索引、文件增删改、排除规则、本地文档隔离和符号链接边界
 ├── engine_workspace.py  # 构建项目自有引擎副本并配置 CPU、GPU、数据加载和内存模式
 ├── extract-model-archive.py  # 限定路径和解压大小的 G2PW 官方模型压缩包解压器
-├── model_runtime.py  # 受管 TTS 模型按需加载、卸载、并发保护及私有引擎入口适配
-├── model_runtime_test.py  # 模型默认待机、加载卸载、失败重试及流式取消的无权重测试
+├── model_runtime.py  # 受管 TTS 模型按需启停、合成线程隔离、并发保护及私有引擎入口适配
+├── model_runtime_test.py  # 模型默认待机、加载卸载、合成期间状态响应及取消保护的无权重测试
+├── rust_cache.py  # 记录成功 Cargo 构建的有效产物并在文件锁保护下回收旧可执行程序与已确认归属的增量缓存
+├── rust_cache_test.py  # 用真实文件和 Cargo 验证缓存保护、失败构建、并发锁、路径边界及清理后的重复构建命中
 ├── start-control-panel.mjs  # 启动 Vite 控制面板、模型管理与本地服务监督器并回收受管进程
 ├── start-managed-inference.py  # 准备私有推理配置、默认不加载模型的受管 TTS 服务启动入口
 ├── stop-control-panel.mjs  # Linux 与 WSL 手动清理本项目残留服务并报告停止结果的命令入口
@@ -62,4 +68,4 @@ scripts/  # 开发工具、目录用途登记与索引同步检查
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 47797cb1d8177587fd4fdb7ae87118d5b69a7b67546876d38aa0570526d12890 -->
+<!-- directory-tree-sha256: b9e41cc98052de752ed9ca37f8c2631cc48b0ca0c9a23dac7c8ca6f96ca33a71 -->

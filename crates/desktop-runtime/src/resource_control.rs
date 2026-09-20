@@ -26,6 +26,16 @@ impl ResourceContext {
         }
     }
     async fn perform(&self, operation: Operation) -> Result<Output, String> {
+        if matches!(operation, Operation::ObsSettings) {
+            return crate::obs::settings(&self.config.obs)
+                .await
+                .map(|settings| Output::ObsSettings { settings });
+        }
+        if let Operation::SaveObsSettings { settings } = operation {
+            return crate::obs::save_settings(&self.config.obs, settings)
+                .await
+                .map(|settings| Output::ObsSettings { settings });
+        }
         if let Operation::Obs { operation } = operation {
             return crate::obs::execute(&self.config.obs, operation)
                 .await
@@ -110,6 +120,8 @@ impl ResourceContext {
             Operation::ImportModel
             | Operation::ListImportedModels
             | Operation::DeleteImportedModel { .. }
+            | Operation::ObsSettings
+            | Operation::SaveObsSettings { .. }
             | Operation::Obs { .. } => unreachable!(),
         }
     }

@@ -14,3 +14,28 @@ it("times out a request and a response body even when its promise ignores cancel
     await expect(createObsClient({ fetcher, timeoutMs: 10 }).getStatus()).rejects.toMatchObject({ code: "request_timeout" });
   }
 });
+
+it("sends OBS credentials only in the settings POST body and returns a redacted settings snapshot", async () => {
+  const calls: { url: string; method: string; body: unknown }[] = [];
+  const client = createObsClient({ fetcher: async (url, init) => {
+    calls.push({ url: String(url), method: init?.method ?? "GET", body: init?.body ? JSON.parse(String(init.body)) : null });
+    return Response.json({ enabled: true, websocket_url: "ws://127.0.0.1:4455", password_configured: true, storage_available: true, password: "server-must-not-return-this" });
+  } });
+  const saved = await client.saveSettings({ enabled: true, websocket_url: "ws://127.0.0.1:4455", password: "private-password", clear_password: false });
+  expect(saved).not.toHaveProperty("password");
+  await client.getSettings();
+  expect(calls).toEqual([
+    { url: "http://127.0.0.1:19600/api/obs/settings", method: "POST", body: { enabled: true, websocket_url: "ws://127.0.0.1:4455", password: "private-password", clear_password: false } },
+    { url: "http://127.0.0.1:19600/api/obs/settings", method: "GET", body: null },
+  ]);
+});
+
+it("rejects malformed OBS settings before they become editable state", async () => {
+  const client = createObsClient({ fetcher: async () => Response.json({ enabled: true, websocket_url: "ws://127.0.0.1:4455", password_configured: "secret", storage_available: true }) });
+  await expect(client.getSettings()).rejects.toMatchObject({ code: "invalid_response" });
+});
+
+it("accepts expanded IPv6 loopback addresses returned by the execution host", async () => {
+  const client = createObsClient({ fetcher: async () => Response.json({ enabled: true, websocket_url: "ws://[0:0:0:0:0:0:0:1]:4455", password_configured: false, storage_available: true }) });
+  await expect(client.getSettings()).resolves.toMatchObject({ websocket_url: "ws://[0:0:0:0:0:0:0:1]:4455" });
+});

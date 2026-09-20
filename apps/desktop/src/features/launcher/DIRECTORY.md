@@ -7,7 +7,7 @@
 ```text
 launcher/  # 控制面板服务开关、启动状态及新人引导
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-├── LauncherControls.tsx  # 主服务、TTS 和 Windows 执行端三开关、新人步骤与配置帮助
+├── LauncherControls.tsx  # 主服务、TTS 和 Windows 执行端三开关、状态及本机配置位置
 ├── LauncherPanel.test.tsx  # 滑动开关真实状态、启动取消、外部服务与断线交互测试
 ├── LauncherPanel.tsx  # 服务开关展示与业务就绪门控的可复用组合入口
 ├── index.ts  # 服务开关展示、状态控制器与组合面板公共导出
@@ -18,4 +18,4 @@ launcher/  # 控制面板服务开关、启动状态及新人引导
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: e7ef4f9e6d0d4451e9d83dd1d90809c8a04de9ae559e454cc346a0018e66ed5b -->
+<!-- directory-tree-sha256: 2362180a61bcbf3a2a21b66fa96c59151fc320e083f404ed4804a406ef708e3d -->

@@ -11,8 +11,7 @@ export function EventHistory({ events }: { events: AgentEventSnapshot[] }) {
   return (
     <section className="panel history-panel" aria-labelledby="agent-history-heading">
       <div className="section-title"><h2 id="agent-history-heading">事件记录</h2><span className="field-hint">{events.length} 条</span></div>
-      <p className="muted">显示事件处理状态及关联的播报任务。</p>
-      {items.length === 0 ? <div className="empty-state"><p>还没有直播事件</p><span>模拟事件或提交回放后，处理记录会显示在这里。</span></div> :
+      {items.length === 0 ? <div className="empty-state"><p>还没有直播事件</p><span>发送模拟事件开始体验。</span></div> :
         <ol className="speech-list" aria-label="Agent 事件">
           {items.map((item) => <li key={`${item.event.source}:${item.event.id}`}>
             <div className="task-heading">

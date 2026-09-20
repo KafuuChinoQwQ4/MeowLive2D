@@ -22,7 +22,7 @@ async function initialize(root, destination, template) {
   catch (error) { if (error.code !== 'EEXIST') throw error; }
 }
 
-async function readServerConfig(path) {
+export async function readServerConfig(path) {
   // Keep TOML parsing in Python's standard library; no cloud key or full config is printed.
   const script = `import json,sys,tomllib
 from pathlib import Path
@@ -39,6 +39,7 @@ if profile.exists():
 print(json.dumps({
  'listen':data.get('server',{}).get('listen_address','127.0.0.1:19600'),
  'tts':data.get('speech',{}).get('base_url','http://127.0.0.1:9880'),
+ 'viewers':{'enabled':data.get('viewers',{}).get('enabled',True),'database_url_env':data.get('viewers',{}).get('database_url_env','MEOWLIVE_DATABASE_URL')},
  'llm':{**{k:llm.get(k,'') for k in ['base_url','model','api_key_env']},'key_saved':key_saved}
 }))`;
   const { stdout } = await execute('python3', ['-c', script, path], { timeout: 5000, maxBuffer: 65536 });
@@ -101,15 +102,15 @@ export async function loadConfiguration(root, { env = process.env } = {}) {
     } catch { /* Manual speech remains available without a cloud key. */ }
   }
   const llmConfigured = Boolean(metadata?.llm?.base_url && metadata?.llm?.model && (metadata.llm.key_saved || !keyName || serverEnv[keyName]));
-  const ttsEnv = Object.fromEntries(Object.entries(env).filter(([name]) => name !== keyName && !/KEY|TOKEN|PASSWORD|SECRET/i.test(name)));
+  const ttsEnv = Object.fromEntries(Object.entries(env).filter(([name]) => name !== keyName && name !== metadata?.viewers?.database_url_env && !/KEY|TOKEN|PASSWORD|SECRET/i.test(name)));
   return {
     modelSettings: { root, home, engine, python, environment, hfHome: env.HF_HOME },
     setup: { configuration_path: publicPath(configurationPath), server_config: publicPath(serverConfig), llm_configured: llmConfigured,
       llm_message: llmConfigured ? 'LLM 配置已读取，密钥仅用于主服务。' : 'LLM 尚未就绪。启动主服务后进入“LLM 接入”，填写接口格式、地址、模型和密钥。',
       windows_client_path: './target/windows-client' },
     definitions: [
-      { id: 'server', url: serverUrl, issue: serverIssue, cwd: root, command: 'cargo',
-        args: ['run', '--locked', '-p', 'meowlive-server', '--', '--config', serverConfig], env: serverEnv,
+      { id: 'server', url: serverUrl, issue: serverIssue, cwd: root, command: process.execPath,
+        args: [join(root, 'scripts/launcher/server.mjs'), serverConfig], env: serverEnv,
         logPath: join(root, 'logs/control-panel/server.log') },
       { id: 'tts', url: ttsUrl, issue: ttsIssue, cwd: root, command: python, memoryGuard: true,
         args: [join(root, 'scripts/start-managed-inference.py'), '--engine-root', engine, '--data-dir', join(root, 'data/control-panel-inference'),

@@ -118,6 +118,7 @@ impl BilibiliConnection {
                                 &bytes,
                                 &self.room_id,
                                 Some(&self.game_id),
+                                Some(self.config.app_id),
                                 self.config.decode_limits,
                             )
                                 .map_err(|message| error(message, false))?;
@@ -255,6 +256,7 @@ async fn await_authority(
                             &bytes,
                             &project.room_id,
                             Some(&project.game_id),
+                            Some(config.app_id),
                             config.decode_limits,
                         )
                         .map_err(|message| error(message, false));

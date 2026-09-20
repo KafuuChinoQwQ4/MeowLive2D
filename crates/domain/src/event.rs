@@ -7,8 +7,34 @@ pub struct LiveEvent {
     /// Platform identity: 1–32 printable ASCII characters.
     pub source: String,
     pub viewer: String,
+    /// Stable platform identity when the source provided one.
+    pub viewer_identity: Option<ViewerIdentity>,
+    /// UTC milliseconds supplied by the event source.
     pub occurred_at_ms: u64,
+    /// Raw gift fields supplied by the source; never a calculated total.
+    pub gift_metadata: Option<GiftMetadata>,
     pub kind: EventKind,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ViewerIdentity {
+    pub namespace: String,
+    pub kind: ViewerIdentityKind,
+    pub external_id: String,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ViewerIdentityKind {
+    OpenId,
+    Uid,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct GiftMetadata {
+    pub price: Option<u64>,
+    pub paid: Option<bool>,
+    pub medal_level: Option<u32>,
+    pub guard_level: Option<u32>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -22,8 +48,16 @@ impl LiveEvent {
         identity("event id", &self.id, 128)?;
         identity("event source", &self.source, 32)?;
         content("viewer", &self.viewer, 64, false)?;
+        if let Some(viewer_identity) = &self.viewer_identity {
+            viewer_identity.validate()?;
+        }
         match &self.kind {
-            EventKind::Chat { text } => content("chat text", text, 500, true),
+            EventKind::Chat { text } => {
+                if self.gift_metadata.is_some() {
+                    return Err("gift metadata requires a gift event".into());
+                }
+                content("chat text", text, 500, true)
+            }
             EventKind::Gift { name, count } => {
                 content("gift name", name, 100, false)?;
                 if !(1..=10_000).contains(count) {
@@ -32,6 +66,23 @@ impl LiveEvent {
                 Ok(())
             }
         }
+    }
+}
+
+impl ViewerIdentity {
+    pub fn validate(&self) -> Result<(), String> {
+        identity("viewer identity namespace", &self.namespace, 128)?;
+        identity("viewer identity external id", &self.external_id, 128)?;
+        if matches!(self.kind, ViewerIdentityKind::Uid) {
+            let uid = self
+                .external_id
+                .parse::<u64>()
+                .map_err(|_| "viewer UID must be a positive integer".to_string())?;
+            if uid == 0 || uid.to_string() != self.external_id {
+                return Err("viewer UID must be a positive integer".into());
+            }
+        }
+        Ok(())
     }
 }
 

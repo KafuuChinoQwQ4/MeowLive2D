@@ -82,3 +82,43 @@ timeout_seconds = 7200
 managed_inference = false
 default_gpt_weights = ""
 default_sovits_weights = ""
+
+# 默认保存观众、事件、陪伴积分和记忆；控制面板用户直接拥有管理权限。
+[viewers]
+# 相对本 TOML 所在目录；请保持该目录跨重启持久、私有可写。
+receipt_directory = "../data/viewer-receipts"
+# 日历日边界为固定 UTC 偏移（分钟），默认中国标准时间；不推断主机时区。
+calendar_offset_minutes = 480
+enabled = true
+# 稳定逻辑角色范围；重启、换声音/外观时不要改动。
+scope_id = "default-avatar"
+database_url_env = "MEOWLIVE_DATABASE_URL"
+
+[auth]
+# 单用户控制面板无需登录；仅在另行部署受保护服务时显式开启认证。
+enabled = false
+admin_token_env = "MEOWLIVE_ADMIN_TOKEN"
+device_token_env = "MEOWLIVE_DEVICE_TOKEN"
+# 环境变量未提供时读取相对本 TOML 的私有文件，两份凭据必须不同。
+# admin_token_file = "local/admin-token.txt"
+# device_token_file = "local/device-token.txt"
+session_lifetime_seconds = 28800
+
+# PostgreSQL 记忆存储随 [viewers] 默认开启；以下仅控制独立模型的后台提取。
+[memory]
+enabled = false
+endpoint = ""
+model = ""
+api_key_env = "MEOWLIVE_MEMORY_API_KEY"
+embedding_endpoint = ""
+embedding_model = ""
+embedding_api_key_env = "MEOWLIVE_EMBEDDING_API_KEY"
+embedding_dimensions = 384
+timeout_ms = 15000
+
+# Neo4j 是可重建副本，故障时用 PostgreSQL 的一跳有效关系。
+[graph]
+enabled = false
+endpoint = "http://127.0.0.1:17474/db/neo4j/query/v2"
+user = "neo4j"
+password_env = "MEOWLIVE_NEO4J_PASSWORD"

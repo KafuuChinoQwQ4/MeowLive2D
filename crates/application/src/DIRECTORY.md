@@ -14,22 +14,30 @@ src/  # Agent、事件调度、语音与资源任务用例
 │   └── types.rs  # Agent 阶段、事件状态及应用调用结果
 ├── ports/  # 业务方定义的模型、语音、存储和执行能力边界
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   ├── companionship.rs  # 陪伴账本礼物确认与完成回执存储接口
 │   ├── execution.rs  # Windows 执行指令下发、取消和执行回执接收的能力边界；实现不在业务层。
 │   ├── live_source.rs  # 平台无关直播源、连接生命周期和错误语义接口
 │   ├── llm.rs  # 模型决策、已完成对话与可取消异步模型接口
+│   ├── memory.rs  # 记忆提取与向量嵌入能力接口
+│   ├── memory_store.rs  # 权威记忆、后台任务及管理恢复存储接口
 │   ├── mod.rs  # 由业务方定义的外部能力接口。实现位于 adapters 或应用入口的传输适配层。
+│   ├── receipt_journal.rs  # 播放完成回执本地持久暂存与数据库提交确认接口
+│   ├── relationships.rs  # 关系事实、图投影和同步恢复能力接口
 │   ├── speech.rs  # 可动态注入的异步语音合成接口与 PCM 输出类型
 │   ├── storage.rs  # 资源快照、参考音频与引擎路径存储接口
-│   └── training.rs  # 训练存储、同音色续训基底与受控进程接口
+│   ├── training.rs  # 训练存储、同音色续训基底与受控进程接口
+│   ├── viewer_merge.rs  # 身份合并预览及版本条件应用接口
+│   └── viewers.rs  # 观众身份和直播事件的幂等持久接收及分页查询端口
 ├── scheduler/  # 候选事件优先级与礼物分组策略
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   ├── fairness.rs  # 完成驱动的观众公平、有限重选和追问焦点
 │   └── selection.rs  # 礼物优先选择和有界原始事件分组
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 ├── agent.rs  # Agent 生命周期、决策调度和状态快照
 ├── lib.rs  # 业务用例与外部能力接口。通过注入 ports 的实现调用外部能力。
 ├── performance.rs  # 协调发言、动作、下发与执行回执；处理代次、取消及重连后未知状态。
 ├── resources.rs  # 角色与音色档案用例、删除和选择清理、持久化事务及映射一致性
-├── scheduler.rs  # 有界事件存储、独立去重和终态历史裁剪
+├── scheduler.rs  # 有界事件接收、去重、优先级与保留源事件剩余时效的调度
 ├── session.rs  # 会话启动、暂停、恢复与关闭用例，协调在途任务的生命周期。
 ├── speech.rs  # 单执行者语音 FIFO 队列、容量历史限制与取消回执状态机
 └── training.rs  # 训练任务调度、同音色续训基底选择及版本保存选用
@@ -45,4 +53,4 @@ src/  # Agent、事件调度、语音与资源任务用例
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 04c267f8d17d778a939d60fce87af5ded05f262fb4db70ada1903d1c5bfaa903 -->
+<!-- directory-tree-sha256: 6eb04b59b9205d29c5911d24cc3902ccfa20feef0c361238be22bb747f1b1619 -->

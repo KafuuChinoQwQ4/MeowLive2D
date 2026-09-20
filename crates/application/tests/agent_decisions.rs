@@ -77,7 +77,7 @@ fn skip_and_model_failure_each_consume_cooldown() {
             if fail {
                 EventStatus::Failed
             } else {
-                EventStatus::Skipped
+                EventStatus::Deciding
             }
         );
     }

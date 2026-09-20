@@ -60,6 +60,7 @@ pub async fn test(
         .ok_or_else(|| invalid("LLM 未配置".into()))?;
     model
         .decide(DecisionRequest {
+            memory_context: vec![],
             persona: "你是一位中文主播，请输出一条简短问候以测试连接。".into(),
             topic: "连接测试".into(),
             events: vec![],

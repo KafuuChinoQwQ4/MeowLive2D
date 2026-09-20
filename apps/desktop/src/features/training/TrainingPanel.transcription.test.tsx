@@ -57,9 +57,9 @@ describe("训练文本模式", () => {
     expect(deps.client.transcribe).toHaveBeenCalledTimes(1);
     expect(deps.client.transcribe).toHaveBeenCalledWith(expect.any(File), "zh", expect.any(AbortSignal));
     expect(deps.client.create).not.toHaveBeenCalled();
-    const result = await screen.findByRole("dialog", { name: "文本提取成功" });
+    const result = await screen.findByRole("status", { name: "文本提取成功" });
     expect(result).toHaveTextContent("1 个片段");
-    await user.click(within(result).getByRole("button", { name: "知道了" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     const start = screen.getByRole("button", { name: "开始训练" });
     expect(start).toBeDisabled();
     fireEvent.submit(start.closest("form")!);

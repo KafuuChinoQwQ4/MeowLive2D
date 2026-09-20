@@ -5,6 +5,7 @@
  */
 import type { ServerStatus, SpeechRequest, SpeechSnapshot } from "@meowlive/contracts";
 import { readServerError, readServerStatus, readSpeech, ServerRequestError } from "./responses";
+import { createAuthenticatedFetch } from "./auth";
 
 export { ServerRequestError } from "./responses";
 
@@ -17,7 +18,7 @@ export interface ServerClient {
 
 export function createServerClient(options: { baseUrl?: string; fetcher?: typeof fetch; timeoutMs?: number } = {}): ServerClient {
   const baseUrl = (options.baseUrl ?? import.meta.env.VITE_MEOWLIVE_SERVER_URL ?? "http://127.0.0.1:19600").replace(/\/+$/, "");
-  const fetcher = options.fetcher ?? globalThis.fetch.bind(globalThis);
+  const fetcher = options.fetcher ?? createAuthenticatedFetch(baseUrl);
   const timeoutMs = options.timeoutMs ?? 8_000;
 
   async function request<T>(path: string, method: "GET" | "POST", read: (value: unknown) => T, signal?: AbortSignal, body?: SpeechRequest): Promise<T> {

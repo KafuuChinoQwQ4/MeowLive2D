@@ -16,7 +16,7 @@ async function fixture(t, { delay = 0, exit = false, startupMs = 3000, readMemor
     const http = require('node:http');
     setTimeout(() => http.createServer((req, res) => {
       res.setHeader('content-type','application/json');
-      res.end(JSON.stringify({protocol_version:3,session_id:'test',bridge_connected:false,speeches:[]}));
+      res.end(JSON.stringify({protocol_version:3,service:'meowlive',bridge_connected:false,speeches:[]}));
     }).listen(${port}, '127.0.0.1'), ${delay});
   `;
   const definition = { id: 'server', url: `http://127.0.0.1:${port}`, command: process.execPath,
@@ -119,7 +119,7 @@ test('readiness timeout cleans up the owned child', async t => {
 test('observes an external service without taking ownership or stopping it', async t => {
   const { manager, port, definition } = await fixture(t, { readMemory: async () => [{ name: 'Windows', availableMiB: 50 }] });
   definition.memoryGuard = true;
-  const external = createServer((_req, res) => res.end(JSON.stringify({ protocol_version: 3, session_id: 'external', bridge_connected: false, speeches: [] })));
+  const external = createServer((_req, res) => res.end(JSON.stringify({ protocol_version: 3, service: 'meowlive', bridge_connected: false, speeches: [] })));
   await new Promise(resolve => external.listen(port, '127.0.0.1', resolve));
   t.after(() => new Promise(resolve => external.close(resolve)));
   const status = await until(manager, 'external');

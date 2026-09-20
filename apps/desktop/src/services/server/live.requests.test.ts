@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { jsonResponse } from "../../test/server-fixtures";
-import { liveSnapshot } from "../../test/live-fixtures";
+import { liveSettingsSnapshot, liveSnapshot } from "../../test/live-fixtures";
 import { createLiveClient } from "./live";
 
 describe("直播连接 HTTP 请求", () => {
@@ -30,5 +30,18 @@ describe("直播连接 HTTP 请求", () => {
 
     await expect(client[method]()).resolves.toEqual(snapshot);
     expect(fetcher).toHaveBeenCalledWith(`http://127.0.0.1:19600${path}`, expect.objectContaining({ method: "POST" }));
+  });
+
+  it("读取脱敏配置并用字符串应用 ID 保存凭据保留语义", async () => {
+    const snapshot = liveSettingsSnapshot();
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => jsonResponse(snapshot));
+    const client = createLiveClient({ baseUrl: "http://localhost:19700/", fetcher });
+    await expect(client.getSettings()).resolves.toEqual(snapshot);
+    expect(fetcher).toHaveBeenLastCalledWith("http://localhost:19700/api/live/settings", expect.objectContaining({ method: "GET" }));
+    const request = { enabled: true, app_id: "9223372036854775807", access_key_id: null, access_key_secret: "replacement", identity_code: null, clear_credentials: false };
+    await expect(client.saveSettings(request)).resolves.toEqual(snapshot);
+    expect(fetcher).toHaveBeenLastCalledWith("http://localhost:19700/api/live/settings", expect.objectContaining({
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request),
+    }));
   });
 });

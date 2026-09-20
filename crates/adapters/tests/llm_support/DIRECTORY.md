@@ -14,4 +14,4 @@ llm_support/  # LLM 适配器测试公共夹具
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: a65089e9d66266e8ec92f1cad2a51c5b639d743b2685270124e73b5631416eba -->
+<!-- directory-tree-sha256: 0e2be4cdb519526d8a5214fe0214b8eb164f39563cf17209e56a36bcd9f63883 -->

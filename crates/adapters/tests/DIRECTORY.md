@@ -29,9 +29,18 @@ tests/  # GPT-SoVITS、WAV 与 LLM 适配器的集成和输入输出边界测试
 ├── llm_limits.rs  # 配置请求响应上限、总超时、错误分类与敏感信息脱敏测试
 ├── llm_multi_provider.rs  # 多 LLM 协议的请求认证、输出校验和边界测试
 ├── llm_output_validation.rs  # 严格决策字段、事件子集、工具调用、截断及内容约束测试
-├── llm_transport.rs  # 路径、认证、JSON 模式、消息角色、礼物分组提示与重定向测试
+├── llm_transport.rs  # 路径认证、消息角色、主动发言历史隔离、礼物分组提示与重定向测试
+├── memory_http.rs  # 提取嵌入 HTTP 格式限额与来源校验测试
 ├── model_runtime.rs  # 模型关闭拒绝合成、启停后恢复及不污染权重状态的 HTTP 测试
 ├── model_synthesizer.rs  # 取消后的权重合成互斥与默认模型恢复链路测试
+├── neo4j_graph.rs  # 真实 Neo4j 版本墓碑范围隔离及恢复测试
+├── postgres_companionship.rs  # 真实 PostgreSQL 陪伴日预算并发幂等测试
+├── postgres_derived_relations.rs  # 真实 PostgreSQL 记忆派生关系与删除撤销不复活测试
+├── postgres_memories.rs  # 真实 PostgreSQL 记忆生命周期租约和管理抑制测试
+├── postgres_relationships.rs  # 真实 PostgreSQL 关系证据图发件箱与隔离测试
+├── postgres_viewer_merge.rs  # 真实 PostgreSQL 身份合并预览去重和陈旧请求测试
+├── postgres_viewers.rs  # PostgreSQL 观众身份、事件去重、并发、范围隔离和批次原子性容器测试
+├── receipt_journal.rs  # 回执日志重启幂等、文件权限、容量和损坏诊断测试
 ├── resource_store.rs  # 参考音频存储持久化、删除重启、路径及标识一致性测试
 ├── resource_synthesizer.rs  # 上传音色的引擎路径解析与默认音色回退测试
 ├── wav_decoding.rs  # 完整 WAV 的基础 PCM 解码与无效输入测试
@@ -48,4 +57,4 @@ tests/  # GPT-SoVITS、WAV 与 LLM 适配器的集成和输入输出边界测试
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 1270c0c33061f1d864cb99ce4bddf7688587f3cd04cfcb892935ca99fe17efe3 -->
+<!-- directory-tree-sha256: 629bdb630b07695a1ce644fce6804db8c2ffe4750b14309293e00083621321bc -->

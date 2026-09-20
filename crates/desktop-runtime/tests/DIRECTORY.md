@@ -34,6 +34,7 @@ tests/  # 桌面执行运行时独立集成测试
 ├── avatar_token_storage.rs  # VTS 本地令牌长度、字符、文件权限、符号链接和磁盘等待取消测试
 ├── client_cli.rs  # 客户端帮助与缺失配置退出行为测试
 ├── client_configuration.rs  # TOML、配对 URL 与平台设备边界测试
+├── device_auth.rs  # 私有设备凭据在控制和音频 WebSocket 握手中传递的集成测试
 ├── device_conversion.rs  # PCM 声道映射与跨分片重采样测试
 ├── device_timing.rs  # 设备延迟、播放开始与完成时钟测试
 ├── host_lifecycle.rs  # 宿主启动失败、离线取消和双通道退出清理测试
@@ -43,8 +44,8 @@ tests/  # 桌面执行运行时独立集成测试
 ├── lip_sync_lifecycle.rs  # 设备驱动口型、停止、完成、失败和析构复位测试
 ├── model_assets.rs  # 模型引用、路径限制、安装与覆盖保护测试
 ├── model_management.rs  # 已安装 Live2D 模型列表、删除、路径边界及跨端协议测试
-├── obs_configuration.rs  # OBS 本机配置、URL 归一化及超时边界测试
-├── obs_websocket.rs  # OBS 受控鉴权、状态读回、协议边界与禁止重放写请求测试
+├── obs_configuration.rs  # OBS 地址校验、本机保存与重启读取、密码保留清除及文件权限测试
+├── obs_websocket.rs  # OBS 受控鉴权、本机密码热读取、状态读回与禁止重放写请求测试
 ├── output_meter.rs  # 设备能量的播放延迟、静音、过期、容量与复位测试
 ├── playback_completion.rs  # 播放完成与设备失败回执测试
 ├── playback_ordering.rs  # 控制音频竞态、乱序及有界待播缓存测试
@@ -65,4 +66,4 @@ tests/  # 桌面执行运行时独立集成测试
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: d1556cd6e54506fa74e8fa168e93366ae25237a11d532640731028280bf3611d -->
+<!-- directory-tree-sha256: 1e27e0248df80f72e1d8667c741f6229c629e00948ef50b8d686ddd3feda156f -->

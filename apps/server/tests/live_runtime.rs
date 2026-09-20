@@ -99,6 +99,7 @@ struct ServerHarness {
 impl ServerHarness {
     async fn start(external: &ExternalFixture) -> Self {
         let mut config = AppConfig::default();
+        config.viewers.enabled = false;
         config.agent.gift_merge_ms = 0;
         config.llm.base_url = format!("{}/v1", external.base_url);
         config.llm.model = "controlled-model".into();

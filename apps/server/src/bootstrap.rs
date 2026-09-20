@@ -29,7 +29,45 @@ impl SpeechSynthesizer for UnconfiguredSpeech {
 pub async fn run(config_path: &Path) -> Result<(), String> {
     let mut config = AppConfig::load(config_path)?;
     config.resources.resolve(config_path)?;
+    if config.viewers.receipt_directory.is_relative() {
+        config.viewers.receipt_directory = config_path
+            .parent()
+            .unwrap_or(Path::new("."))
+            .join(&config.viewers.receipt_directory);
+    }
     config.training.resolve(config_path)?;
+    let auth = Arc::new(crate::auth::AdminAuth::from_config(
+        &config.auth,
+        config_path,
+    )?);
+    let viewer_store = if config.viewers.enabled {
+        let url = std::env::var(&config.viewers.database_url_env)
+            .map_err(|_| "观众数据库环境变量未设置")?;
+        Some(Arc::new(
+            meowlive_adapters::storage::postgres::PostgresViewerEventStore::connect_with_options(
+                &url,
+                meowlive_adapters::storage::postgres::PostgresViewerStoreOptions {
+                    calendar_offset_minutes: config.viewers.calendar_offset_minutes,
+                    ..Default::default()
+                },
+            )
+            .await
+            .map_err(|_| "观众数据库连接或迁移失败")?,
+        ))
+    } else {
+        None
+    };
+    let journal = if config.viewers.enabled {
+        Some(Arc::new(
+            meowlive_adapters::storage::receipt_journal::FileReceiptJournal::open(
+                &config.viewers.receipt_directory,
+                4096,
+            )
+            .map_err(|_| "完成回执暂存目录无法打开")?,
+        ))
+    } else {
+        None
+    };
     let training = build_training(&config.training)?;
     let resources = build_resources(&config.resources)?;
     if config.speech.reference_audio.trim().is_empty()
@@ -114,15 +152,48 @@ pub async fn run(config_path: &Path) -> Result<(), String> {
         listener.local_addr().map_err(|e| e.to_string())?
     );
     let mut state = AppState::with_services(config, synthesizer, model, live_source);
+    state.live_settings = Arc::new(crate::live_settings::LiveSettingsStore::new(
+        crate::live_settings::settings_path(config_path),
+    ));
+    state.agent_settings = Arc::new(crate::agent_settings::AgentSettingsStore::new(
+        crate::agent_settings::settings_path(config_path),
+    ));
     state.llm_settings = Arc::new(crate::llm_settings::LlmSettingsStore::new(
         state.config.llm.clone(),
         Some(crate::llm_settings::settings_path(config_path)),
     ));
+    state.auth = auth;
+    state.receipt_journal =
+        journal.map(|j| j as Arc<dyn meowlive_application::ports::receipt_journal::ReceiptJournal>);
+    state.viewer_merge_store = viewer_store
+        .clone()
+        .map(|store| store as Arc<dyn meowlive_application::ports::viewer_merge::ViewerMergeStore>);
+    state.relationship_store = viewer_store.clone().map(|store| {
+        store as Arc<dyn meowlive_application::ports::relationships::RelationshipStore>
+    });
+    state.memory_store = viewer_store
+        .clone()
+        .map(|store| store as Arc<dyn meowlive_application::ports::memory_store::MemoryStore>);
+    state.companionship_store = viewer_store.clone().map(|store| {
+        store as Arc<dyn meowlive_application::ports::companionship::CompanionshipStore>
+    });
+    state.viewer_store = viewer_store
+        .map(|store| store as Arc<dyn meowlive_application::ports::viewers::ViewerEventStore>);
     state.resources = resources;
     state.training = training;
     state.model_synthesizer = model_synthesizer;
+    if state.config.memory.enabled {
+        state.memory_extractor = Some(Arc::new(memory_adapter(&state.config.memory, false)?));
+        if !state.config.memory.embedding_endpoint.is_empty() {
+            state.memory_embedder = Some(Arc::new(memory_adapter(&state.config.memory, true)?));
+        }
+    }
     let worker = tokio::spawn(run_worker(state.clone()));
     let agent = tokio::spawn(run_agent(state.clone()));
+    let mut receipts = tokio::spawn(crate::companionship::run_receipts(state.clone()));
+    let graph = tokio::spawn(crate::graph::run_graph(state.clone()));
+    let expiry = tokio::spawn(crate::memory::run_knowledge_expiry(state.clone()));
+    let memory = tokio::spawn(crate::memory::run_memory(state.clone()));
     let shutdown_state = state.clone();
     let result = axum::serve(listener, router(state.clone()))
         .with_graceful_shutdown(async move {
@@ -145,8 +216,21 @@ pub async fn run(config_path: &Path) -> Result<(), String> {
     state.shutdown().await;
     worker.abort();
     agent.abort();
+    if tokio::time::timeout(Duration::from_secs(4), &mut receipts)
+        .await
+        .is_err()
+    {
+        receipts.abort();
+        let _ = receipts.await;
+    }
+    memory.abort();
+    expiry.abort();
+    graph.abort();
     let _ = worker.await;
     let _ = agent.await;
+    let _ = memory.await;
+    let _ = expiry.await;
+    let _ = graph.await;
     result
 }
 
@@ -232,4 +316,32 @@ pub fn build_training(
     TrainingManager::open(Arc::new(store), Arc::new(engine))
         .map(Arc::new)
         .map_err(|e| e.to_string())
+}
+
+fn memory_adapter(
+    config: &crate::config::MemoryConfig,
+    embedding: bool,
+) -> Result<meowlive_adapters::memory::HttpMemoryAdapter, String> {
+    let (endpoint, model, key_env) = if embedding {
+        (
+            &config.embedding_endpoint,
+            &config.embedding_model,
+            &config.embedding_api_key_env,
+        )
+    } else {
+        (&config.endpoint, &config.model, &config.api_key_env)
+    };
+    let api_key = if key_env.is_empty() {
+        String::new()
+    } else {
+        std::env::var(key_env).map_err(|_| "记忆服务私有密钥未设置")?
+    };
+    meowlive_adapters::memory::HttpMemoryAdapter::new(meowlive_adapters::memory::AdapterConfig {
+        endpoint: endpoint.clone(),
+        model: model.clone(),
+        api_key,
+        dimensions: config.embedding_dimensions,
+        timeout_ms: config.timeout_ms,
+    })
+    .map_err(|_| "记忆服务配置无效".into())
 }

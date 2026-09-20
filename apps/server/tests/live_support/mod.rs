@@ -95,6 +95,7 @@ impl SpeechSynthesizer for Speech {
 }
 pub fn state(source: Arc<dyn LiveSource>) -> AppState {
     let mut config = AppConfig::default();
+    config.viewers.enabled = false;
     config.live.enabled = true;
     config.live.app_id = 1;
     config.live.reconnect_initial_ms = 10;
@@ -106,7 +107,9 @@ pub fn event(id: &str) -> LiveEvent {
         id: id.into(),
         source: "bilibili".into(),
         viewer: "观众".into(),
+        viewer_identity: None,
         occurred_at_ms: 1_780_000_000_000,
+        gift_metadata: None,
         kind: EventKind::Gift {
             name: "小花花".into(),
             count: 2,

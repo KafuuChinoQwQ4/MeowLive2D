@@ -8,7 +8,7 @@
 model-library/  # 环境检查、本地语音模型选择与官方模型下载管理界面
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 ├── ModelLibraryPanel.test.tsx  # 环境门控、模型选择、分页检索、会话失效和下载取消交互测试
-├── ModelLibraryPanel.tsx  # 始终可用的环境与模型页面、分页模型库、下载进度及首次使用引导
+├── ModelLibraryPanel.tsx  # 独立环境检测、分页模型库、下载进度与手动启动入口
 └── useModelLibrary.ts  # 模型状态轮询与串行操作控制，防止过期响应覆盖和重复提交
 ```
 
@@ -16,4 +16,4 @@ model-library/  # 环境检查、本地语音模型选择与官方模型下载�
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 62dfd38ee8712c7183fa4852699a4c299ce7d7f3ba8dbef03f972dc428adc9af -->
+<!-- directory-tree-sha256: 4aaf58e470b2a4dacb920a4c7872bd722d1eba667229935b7bce95dab95a9a3a -->

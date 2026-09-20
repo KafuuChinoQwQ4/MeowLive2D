@@ -9,7 +9,7 @@ test/  # 前端测试公共设施
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 ├── agent-fixtures.ts  # Agent 面板测试的完整状态与事件夹具
 ├── launcher-fixtures.ts  # 三服务启动管理状态的前端测试数据
-├── live-fixtures.ts  # 直播连接面板与服务客户端测试的完整快照夹具
+├── live-fixtures.ts  # 直播连接状态、脱敏配置快照与路由响应测试夹具
 ├── model-library-fixtures.ts  # 环境检测、已安装模型与可下载模型的前端测试数据
 ├── resource-fixtures.ts  # 资源档案、模型、热键与音频测试样例
 ├── server-fixtures.ts  # 主服务响应与异步请求测试夹具
@@ -20,4 +20,4 @@ test/  # 前端测试公共设施
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 0434ad149a500b9bd61f66968fdef3dd5525a397f4b63129102b1af9c9bb7ac0 -->
+<!-- directory-tree-sha256: d004599d95ec533c16317be0bc57d068198cd6d4b250e65fa23af8d36cc32984 -->

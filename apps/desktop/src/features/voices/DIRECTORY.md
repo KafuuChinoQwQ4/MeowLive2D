@@ -17,4 +17,4 @@ voices/  # 参考素材、音色试听和训练任务界面
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 7c3762e6a5f78dd51f2aa797b3d9aa9b52b6f36d5643456385f66a4d87ce65a1 -->
+<!-- directory-tree-sha256: 78a936caf86c2d86f974bb3c4988d30d60df4e9dc620e7622808250b7e771858 -->

@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import type { VoiceCreateRequest, VoiceProfile } from "@meowlive/contracts";
 import type { VoiceController } from "./types";
 import { useFeedback } from "../../app/feedback/OperationFeedback";
-import { AUDIO_FILE_ACCEPT, AUDIO_FORMAT_LABEL, prepareAudioFile } from "../../services/audio";
+import { AUDIO_FILE_ACCEPT, prepareAudioFile } from "../../services/audio";
 
 const languages = [
   ["zh", "中文"], ["en", "英语"], ["ja", "日语"], ["ko", "韩语"], ["yue", "粤语"], ["auto", "自动识别"],
@@ -102,12 +102,10 @@ export function VoicePanel({ controller }: { controller: VoiceController }) {
   }
 
   return <section className="panel" aria-labelledby="voices-heading">
-    <p className="eyebrow">声音资源</p>
     <h2 id="voices-heading">音色管理</h2>
-    <p className="muted">上传参考声音，选择直播使用的音色。</p>
-    <p className="field-hint">训练过的声音可前往<a href="#training">已保存音色</a>直接选择和切换，无需重新训练。</p>
+    <p className="field-hint">训练版本在<a href="#training">已保存音色</a>中切换。</p>
     {snapshot && !snapshot.default_voice_available && snapshot.voices.length === 0 && <p className="availability-note" role="status">
-      尚未设置音色。请先在下方上传自己的参考音频并填写对应文本，再选择使用；也可前往<a href="#training">训练初始音色</a>，上传训练片段、试听并保存。
+      尚未设置音色，请先上传参考录音，再按需<a href="#training">训练初始音色</a>。
     </p>}
 
     <ul className="resource-list" aria-label="可用音色">
@@ -145,11 +143,11 @@ export function VoicePanel({ controller }: { controller: VoiceController }) {
       <label htmlFor="voice-reference">参考文本</label>
       <textarea id="voice-reference" rows={3} maxLength={500} value={metadata.reference_text} disabled={busy}
         onChange={(event) => setMetadata((current) => ({ ...current, reference_text: event.target.value }))} />
-      <p className="field-hint">请选择与录音内容和语言一致的文本。</p>
+      <p className="field-hint">填写录音原文，语言需一致。</p>
       <label htmlFor="voice-audio">参考音频</label>
       <input ref={input} id="voice-audio" type="file" accept={AUDIO_FILE_ACCEPT} disabled={busy}
         onChange={(event) => { void chooseAudio(event.target.files?.[0]); }} />
-      <p className="field-hint">支持 {AUDIO_FORMAT_LABEL}，自动转换为兼容音频。3–10 秒，单声道或双声道，不能静音；原文件最大 20 MiB，转换后最大 2 MiB。部分编码取决于浏览器支持。</p>
+      <p className="field-hint">3–10 秒非静音录音 · 原文件 ≤20 MiB · 转换后 ≤2 MiB。</p>
       {preparingAudio && <p className="field-hint" role="status">正在处理音频…</p>}
       {audioSummary && <p className="success-banner" role="status">音频有效：{audioSummary}</p>}
       {audioError && <p className="field-error" role="alert">{audioError}</p>}

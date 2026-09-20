@@ -5,6 +5,8 @@ fn checked_in_example_is_a_valid_starting_configuration() {
     let config = AppConfig::parse(include_str!("../../../config/server.example.toml")).unwrap();
     assert_eq!(config.server.listen_address, "127.0.0.1:19600");
     assert_eq!(config.speech.max_concurrency, 1);
+    assert!(config.viewers.enabled);
+    assert!(!config.auth.enabled);
 }
 
 #[test]

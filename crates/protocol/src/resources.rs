@@ -1,5 +1,5 @@
 //! 角色与音色公开档案及桌面资源控制；不在跨端契约中暴露机器文件路径。
-use crate::obs::{ObsOperation, ObsSnapshot};
+use crate::obs::{ObsOperation, ObsSettingsRequest, ObsSettingsSnapshot, ObsSnapshot};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -97,6 +97,10 @@ pub struct ImportedModel {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum DesktopResourceOperation {
+    ObsSettings,
+    SaveObsSettings {
+        settings: ObsSettingsRequest,
+    },
     Obs {
         operation: ObsOperation,
     },
@@ -124,6 +128,9 @@ pub enum DesktopResourceOperation {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum DesktopResourceResult {
+    ObsSettings {
+        settings: ObsSettingsSnapshot,
+    },
     Obs {
         snapshot: ObsSnapshot,
     },

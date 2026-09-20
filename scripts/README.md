@@ -8,6 +8,9 @@
 - `npm run test:launcher`：验证配置、密钥隔离、HTTP 控制边界及实际子进程启停、取消、冲突与回收。
 - `npm run typecheck`：检查所有 TypeScript 工作区。
 - `npm run check:rust`：检查 Rust 格式与 workspace 编译。
+- `npm run build:rust`：构建 Rust workspace，成功后回收被替换的旧产物。
+- `npm run rust:cleanup -- --dry-run`：预览与当前已记录配置相同的旧可执行程序；去掉 `--dry-run` 执行清理。
+- `npm run test:rust-cache`：验证当前缓存保护、失败构建、Cargo 文件锁及真实重复构建的缓存命中。
 - `npm run tree:update`：根据用途登记生成每个受维护目录的递归索引。
 - `npm run tree:check`：检查缺少用途、残留条目、缺失索引和内容变化。
 - `npm run test:tooling`：在临时目录验证索引生成和检查行为。
@@ -19,6 +22,10 @@
 脚本不解析业务内容；修改者负责说明准确性。它只在全部用途通过校验后写入索引，检查模式不写文件，重复生成且文件未变化时不重写。
 
 `npm run contracts:generate` 从 Rust DTO 生成 TypeScript，`contracts:check` 核对一致性。`start:server` 和 `start:client` 启动对应 Cargo 二进制。业务规则保留在对应模块。
+
+Rust 开发入口通过 `rust_cache.py` 调用稳定版 Cargo，保留原有 incremental、调试信息与编译参数。成功构建后根据 Cargo JSON 消息记录实际使用的产物（包括 `fresh` 命中的旧文件），同一命令下次成功后回收被替换的可执行程序和已准确记录归属的旧增量目录。`check`、`test`、单包运行等命令的当前产物取并集保护，不以修改时间或保留天数判断有效性。失败构建不更新清单也不清理；清理持有 Cargo `.cargo-lock`，存在其他构建时跳过。
+
+首次 `rust:cleanup` 只清理与已成功构建的配置指纹相同的历史可执行程序，保留依赖库、构建脚本、工具链和无法准确确认归属的历史增量目录。`target/.rust-cache/` 内的清单属于可丢弃构建状态；缺失时保守跳过，损坏时报告错误。清理统计为去重后的文件分配空间估算，Windows 上不支持 Unix 文件锁时跳过删除。直接运行裸 `cargo`、Tauri 自身构建或自定义输出目录不会自动维护此清单；日常使用上述 npm 命令。切换配置、修改依赖或删除有效缓存仍会产生必要的重新编译，清理不承诺任意配置永远零重编译。
 
 `start-control-panel.mjs` 将 `launcher/` 中的配置、进程管理和 HTTP 控制接入 Vite。只接受 loopback 同源面板、会话令牌和固定的主服务、TTS 和 Windows 执行端三个开关，不接收任意 shell 命令；入口不自动启动模型或业务服务。主服务始终为现有 Rust 服务，Windows 执行库与协议版本不变。管理状态契约由 `crates/protocol/src/launcher.rs` 生成。真实服务日志和推理工作目录分别位于已排除索引的 logs/control-panel 与 data/control-panel-inference。
 

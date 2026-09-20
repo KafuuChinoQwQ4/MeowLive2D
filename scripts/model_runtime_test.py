@@ -143,6 +143,37 @@ class ModelRuntimeTests(unittest.TestCase):
 
 
 class ModelMiddlewareTests(unittest.IsolatedAsyncioTestCase):
+    async def test_prepared_inference_does_not_block_status_or_repeat_synthesis(self):
+        entered = threading.Event()
+        release = threading.Event()
+        calls = []
+        def synthesize(request):
+            calls.append(request)
+            entered.set()
+            release.wait(1)
+            return "audio"
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary)
+            api = work / "api_v2.py"
+            api.write_text("tts_pipeline = TTS(tts_config)\n\nAPP = FastAPI()\n"
+                           "async def tts_handle(req: dict):\n    return synthesize(req)\n")
+            model_runtime.prepare_runtime(work)
+            source = api.read_text()
+            # Avoid loading real FastAPI, CUDA and weights; execute the prepared handler.
+            source = source[source.index("async def tts_handle"): ] if "@run_blocking" not in source else source[source.index("@run_blocking"): ]
+            namespace = {"synthesize": synthesize, "run_blocking": getattr(model_runtime, "run_blocking", None)}
+            exec(compile(source, str(api), "exec"), namespace)
+            task = asyncio.create_task(namespace["tts_handle"]({"text": "一条弹幕"}))
+            await asyncio.to_thread(entered.wait, 1)
+            try:
+                self.assertTrue(entered.is_set())
+                self.assertFalse(task.done(), "状态轮询必须能在合成结束前运行")
+                self.assertEqual(len(calls), 1)
+            finally:
+                release.set()
+                self.assertEqual(await task, "audio")
+            self.assertEqual(len(calls), 1)
+
     async def test_cancelled_stream_releases_pipeline_lease(self):
         runtime = model_runtime.ModelRuntime(Pipeline, gc.collect)
         runtime.set_enabled(True)

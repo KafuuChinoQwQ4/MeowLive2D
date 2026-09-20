@@ -1,11 +1,36 @@
 import { act, fireEvent, render, renderHook, screen, within } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
-import { FeedbackProvider, useFeedback } from "./OperationFeedback";
+import { FeedbackProvider, FeedbackScope, useFeedback } from "./OperationFeedback";
 import { useLauncher } from "../../features/launcher/useLauncher";
 import { launcherSnapshot } from "../../test/launcher-fixtures";
 import type { LauncherClient } from "../../services/launcher";
 
-it("queues operation results and restores the original focused control after dismissal", () => {
+it("renders successful feedback inline without opening a dialog", () => {
+  function Probe() {
+    const feedback = useFeedback();
+    return <button type="button" onClick={() => feedback.success("操作成功", "已完成。")}>完成操作</button>;
+  }
+  render(<FeedbackProvider><Probe /></FeedbackProvider>);
+  fireEvent.click(screen.getByRole("button", { name: "完成操作" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(screen.getByRole("status")).toHaveTextContent("操作成功");
+  expect(screen.getByRole("status")).toHaveTextContent("已完成");
+});
+
+it("keeps success text in the page that produced it", () => {
+  function Action() {
+    const feedback = useFeedback();
+    return <button onClick={() => feedback.success("已保存", "设置已更新")}>保存</button>;
+  }
+  render(<FeedbackProvider><section aria-label="Agent"><FeedbackScope name="agent"><Action /></FeedbackScope></section>
+    <section aria-label="训练"><FeedbackScope name="training"><span>训练</span></FeedbackScope></section></FeedbackProvider>);
+  fireEvent.click(screen.getByRole("button", { name: "保存" }));
+  expect(within(screen.getByRole("region", { name: "Agent" })).getByRole("status")).toHaveTextContent("设置已更新");
+  expect(within(screen.getByRole("region", { name: "训练" })).queryByRole("status")).not.toBeInTheDocument();
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+});
+
+it("keeps successful feedback inline and restores focus after an error dismissal", () => {
   function Actions() {
     const feedback = useFeedback();
     return <button onClick={() => {
@@ -16,8 +41,7 @@ it("queues operation results and restores the original focused control after dis
   render(<FeedbackProvider><Actions /></FeedbackProvider>);
   const trigger = screen.getByRole("button", { name: "操作" });
   trigger.focus(); fireEvent.click(trigger);
-  expect(screen.getByRole("dialog", { name: "保存成功" })).toHaveTextContent("配置已保存");
-  fireEvent.click(screen.getByRole("button", { name: "知道了" }));
+  expect(screen.getByRole("status")).toHaveTextContent("配置已保存");
   expect(screen.getByRole("dialog", { name: "连接失败" })).toHaveTextContent("服务离线");
   fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
   fireEvent(screen.getByRole("dialog"), new Event("cancel", { bubbles: false, cancelable: true }));
@@ -38,7 +62,7 @@ it("reports one passive failure per episode but reports an explicit repeated act
   expect(screen.getByRole("dialog")).toHaveTextContent("再次离线");
 });
 
-it("keeps focus restoration when another result arrives while the first dialog is open", () => {
+it("keeps focus restoration when an inline result precedes an error", () => {
   let notify!: ReturnType<typeof useFeedback>["notify"];
   function Actions() { notify = useFeedback().notify; return <button>开始操作</button>; }
   render(<FeedbackProvider><Actions /></FeedbackProvider>);
@@ -46,7 +70,6 @@ it("keeps focus restoration when another result arrives while the first dialog i
   trigger.focus();
   act(() => notify({ kind: "info", title: "已提交", message: "处理中" }));
   act(() => notify({ kind: "error", title: "处理失败", message: "设备断开" }));
-  fireEvent.click(screen.getByRole("button", { name: "知道了" }));
   fireEvent.click(screen.getByRole("button", { name: "知道了" }));
   expect(trigger).toHaveFocus();
 });
@@ -58,9 +81,7 @@ it("acknowledges a launcher start as accepted and shows a later service failure 
   const { result } = renderHook(() => useLauncher(client), { wrapper: FeedbackProvider });
   await act(async () => {});
   await act(async () => { await result.current.setEnabled("server", true); });
-  expect(screen.getByRole("dialog")).toHaveTextContent("已提交");
-  expect(screen.getByRole("dialog")).not.toHaveTextContent("启动成功");
-  fireEvent.click(screen.getByRole("button", { name: "知道了" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   snapshot = launcherSnapshot("failed"); snapshot.services[0].message = "服务进程退出";
   await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
   expect(screen.getByRole("dialog")).toHaveTextContent("服务进程退出");
@@ -85,11 +106,9 @@ it("shows launcher readiness once when an accepted start completes", async () =>
   const { result } = renderHook(() => useLauncher(client), { wrapper: FeedbackProvider });
   await act(async () => {});
   await act(async () => { await result.current.setEnabled("server", true); });
-  fireEvent.click(screen.getByRole("button", { name: "知道了" }));
   snapshot = launcherSnapshot("running");
   await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
-  expect(screen.getByRole("dialog")).toHaveTextContent("主服务已就绪");
-  fireEvent.click(screen.getByRole("button", { name: "知道了" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });

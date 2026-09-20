@@ -7,7 +7,9 @@
 ```text
 tests/  # 领域对象与输入不变量集成测试
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+├── affinity.rs  # 礼物收益增量和分值饱和边界测试
 ├── event_validation.rs  # 直播事件输入边界测试
+├── memory.rs  # 明确自述双日证据、敏感候选及记忆期限测试
 ├── resource_validation.rs  # 资源名称、语言、素材元数据与能力映射校验测试
 └── speech_validation.rs  # 播报文本长度、空白、控制字符与音色标识校验测试
 ```
@@ -16,4 +18,4 @@ tests/  # 领域对象与输入不变量集成测试
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 43e6d401d1b4110c0244a5d02783809cdb7dc409f1afd693ae92706637519877 -->
+<!-- directory-tree-sha256: 85b6a721e99a5a95526b7b73cf2540b74c46e9a742c558f6ece8418296d9c45f -->

@@ -13,7 +13,7 @@ async function portOccupied(url) {
 
 export async function inspectEndpoint(definition) {
   try {
-    const path = definition.id === 'tts' ? '/openapi.json' : '/api/status';
+    const path = definition.id === 'tts' ? '/openapi.json' : '/api/health';
     const response = await fetch(`${definition.url}${path}`, { signal: AbortSignal.timeout(800), redirect: 'error' });
     let bytes = 0;
     const chunks = [];
@@ -26,7 +26,7 @@ export async function inspectEndpoint(definition) {
     const data = JSON.parse(Buffer.concat(chunks).toString('utf8'));
     const healthy = definition.id === 'tts'
       ? typeof data.openapi === 'string' && Boolean(data.paths?.['/tts']?.post)
-      : data.protocol_version === 3 && typeof data.session_id === 'string' && typeof data.bridge_connected === 'boolean' && Array.isArray(data.speeches);
+      : data.protocol_version === 3 && data.service === 'meowlive' && typeof data.bridge_connected === 'boolean';
     return { healthy, occupied: true };
   } catch { return { healthy: false, occupied: await portOccupied(definition.url) }; }
 }

@@ -38,9 +38,8 @@ export function AgentSettingsForm({ settings, disabled, onSave }: {
 
   return (
     <section className="panel" aria-labelledby="agent-settings-heading">
-      <p className="eyebrow">互动策略</p>
       <h2 id="agent-settings-heading">Agent 设置</h2>
-      <p className="muted">保存设置会暂停 Agent 并取消正在进行的决策。</p>
+      <p className="muted">保存设置会暂停 Agent；配置保存在本机，下次打开仍保留。</p>
       <form noValidate onSubmit={(event) => { void submit(event); }}>
         <label htmlFor="agent-persona">主播人设</label>
         <textarea id="agent-persona" rows={4} value={persona} disabled={disabled}

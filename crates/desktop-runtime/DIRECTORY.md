@@ -36,18 +36,19 @@ desktop-runtime/  # 独立于界面的 Windows 播放与设备执行库
 │   │   └── envelope.rs  # 按经过时间执行开闭口平滑与静音复位的纯计算器
 │   ├── obs/  # OBS 本地连接配置与校验
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   └── config.rs  # OBS 本机地址、密码环境变量名与整次操作超时校验
+│   │   ├── config.rs  # OBS 本机 WebSocket 连接、兼容环境变量和私有设置路径校验
+│   │   └── settings.rs  # 执行端 OBS 设置私有文件读写、凭据保留清除及公开状态脱敏
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   ├── assets.rs  # 本机 Live2D 模型包校验、安装、枚举及删除能力导出
 │   ├── audio.rs  # 音频设备边界、播放事件与设备输出能量观测接口
 │   ├── avatar.rs  # VTube Studio 独立连接入口、配置与可观察状态导出
 │   ├── cli.rs  # 桌面客户端配置加载、服务重连、VTS 组装与限时退出入口
 │   ├── config.rs  # 执行客户端连接、缓冲、VTS 与口型配置校验及路径解析
-│   ├── connection.rs  # 主动双 WebSocket 配对、控制优先接收与断线清理
+│   ├── connection.rs  # 携带独立设备凭据连接主服务、接收控制音频及回传播放回执
 │   ├── host.rs  # Tauri 与 CLI 共用的可取消执行宿主及退出清理
 │   ├── lib.rs  # Windows 执行库：与 Tauri 和 React 解耦，生命周期由桌面进程管理。
 │   ├── lip_sync.rs  # 设备输出口型的配置、平滑器与观察后端导出
-│   ├── obs.rs  # OBS v5 鉴权、有界状态查询、场景录制控制与状态读回
+│   ├── obs.rs  # 使用本机面板设置的 OBS WebSocket v5 鉴权、场景切换及录制控制
 │   ├── playback.rs  # 播放状态机、代次取消、乱序校验与设备回执
 │   ├── presentation.rs  # 桌面口型驱动生命周期与角色参数切换组装
 │   └── resource_control.rs  # 桌面模型导入列举删除、VTS 加载热键与 OBS 控制执行
@@ -80,6 +81,7 @@ desktop-runtime/  # 独立于界面的 Windows 播放与设备执行库
 │   ├── avatar_token_storage.rs  # VTS 本地令牌长度、字符、文件权限、符号链接和磁盘等待取消测试
 │   ├── client_cli.rs  # 客户端帮助与缺失配置退出行为测试
 │   ├── client_configuration.rs  # TOML、配对 URL 与平台设备边界测试
+│   ├── device_auth.rs  # 私有设备凭据在控制和音频 WebSocket 握手中传递的集成测试
 │   ├── device_conversion.rs  # PCM 声道映射与跨分片重采样测试
 │   ├── device_timing.rs  # 设备延迟、播放开始与完成时钟测试
 │   ├── host_lifecycle.rs  # 宿主启动失败、离线取消和双通道退出清理测试
@@ -89,8 +91,8 @@ desktop-runtime/  # 独立于界面的 Windows 播放与设备执行库
 │   ├── lip_sync_lifecycle.rs  # 设备驱动口型、停止、完成、失败和析构复位测试
 │   ├── model_assets.rs  # 模型引用、路径限制、安装与覆盖保护测试
 │   ├── model_management.rs  # 已安装 Live2D 模型列表、删除、路径边界及跨端协议测试
-│   ├── obs_configuration.rs  # OBS 本机配置、URL 归一化及超时边界测试
-│   ├── obs_websocket.rs  # OBS 受控鉴权、状态读回、协议边界与禁止重放写请求测试
+│   ├── obs_configuration.rs  # OBS 地址校验、本机保存与重启读取、密码保留清除及文件权限测试
+│   ├── obs_websocket.rs  # OBS 受控鉴权、本机密码热读取、状态读回与禁止重放写请求测试
 │   ├── output_meter.rs  # 设备能量的播放延迟、静音、过期、容量与复位测试
 │   ├── playback_completion.rs  # 播放完成与设备失败回执测试
 │   ├── playback_ordering.rs  # 控制音频竞态、乱序及有界待播缓存测试
@@ -111,4 +113,4 @@ desktop-runtime/  # 独立于界面的 Windows 播放与设备执行库
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 376c76823420deb256d64c7e86e06c2500466f8b9eca95a78b5372ca5c7e7309 -->
+<!-- directory-tree-sha256: 42e11fe7f4d74f1d618dca417f6841ef799d9e8b133cde70359f3423c55cd363 -->

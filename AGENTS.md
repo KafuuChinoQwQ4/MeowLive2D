@@ -36,3 +36,9 @@
 - 目录与文件改动：`npm run tree:update`、`npm run tree:check`。
 - 索引脚本或排除规则改动：额外执行 `npm run test:tooling`。
 - Rust / TypeScript 代码改动：根据影响执行 `npm run check`、`npm run build` 和相应测试；如实说明未验证的 Windows、模型或直播行为。
+
+## Rust 构建缓存
+
+- 日常使用 `npm run check:rust`、`npm run test:rust`、`npm run build:rust`；定向验证使用 `python3 scripts/rust_cache.py test -p 包名 --test 测试名 --locked` 等入口，以便记录有效产物并自动回收被替换的旧版本。
+- 保留现有增量编译；不要把 `cargo clean`、按修改时间删除缓存或删除整个 `target/` 作为例行步骤。格式检查可直接使用 `cargo fmt`。
+- `npm run rust:cleanup -- --dry-run` 预览历史可执行程序清理；去掉 `--dry-run` 执行。清理仅基于成功构建记录，并发 Cargo 占用时跳过；未知归属的旧增量目录和依赖库保持不动。

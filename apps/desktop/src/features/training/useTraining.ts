@@ -16,19 +16,22 @@ export function useTraining(client: TrainingClient, resources: ResourcesClient) 
   const [assets, setAssets] = useState<ResourceSnapshot | null>(null);
   const [preset, setPreset] = useState<RuntimePresetSnapshot | null>(null);
   const [modelRuntime, setModelRuntime] = useState<TrainingModelRuntimeSnapshot | null>(null);
+  const previousModelState = useRef<string | null>(null);
   const [operationError, setError] = useState("");
   const [queryErrors, setQueryErrors] = useState(emptyErrors);
   const [pending, setPending] = useState(false);
   const [audio, setAudio] = useState<{ version: string; url: string } | null>(null);
   const [failedDelete, setFailedDelete] = useState<string | null>(null);
   const [notices, setNotices] = useState<TrainingNotice[]>([]);
+  const [inlineNotice, setInlineNotice] = useState<TrainingNotice | null>(null);
   const noticeId = useRef(0);
   const lastJobs = useRef<Map<string, string> | null>(null);
   const notify = useCallback((feedback: TrainingFeedback, restoreFocus?: HTMLElement) => {
     const active = document.activeElement;
     const notice = { ...feedback, id: ++noticeId.current, restoreFocus: restoreFocus ?? (active instanceof HTMLElement ? active : undefined) };
     if (sharedFeedback.enabled) sharedFeedback.notify(notice);
-    else setNotices(previous => [...previous, notice]);
+    else if (notice.kind === "error") setNotices(previous => [...previous, notice]);
+    else setInlineNotice(notice);
   }, [sharedFeedback]);
   const reportFailure = useCallback((operation: string, error: unknown, restoreFocus?: HTMLElement) => notify(failureFeedback(operation, error), restoreFocus), [notify]);
   const acceptSnapshot = useCallback((value: TrainingSnapshot) => {
@@ -69,8 +72,9 @@ export function useTraining(client: TrainingClient, resources: ResourcesClient) 
         const value = await client.modelStatus(current.ctrl.signal);
         if (!isCurrent()) return;
         setModelRuntime(value);
-        if (value.state === "failed" || value.state === "unavailable") sharedFeedback.reportIssue("training-model-state", "语音模型异常", value.message);
-        else sharedFeedback.clearIssue("training-model-state");
+        if (value.state === "failed" || (value.state === "unavailable" && ["loaded", "loading", "unloading"].includes(previousModelState.current ?? ""))) sharedFeedback.reportIssue("training-model-state", "语音模型异常", value.message);
+        else if (value.state !== "unavailable") sharedFeedback.clearIssue("training-model-state");
+        previousModelState.current = value.state;
       } else {
         const value = await client.preset(current.ctrl.signal);
         if (!isCurrent()) return;
@@ -97,7 +101,7 @@ export function useTraining(client: TrainingClient, resources: ResourcesClient) 
   useEffect(() => {
     const current = { ctrl: new AbortController(), revisions: { training: 0, resources: 0, preset: 0, models: 0 }, pending: false, modelPending: false };
     context.current = current;
-    lastJobs.current = null; setNotices([]);
+    lastJobs.current = null; previousModelState.current = null; setNotices([]); setInlineNotice(null);
     setSnapshot(null); setAssets(null); setPreset(null); setModelRuntime(null); setPending(false); setAudio(null); setFailedDelete(null);
     setQueryErrors(emptyErrors); setError("");
     const timers: Partial<Record<Query, ReturnType<typeof setTimeout>>> = {};
@@ -145,6 +149,7 @@ export function useTraining(client: TrainingClient, resources: ResourcesClient) 
         if (signal.aborted) return;
         current.revisions.models++;
         setModelRuntime(value);
+        previousModelState.current = value.state;
       } catch (error) {
         if (!signal.aborted) setModelRuntime(previous);
         throw error;
@@ -212,5 +217,5 @@ export function useTraining(client: TrainingClient, resources: ResourcesClient) 
   }
   const queryError = queries.map(query => queryErrors[query]).filter(Boolean).join("；");
   const error = [operationError, ...queries.map(query => queryErrors[query])].filter(Boolean).join("；");
-  return { snapshot, voices: assets?.voices ?? [], activeVoiceId: assets?.active_voice_id, defaultVoiceAvailable: assets?.default_voice_available ?? false, preset, modelRuntime, setModelsEnabled, error, queryError, setError, pending, audio, failedDelete, action, audition, saveVersion, deleteVersion, activateVersion, measure, refresh, trackJob, notify, reportFailure, notice: notices[0] ?? null, dismissNotice: () => setNotices(previous => previous.slice(1)) };
+  return { snapshot, voices: assets?.voices ?? [], activeVoiceId: assets?.active_voice_id, defaultVoiceAvailable: assets?.default_voice_available ?? false, preset, modelRuntime, setModelsEnabled, error, queryError, setError, pending, audio, failedDelete, action, audition, saveVersion, deleteVersion, activateVersion, measure, refresh, trackJob, notify, reportFailure, notice: notices[0] ?? inlineNotice, dismissNotice: () => setNotices(previous => previous.slice(1)) };
 }

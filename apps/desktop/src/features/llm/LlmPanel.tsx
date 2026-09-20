@@ -127,7 +127,7 @@ export function LlmPanel({ client = defaultClient }: { client?: LlmClient }) {
 
   return <div className="live-workspace" aria-labelledby="llm-heading">
     <section className="connection-card">
-      <div><p className="eyebrow">模型连接</p><h2 id="llm-heading">LLM 接入配置</h2><p className="server-address">{client.baseUrl}</p></div>
+      <div><h2 id="llm-heading">LLM 接入配置</h2><p className="server-address">{client.baseUrl}</p></div>
       <span className={`connection-pill ${snapshot?.active_model ? "connected" : "disconnected"}`}>{snapshot?.active_model || (loading ? "正在读取" : "尚未配置")}</span>
     </section>
     {error && <div className="error-banner" role="alert">{error}{!snapshot && !loading && <div className="form-actions"><button type="button" onClick={() => setLoadAttempt(value => value + 1)}>重新加载</button></div>}</div>}
@@ -148,10 +148,9 @@ export function LlmPanel({ client = defaultClient }: { client?: LlmClient }) {
             </select>
             <label htmlFor="llm-base-url">API 地址</label>
             <input id="llm-base-url" value={draft?.base_url ?? ""} disabled={disabled} autoComplete="url" placeholder="https://example.com/v1" onChange={event => update("base_url", event.target.value)} />
-            <p className="field-hint">可填写 API 根地址或完整端点，主服务会按所选 API 格式规范化。</p>
+            <p className="field-hint">支持 API 根地址或完整端点。</p>
             <label htmlFor="llm-model">模型名称</label>
             <input id="llm-model" value={draft?.model ?? ""} disabled={disabled} autoComplete="off" maxLength={128} placeholder="输入供应商提供的模型名称" onChange={event => update("model", event.target.value)} />
-            <p className="field-hint">模型名称最多 128 个 UTF-8 字节。</p>
             <label htmlFor="llm-key">API 密钥</label>
             <input id="llm-key" type="password" value={apiKey} disabled={disabled || clearApiKey} autoComplete="new-password" placeholder={snapshot?.key_configured ? "已安全保存；留空则继续使用" : "输入 API 密钥（如服务需要）"} onChange={event => { setApiKey(event.target.value); setClearApiKey(false); setError(""); setMessage(""); }} />
             <label className="checkbox-field"><input type="checkbox" checked={clearApiKey} disabled={disabled || !snapshot?.key_configured} onChange={event => { setClearApiKey(event.target.checked); if (event.target.checked) setApiKey(""); setError(""); setMessage(""); }} /><span>移除已保存密钥</span></label>
@@ -164,7 +163,7 @@ export function LlmPanel({ client = defaultClient }: { client?: LlmClient }) {
             <label htmlFor="llm-max-tokens">最大输出（tokens）</label>
             <input id="llm-max-tokens" type="number" min={64} max={draft?.mode === "local" ? 1024 : 4096} step={64} value={draft?.max_tokens ?? 1024} disabled={disabled} onChange={event => update("max_tokens", Number(event.target.value))} />
             <label className="checkbox-field"><input type="checkbox" checked={draft?.json_mode ?? false} disabled={disabled} onChange={event => update("json_mode", event.target.checked)} /><span>要求 JSON 格式输出</span></label>
-            <p className="availability-note">测试连接会使用当前草稿发送一个通用预设请求，可能产生少量调用费用。测试不会自动保存配置。</p>
+            <p className="availability-note">测试可能产生少量调用费用，不会自动保存。</p>
           </div>
         </div>
         <div className="form-actions">

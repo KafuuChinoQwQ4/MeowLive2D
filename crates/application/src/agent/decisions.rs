@@ -41,6 +41,21 @@ impl AgentSession {
         }
         let text = match &decision.text {
             Some(text) => {
+                if [
+                    "好感度",
+                    "好感分",
+                    "熟悉度",
+                    "内部评分",
+                    "affinity score",
+                    "familiarity score",
+                ]
+                .iter()
+                .any(|term| text.to_lowercase().contains(term))
+                {
+                    return Err(
+                        "public response must not expose internal relationship scores".into(),
+                    );
+                }
                 if !ids.is_empty() && chosen.is_empty() {
                     return Err("event response must select at least one candidate".into());
                 }
@@ -72,8 +87,7 @@ impl AgentSession {
             .filter(|event| !chosen.contains(event.id.as_str()))
             .map(|event| event.id.clone())
             .collect();
-        self.scheduler
-            .update(&skipped, EventStatus::Skipped, None, None);
+        self.scheduler.skipped(&skipped, &flight.batch.targets);
         if let Some(topic) = decision.topic {
             self.settings.topic = topic;
         }
@@ -106,6 +120,12 @@ impl AgentSession {
         );
         self.current = Some(ActiveSpeech {
             id: speech_id,
+            events: flight
+                .batch
+                .events
+                .into_iter()
+                .filter(|e| chosen.contains(e.id.as_str()))
+                .collect(),
             event_ids: decision.reply_to,
             turn: ConversationTurn {
                 user,

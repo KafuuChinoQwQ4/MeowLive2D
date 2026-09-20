@@ -1,6 +1,7 @@
 use meowlive_protocol::agent::{
     AgentEventSnapshot, AgentEventStatus, AgentPhase, AgentSettings, AgentSnapshot,
-    EventBatchRequest, EventBatchResult, EventPayload, LiveEventInput,
+    EventBatchRequest, EventBatchResult, EventPayload, GiftMetadataInput, LiveEventInput,
+    ViewerIdentityInput, ViewerIdentityKind,
 };
 use serde_json::json;
 
@@ -9,10 +10,51 @@ fn chat_event() -> LiveEventInput {
         id: "event-1".into(),
         source: "simulator".into(),
         viewer: "小猫".into(),
+        viewer_identity: None,
+        gift_metadata: None,
         kind: EventPayload::Chat {
             text: "晚上好".into(),
         },
     }
+}
+
+#[test]
+fn agent_input_accepts_optional_identity_and_raw_gift_metadata() {
+    let event: LiveEventInput = serde_json::from_value(json!({
+        "id": "gift-1",
+        "source": "simulator",
+        "viewer": "观众甲",
+        "viewer_identity": {
+            "namespace": "simulator",
+            "kind": "uid",
+            "external_id": "42"
+        },
+        "gift_metadata": {
+            "price": 1000,
+            "paid": true,
+            "medal_level": 12,
+            "guard_level": 3
+        },
+        "kind": { "type": "gift", "name": "小鱼干", "count": 2 }
+    }))
+    .unwrap();
+    assert_eq!(
+        event.viewer_identity,
+        Some(ViewerIdentityInput {
+            namespace: "simulator".into(),
+            kind: ViewerIdentityKind::Uid,
+            external_id: "42".into(),
+        })
+    );
+    assert_eq!(
+        event.gift_metadata,
+        Some(GiftMetadataInput {
+            price: Some(1_000),
+            paid: Some(true),
+            medal_level: Some(12),
+            guard_level: Some(3),
+        })
+    );
 }
 
 #[test]
@@ -128,6 +170,8 @@ fn agent_snapshot_serializes_only_public_state() {
         serde_json::to_value(EventBatchResult {
             accepted: 2,
             duplicates: 1,
+            persisted: None,
+            unscheduled: None,
         })
         .unwrap(),
         json!({ "accepted": 2, "duplicates": 1 })

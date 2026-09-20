@@ -7,6 +7,7 @@ export function TrainingResultDialog({ notice, onClose }: { notice: TrainingNoti
   const closeButton = useRef<HTMLButtonElement>(null);
   const id = useId();
   useEffect(() => {
+    if (notice.kind !== "error") return;
     const element = dialog.current!;
     const previous = notice.restoreFocus ?? document.activeElement;
     if (typeof element.showModal === "function") element.showModal();
@@ -17,6 +18,9 @@ export function TrainingResultDialog({ notice, onClose }: { notice: TrainingNoti
       if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
     };
   }, []);
+  if (notice.kind !== "error") {
+    return <p className="success-banner" role="status" aria-label={notice.title}><strong>{notice.title}</strong>：{notice.message}</p>;
+  }
   return createPortal(<dialog ref={dialog} className={`training-result-dialog is-${notice.kind}`} aria-labelledby={`${id}-title`} aria-describedby={`${id}-message`}
     onCancel={event => { event.preventDefault(); onClose(); }}>
     <div className="training-result-heading"><span aria-hidden="true">{notice.kind === "error" ? "!" : notice.kind === "success" ? "✓" : "i"}</span>

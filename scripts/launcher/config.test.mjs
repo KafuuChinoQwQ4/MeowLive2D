@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadConfiguration } from './config.mjs';
+import { loadConfiguration, readServerConfig } from './config.mjs';
 
 async function fixture(t, overrides = {}) {
   const root = await mkdtemp(join(tmpdir(), 'meow-config-'));
@@ -24,6 +24,19 @@ test('loads the existing key into only the server environment, never public setu
   assert.equal(config.definitions.find(s => s.id === 'tts').env.TEST_LLM_KEY, undefined);
   assert.equal(config.setup.llm_configured, true);
   assert.equal(JSON.stringify(config.setup).includes('sk-test'), false);
+});
+
+test('default viewer storage uses the managed server entrypoint without exposing credentials', async t => {
+  const root = await fixture(t);
+  const config = await loadConfiguration(root, {
+    env: { PATH: process.env.PATH, MEOWLIVE_DATABASE_URL: 'postgresql://private-database-password' },
+  });
+  assert.equal((await readServerConfig(join(root, 'config/server.local.toml'))).viewers.enabled, true);
+  assert.equal(config.definitions[0].command, process.execPath);
+  assert.equal(config.definitions[0].args[0], join(root, 'scripts/launcher/server.mjs'));
+  assert.equal(config.definitions[0].env.MEOWLIVE_DATABASE_URL, 'postgresql://private-database-password');
+  assert.equal(config.definitions[1].env.MEOWLIVE_DATABASE_URL, undefined);
+  assert.equal(JSON.stringify(config.setup).includes('private-database-password'), false);
 });
 
 test('TTS defaults to low memory mode and guards available system memory', async t => {
@@ -87,6 +100,8 @@ test('public setup is portable while service execution still uses the real check
   assert.equal(config.setup.windows_client_path, './target/windows-client');
   assert.equal(config.definitions[0].args.at(-1), join(root, 'config/server.local.toml'));
   assert.equal(config.definitions[0].cwd, root);
+  assert.equal(config.definitions[0].command, process.execPath);
+  assert.equal(config.definitions[0].args[0], join(root, 'scripts/launcher/server.mjs'));
 });
 
 test('empty launcher settings resolve the engine and interpreter inside the checkout', async t => {

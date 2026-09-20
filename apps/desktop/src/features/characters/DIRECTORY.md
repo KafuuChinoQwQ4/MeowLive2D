@@ -17,4 +17,4 @@ characters/  # 角色模型选择、导入与动作映射界面
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 65f2cac5a0181dbca13182b824141e3597c2b78d7caba77511765307851501cb -->
+<!-- directory-tree-sha256: 1e8c6fa996dff3b7caedc9c44f3e834c1f1626322c576d1ee19fbe4174394b70 -->

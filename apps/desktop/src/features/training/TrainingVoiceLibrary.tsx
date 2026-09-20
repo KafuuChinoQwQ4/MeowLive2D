@@ -43,9 +43,9 @@ export function TrainingVoiceLibrary({ controller: c, disabled, canSynthesize, t
   return <>
     <section className="panel" aria-labelledby="saved-voices-heading">
       <h3 id="saved-voices-heading">已保存的训练音色</h3>
-      <p className="muted">同一参考音色只显示一次，每次训练作为它的版本保留。新增训练默认接着该音色最近一次成功的权重继续学习；试听确认后再保存、选用。</p>
+      <p className="muted">按音色管理版本，试听后保存并选用。</p>
       <p role="status">当前选用：{current ? `${c.voices.find(voice => voice.id === current.voice_id)?.name ?? "参考音色缺失"} · ${current.name}` : c.activeVoiceId === undefined || !c.snapshot ? "正在读取…" : "尚未选用训练音色"}</p>
-      {savedGroups.length === 0 && <p className="field-hint">还没有保存的训练音色。请先完成训练，再试听确认、保存并选用音色。</p>}
+      {savedGroups.length === 0 && <p className="field-hint">完成训练并试听后，即可保存音色。</p>}
       <label>选择已保存音色<select value={selectedGroup?.id ?? ""} disabled={disabled || savedGroups.length === 0}
         onChange={event => { setSelectedVoice(event.target.value); setSelectedId(""); }}>
         <option value="">选择一个已保存音色</option>
@@ -58,7 +58,7 @@ export function TrainingVoiceLibrary({ controller: c, disabled, canSynthesize, t
         disabled={disabled || !selected?.available || !hasReference(selected.voice_id) || current?.id === selected.id}
         onClick={() => { if (selected) void c.activateVersion(selected); }}>使用所选音色</button>
         <button type="button" disabled={disabled || !selected} onClick={() => { if (selected) deleteVersion(selected.id, selected.name); }}>删除所选版本</button></div>
-      <p className="field-hint">删除只移除所选版本，其余训练版本保留。选用后启用语音模型，后续播报即可使用。</p>
+      <p className="field-hint">删除仅影响所选版本；播报前需启用语音模型。</p>
     </section>
     <label>试听与测量文本<textarea value={text} maxLength={500} onChange={event => onText(event.target.value)} /></label>
     {!canSynthesize && <p className="availability-note">试听前请先启动 TTS 服务并启用上方语音模型。</p>}
@@ -87,7 +87,7 @@ function TrainingVoiceCard({ group, controller: c, disabled, canSynthesize, refe
       <label>{group.name} 的训练版本<select value={version.id} disabled={disabled} onChange={event => setSelectedId(event.target.value)}>
         {group.versions.map((item, index) => <option key={item.id} value={item.id}>{item.name}{index === 0 ? "（最新）" : ""}{item.saved ? " · 已保存" : " · 待确认"}</option>)}
       </select></label>
-      <p className="field-hint">旧的独立训练已归入此音色，权重分别保留。选择版本可试听、保存、切换或删除。</p>
+      <p className="field-hint">各版本独立保留，可试听、切换或删除。</p>
     </details>
     {!version.available && <p className="error-banner">模型文件缺失或损坏</p>}
     {!referenceAvailable && <p className="field-error">参考音频不可用，请检查音色资源。</p>}

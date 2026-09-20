@@ -43,4 +43,11 @@ pub type SynthesisFuture<'a> =
 pub trait SpeechSynthesizer: Send + Sync {
     /// Dropping the returned future cancels the caller's interest in synthesis.
     fn synthesize(&self, request: SynthesisRequest) -> SynthesisFuture<'_>;
+
+    /// Some adapters own a complete engine transaction after synthesis starts.
+    /// The server must wait for those adapters instead of applying its generic
+    /// request deadline and marking a still-running transaction as failed.
+    fn owns_synthesis_lifetime(&self) -> bool {
+        false
+    }
 }

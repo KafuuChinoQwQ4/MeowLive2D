@@ -59,6 +59,17 @@ async fn simulated_event_reaches_completed_only_after_desktop_playout() {
         .await
         .unwrap();
     assert_eq!(result.duplicates, 1);
+    // Repeated status reads and an expired cooldown must not replay the event.
+    for _ in 0..12 {
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        assert_eq!(
+            harness.state.agent_snapshot().await.events[0].status,
+            AgentEventStatus::Completed
+        );
+    }
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+    assert_eq!(harness.synthesis_calls.load(Ordering::SeqCst), 1);
+    assert_eq!(harness.state.snapshot().await.speeches.len(), 1);
     harness.state.shutdown().await;
     assert!(desktop.await.unwrap().is_err());
 }

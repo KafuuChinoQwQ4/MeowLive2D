@@ -1,11 +1,14 @@
-import type { LiveConnectionPhase, LiveConnectionSnapshot } from "@meowlive/contracts";
+import type { LiveConnectionPhase, LiveConnectionSnapshot, LiveSettingsRequest, LiveSettingsSnapshot } from "@meowlive/contracts";
 import { readServerError, ServerRequestError } from "./responses";
+import { createAuthenticatedFetch } from "./auth";
 
 export interface LiveClient {
   readonly baseUrl: string;
   getStatus(signal?: AbortSignal): Promise<LiveConnectionSnapshot>;
   connect(signal?: AbortSignal): Promise<LiveConnectionSnapshot>;
   disconnect(signal?: AbortSignal): Promise<LiveConnectionSnapshot>;
+  getSettings(signal?: AbortSignal): Promise<LiveSettingsSnapshot>;
+  saveSettings(request: LiveSettingsRequest, signal?: AbortSignal): Promise<LiveSettingsSnapshot>;
 }
 
 const phases: LiveConnectionPhase[] = [
@@ -54,12 +57,26 @@ function readLiveSnapshot(value: unknown): LiveConnectionSnapshot {
   return value as LiveConnectionSnapshot;
 }
 
+function readLiveSettings(value: unknown): LiveSettingsSnapshot {
+  if (!isRecord(value)
+    || typeof value.enabled !== "boolean"
+    || typeof value.app_id !== "string"
+    || (value.app_id !== "" && (!/^\d{1,19}$/u.test(value.app_id) || BigInt(value.app_id) > 9223372036854775807n))
+    || typeof value.access_key_id_configured !== "boolean"
+    || typeof value.access_key_secret_configured !== "boolean"
+    || typeof value.identity_code_configured !== "boolean"
+    || typeof value.storage_available !== "boolean") {
+    throw new ServerRequestError("invalid_response", "主服务返回了无效的直播配置。");
+  }
+  return value as LiveSettingsSnapshot;
+}
+
 export function createLiveClient(options: { baseUrl?: string; fetcher?: typeof fetch; timeoutMs?: number } = {}): LiveClient {
   const baseUrl = (options.baseUrl ?? import.meta.env.VITE_MEOWLIVE_SERVER_URL ?? "http://127.0.0.1:19600").replace(/\/+$/, "");
-  const fetcher = options.fetcher ?? globalThis.fetch.bind(globalThis);
+  const fetcher = options.fetcher ?? createAuthenticatedFetch(baseUrl);
   const timeoutMs = options.timeoutMs ?? 8_000;
 
-  async function request(path: string, method: "GET" | "POST", signal?: AbortSignal): Promise<LiveConnectionSnapshot> {
+  async function request<T>(path: string, method: "GET" | "POST", read: (value: unknown) => T, signal?: AbortSignal, body?: LiveSettingsRequest): Promise<T> {
     signal?.throwIfAborted();
     const controller = new AbortController();
     const cancel = () => controller.abort();
@@ -75,7 +92,9 @@ export function createLiveClient(options: { baseUrl?: string; fetcher?: typeof f
 
     try {
       const response = await Promise.race([
-        fetcher(`${baseUrl}${path}`, { method, signal: controller.signal }),
+        fetcher(`${baseUrl}${path}`, { method, signal: controller.signal,
+          ...(body ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}),
+        }),
         aborted,
       ]);
       const value: unknown = await Promise.race([response.json().catch(() => null), aborted]);
@@ -88,7 +107,7 @@ export function createLiveClient(options: { baseUrl?: string; fetcher?: typeof f
           response.status,
         );
       }
-      return readLiveSnapshot(value);
+      return read(value);
     } catch (error) {
       if (signal?.aborted) throw new DOMException("请求已取消", "AbortError");
       if (timedOut) throw new ServerRequestError("request_timeout", "连接主服务超时，请检查服务状态。");
@@ -102,8 +121,10 @@ export function createLiveClient(options: { baseUrl?: string; fetcher?: typeof f
 
   return {
     baseUrl,
-    getStatus: (signal) => request("/api/live", "GET", signal),
-    connect: (signal) => request("/api/live/connect", "POST", signal),
-    disconnect: (signal) => request("/api/live/disconnect", "POST", signal),
+    getStatus: (signal) => request("/api/live", "GET", readLiveSnapshot, signal),
+    connect: (signal) => request("/api/live/connect", "POST", readLiveSnapshot, signal),
+    disconnect: (signal) => request("/api/live/disconnect", "POST", readLiveSnapshot, signal),
+    getSettings: (signal) => request("/api/live/settings", "GET", readLiveSettings, signal),
+    saveSettings: (body, signal) => request("/api/live/settings", "POST", readLiveSettings, signal, body),
   };
 }

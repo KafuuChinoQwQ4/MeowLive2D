@@ -7,6 +7,7 @@ use serde::Deserialize;
 #[serde(default, deny_unknown_fields)]
 pub struct ClientConfig {
     pub server_url: String,
+    pub device_token_file: Option<std::path::PathBuf>,
     pub model_directory: Option<std::path::PathBuf>,
     pub max_buffer_samples: usize,
     pub handshake_timeout_ms: u64,
@@ -20,6 +21,7 @@ impl Default for ClientConfig {
     fn default() -> Self {
         Self {
             model_directory: None,
+            device_token_file: None,
             server_url: "http://127.0.0.1:19600".into(),
             max_buffer_samples: 5_760_000,
             handshake_timeout_ms: 5_000,
@@ -35,6 +37,13 @@ impl ClientConfig {
     pub fn from_toml(text: &str) -> Result<Self, String> {
         let config: Self = toml::from_str(text).map_err(|error| error.to_string())?;
         config.vtube_studio.validate()?;
+        if config
+            .device_token_file
+            .as_ref()
+            .is_some_and(|p| p.as_os_str().is_empty())
+        {
+            return Err("device_token_file must name a private credential file".into());
+        }
         if config
             .model_directory
             .as_ref()
@@ -68,7 +77,11 @@ impl ClientConfig {
     }
 
     pub fn resolve_paths(&mut self, config_path: &std::path::Path) {
-        if let Some(path) = self.model_directory.as_mut() {
+        self.obs.settings_path = Some(config_path.with_extension("obs.local.json"));
+        for path in [&mut self.model_directory, &mut self.device_token_file]
+            .into_iter()
+            .flatten()
+        {
             if path.is_relative() {
                 *path = config_path
                     .parent()

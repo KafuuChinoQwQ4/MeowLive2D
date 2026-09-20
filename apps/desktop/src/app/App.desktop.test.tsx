@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import { agentStatus } from "../test/agent-fixtures";
-import { liveSnapshot } from "../test/live-fixtures";
+import { liveSettingsSnapshot, liveSnapshot } from "../test/live-fixtures";
 import { resourceSnapshot } from "../test/resource-fixtures";
 import { jsonResponse, serverStatus } from "../test/server-fixtures";
 
@@ -19,7 +19,10 @@ it("waits for desktop configuration and uses its address in every panel", async 
   vi.mocked(getDesktopStatus).mockReturnValue(new Promise((resolve) => { finish = resolve; }));
   const fetcher = vi.fn<typeof fetch>(async (url) => {
     const path = new URL(String(url)).pathname;
+    if (path === "/api/admin/session") return jsonResponse({ enabled: false, authenticated: false });
     if (path === "/api/agent") return jsonResponse(agentStatus());
+    if (path === "/api/live/settings") return jsonResponse(liveSettingsSnapshot());
+    if (path === "/api/obs/settings") return jsonResponse({ enabled: false, websocket_url: "ws://127.0.0.1:4455", password_configured: false, storage_available: true });
     if (path === "/api/live") return jsonResponse(liveSnapshot());
     if (path === "/api/resources") return jsonResponse(resourceSnapshot());
     if (path === "/api/obs") return jsonResponse({ connected: false, recording: false, current_scene: "", scenes: [] });

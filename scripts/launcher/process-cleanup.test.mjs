@@ -70,3 +70,44 @@ test('cleanup sends the Windows helper stop request and stops the matching panel
   assert.equal(await readFile(join(session, 'stop'), 'utf8'), 'stop');
   assert.deepEqual(result.remaining, []);
 });
+
+test('cleanup stops this checkout Rust cache runner and its compile subprocesses', async t => {
+  const { stopProjectProcesses } = await import('./process-cleanup.mjs');
+  const root = await mkdtemp(join(tmpdir(), 'meow-cache-runner-'));
+  await mkdir(join(root, 'scripts'));
+  const script = join(root, 'scripts/rust_cache.py');
+  await writeFile(script, 'import time\nprint("ready",flush=True)\ntime.sleep(60)\n');
+  const child = spawn('python3', [script, 'run', '-p', 'meowlive-server'], {
+    cwd: root, detached: true, stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const exited = once(child, 'exit');
+  t.after(async () => {
+    try { process.kill(-child.pid, 'SIGKILL'); } catch { /* stopped */ }
+    await exited;
+    await rm(root, { recursive: true, force: true });
+  });
+  await once(child.stdout, 'data');
+  const result = await stopProjectProcesses(root, { graceMs: 300, report: () => {} });
+  assert.equal(await running(child.pid), false);
+  assert.deepEqual(result.remaining, []);
+});
+
+
+test('cleanup cancels the managed server wrapper during database preparation', async t => {
+  const { stopProjectProcesses } = await import('./process-cleanup.mjs');
+  const root = await mkdtemp(join(tmpdir(), 'meow-server-wrapper-'));
+  await mkdir(join(root, 'scripts/launcher'), { recursive: true });
+  const script = join(root, 'scripts/launcher/server.mjs');
+  await writeFile(script, 'console.log("ready"); setInterval(()=>{},1000);');
+  const child = spawn(process.execPath, [script], { cwd: root, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  const exited = once(child, 'exit');
+  t.after(async () => {
+    try { process.kill(-child.pid, 'SIGKILL'); } catch { /* stopped */ }
+    await exited;
+    await rm(root, { recursive: true, force: true });
+  });
+  await once(child.stdout, 'data');
+  const result = await stopProjectProcesses(root, { graceMs: 300, report: () => {} });
+  assert.equal(await running(child.pid), false);
+  assert.deepEqual(result.remaining, []);
+});

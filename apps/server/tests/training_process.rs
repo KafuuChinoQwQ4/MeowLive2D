@@ -93,6 +93,8 @@ else:
                 r#"
 [server]
 listen_address="127.0.0.1:{server_port}"
+[viewers]
+enabled=false
 [speech]
 base_url="http://127.0.0.1:{tts_port}"
 timeout_seconds=5

@@ -509,10 +509,19 @@ fn subprocess_cancellation_keeps_busy_until_owned_child_tree_exits() {
     let thread = std::thread::spawn(move || running.run(&id));
     let child_file = store.prepared(&job.id).unwrap().work_dir.join("child.pid");
     let start = Instant::now();
-    while !child_file.exists() {
+    // File creation precedes the Python write; wait for a valid PID so an empty
+    // file cannot accidentally make the assertion read the system /proc/stat.
+    let child_pid = loop {
+        if let Ok(text) = fs::read_to_string(&child_file) {
+            if let Ok(pid) = text.trim().parse::<u32>() {
+                if pid > 1 {
+                    break pid;
+                }
+            }
+        }
         assert!(start.elapsed() < Duration::from_secs(5));
         std::thread::sleep(Duration::from_millis(10));
-    }
+    };
     assert_eq!(
         manager.cancel(&job.id).unwrap().state,
         TrainingState::Cancelling
@@ -523,8 +532,7 @@ fn subprocess_cancellation_keeps_busy_until_owned_child_tree_exits() {
         Err(TrainingError::Busy) => {}
         Ok(next) => {
             assert_eq!(manager.snapshot().jobs[0].state, TrainingState::Cancelled);
-            let pid = fs::read_to_string(&child_file).unwrap();
-            if let Ok(stat) = fs::read_to_string(format!("/proc/{}/stat", pid.trim())) {
+            if let Ok(stat) = fs::read_to_string(format!("/proc/{child_pid}/stat")) {
                 assert_eq!(stat.split_whitespace().nth(2), Some("Z"));
             }
             manager.cancel(&next.id).unwrap();
@@ -536,8 +544,7 @@ fn subprocess_cancellation_keeps_busy_until_owned_child_tree_exits() {
         TrainingState::Cancelled
     );
     assert!(!manager.snapshot().busy);
-    let child_pid = fs::read_to_string(child_file).unwrap();
-    if let Ok(stat) = fs::read_to_string(format!("/proc/{}/stat", child_pid.trim())) {
+    if let Ok(stat) = fs::read_to_string(format!("/proc/{child_pid}/stat")) {
         assert_eq!(
             stat.split_whitespace().nth(2),
             Some("Z"),

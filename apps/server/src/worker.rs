@@ -26,10 +26,18 @@ pub async fn run_worker(state: AppState) {
             text: task.text.as_str().to_owned(),
             voice_id: task.voice_id.as_str().to_owned(),
         };
-        let generated = tokio::select! {
-            biased;
-            _ = cancel.cancelled() => continue,
-            result = tokio::time::timeout(Duration::from_secs(state.config.speech.timeout_seconds), state.synthesizer.synthesize(request)) => result,
+        let generated = if state.synthesizer.owns_synthesis_lifetime() {
+            tokio::select! {
+                biased;
+                _ = cancel.cancelled() => continue,
+                result = state.synthesizer.synthesize(request) => Ok(result),
+            }
+        } else {
+            tokio::select! {
+                biased;
+                _ = cancel.cancelled() => continue,
+                result = tokio::time::timeout(Duration::from_secs(state.config.speech.timeout_seconds), state.synthesizer.synthesize(request)) => result,
+            }
         };
         let audio = match generated {
             Ok(Ok(audio)) => audio,
@@ -63,6 +71,16 @@ pub async fn run_worker(state: AppState) {
             );
             continue;
         }
+        let knowledge_gate = state.knowledge_gate.read().await;
+        if !state.speech_knowledge_current(&task.id).await {
+            state
+                .inner
+                .lock()
+                .await
+                .queue
+                .fail(&task.id, task.generation, "观众资料已更新或过期");
+            continue;
+        }
         let connection = {
             let mut inner = state.inner.lock().await;
             if !inner.queue.mark_ready(&task.id, task.generation) {
@@ -91,6 +109,7 @@ pub async fn run_worker(state: AppState) {
             state.disconnect(&bridge_id).await;
             continue;
         }
+        drop(knowledge_gate);
         let chunks = audio.samples.chunks(8192);
         let count = chunks.len();
         for (sequence, samples) in chunks.enumerate() {

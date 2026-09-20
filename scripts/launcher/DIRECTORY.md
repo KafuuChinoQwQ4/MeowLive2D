@@ -7,9 +7,12 @@ Linux 本机服务启动管理、配置读取、状态探测与控制接口
 ```text
 launcher/  # Linux 本机服务启动管理、配置读取、状态探测与控制接口
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-├── config.mjs  # 私有启动配置、LLM 覆盖元数据及主服务环境的加载与脱敏
+├── config.mjs  # 私有启动配置、默认观众存储元数据及主服务环境的加载与脱敏
 ├── config.test.mjs  # 启动配置、缺失环境、密钥隔离和本机地址限制的测试
-├── health.mjs  # 检查主服务及 TTS HTTP 就绪状态和端口占用
+├── database.mjs  # 默认观众存储的私有数据库凭据准备、项目 PostgreSQL 启动和受限应用连接注入
+├── database.test.mjs  # 默认数据库首次准备、凭据复用、外部连接隔离和错误脱敏测试
+├── health.mjs  # 通过公开最小健康接口检查主服务与 TTS 就绪和端口占用
+├── health.test.mjs  # 认证主服务通过公开最小健康接口被启动器和设备探测的测试
 ├── http.mjs  # 同源会话保护的三个服务开关及模型管理 HTTP 接口
 ├── http.test.mjs  # 启停接口来源、会话、请求形状及大小限制测试
 ├── log.mjs  # 受管进程日志限量保存、密钥遮盖及常见启动故障识别
@@ -25,6 +28,7 @@ launcher/  # Linux 本机服务启动管理、配置读取、状态探测与控�
 ├── paths.test.mjs  # 项目目录、用户主目录及外部路径解析与显示回归测试
 ├── process-cleanup.mjs  # 核对项目与进程身份后清理残留进程组并通知受管 Windows 执行端停止
 ├── process-cleanup.test.mjs  # 残留服务正常及强制退出、孤立子进程回收和其他检出隔离测试
+├── server.mjs  # 受管主服务启动入口，等待 PostgreSQL 就绪后通过 Rust 缓存入口启动服务
 ├── shutdown.mjs  # 幂等处理重复中断与终端挂断信号，等待启动器完成服务清理
 ├── shutdown.test.mjs  # 真实进程验证重复 Ctrl+C、终止和终端挂断时等待受管服务回收
 ├── supervisor.mjs  # 固定服务子进程的幂等启停、就绪等待、超时取消和退出回收
@@ -38,4 +42,4 @@ launcher/  # Linux 本机服务启动管理、配置读取、状态探测与控�
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: e4098bbea2fcff8951e96e3b1145cdcd89379b26a683eceaa414f11b799d5c19 -->
+<!-- directory-tree-sha256: 546988f69d138f4d4bd0915e0c7bcc4b1f614159cd883e135a33c7fe89741d2a -->

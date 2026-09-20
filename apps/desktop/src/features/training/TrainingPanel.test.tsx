@@ -101,7 +101,7 @@ describe("训练面板", () => {
     await screen.findByText(/查看版本：成对权重/); expect(screen.getByRole("button", { name: "选用此版本" })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: "生成版本试听" }));
     await screen.findByLabelText("版本试听音频");
-    await user.click(await screen.findByRole("button", { name: "知道了" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     await user.click(screen.getByLabelText("我已试听并确认此版本效果"));
     await user.click(screen.getByRole("button", { name: "选用此版本" }));
     expect(deps.client.activate).toHaveBeenCalledWith("version", expect.any(AbortSignal));

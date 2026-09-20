@@ -75,13 +75,19 @@ pub async fn control(
             }
             command = outgoing.recv() => {
                 let Some(command) = command else { break; };
-                if let ServerCommand::Speak { generation, .. } = &command {
+                let knowledge_gate=state.knowledge_gate.read().await;
+                if let ServerCommand::Speak { generation, utterance_id, .. } = &command {
                     if *generation != state.inner.lock().await.queue.generation() { continue; }
+                    if !state.speech_knowledge_current(utterance_id).await {
+                        state.inner.lock().await.queue.fail(utterance_id,*generation,"观众资料已更新或过期");
+                        continue;
+                    }
                 }
                 if let ServerCommand::Resource {request_id,..}=&command {
                     if !state.resource_pending.lock().expect("resource requests lock").contains_key(request_id){continue;}
                 }
                 if !send(&mut socket, Message::Text(serde_json::to_string(&command).expect("serializable command").into()), &cancel).await { break; }
+                drop(knowledge_gate);
             }
             frame = socket.recv() => {
                 last_received = tokio::time::Instant::now();
@@ -95,6 +101,23 @@ pub async fn control(
                             }
                             _ => break,
                         };
+                        if receipt.status==meowlive_protocol::execution::ExecutionStatus::Completed {
+                            let valid={
+                                let mut inner=state.inner.lock().await;
+                                if inner.bridge.as_ref().is_none_or(|b|b.id!=id){break;}
+                                inner.agent.view(state.now_ms()).current_speech_id.as_deref()==Some(receipt.utterance_id.as_str()) &&
+                                inner.queue.get(&receipt.utterance_id).is_some_and(|task|task.generation==receipt.generation&&task.generation==inner.queue.generation()&&task.status==meowlive_domain::speech::SpeechStatus::Playing)
+                            };
+                            if valid {
+                                if let Some(journal)=state.receipt_journal.clone(){
+                                    let scope=state.config.viewers.scope_id.clone();let speech=receipt.utterance_id.clone();let now=crate::viewers::utc_ms();
+                                    if !matches!(tokio::task::spawn_blocking(move||journal.put(&scope,&speech,now)).await,Ok(Ok(()))){
+                                        state.receipt_failures.fetch_add(1,std::sync::atomic::Ordering::Relaxed);
+                                        state.disconnect(&id).await;break;
+                                    }
+                                }
+                            }
+                        }
                         let mut inner = state.inner.lock().await;
                         if inner.bridge.as_ref().is_none_or(|b| b.id != id) { break; }
                         // Device errors are user-facing summaries, never arbitrary executable data.

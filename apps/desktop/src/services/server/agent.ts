@@ -10,6 +10,7 @@ import type {
   LiveEventInput,
 } from "@meowlive/contracts";
 import { readServerError, ServerRequestError } from "./responses";
+import { createAuthenticatedFetch } from "./auth";
 
 export interface AgentClient {
   readonly baseUrl: string;
@@ -93,15 +94,24 @@ function readAgentSnapshot(value: unknown): AgentSnapshot {
 }
 
 function readBatchResult(value: unknown): EventBatchResult {
-  if (!isRecord(value) || !isUint32(value.accepted) || !isUint32(value.duplicates)) {
+  if (!isRecord(value)
+    || !isUint32(value.accepted)
+    || !isUint32(value.duplicates)
+    || !(value.persisted === undefined || isUint32(value.persisted))
+    || !(value.unscheduled === undefined || isUint32(value.unscheduled))) {
     throw new ServerRequestError("invalid_response", "主服务返回了无效的事件接收结果。");
   }
-  return { accepted: value.accepted, duplicates: value.duplicates };
+  return {
+    accepted: value.accepted,
+    duplicates: value.duplicates,
+    ...(value.persisted === undefined ? {} : { persisted: value.persisted }),
+    ...(value.unscheduled === undefined ? {} : { unscheduled: value.unscheduled }),
+  };
 }
 
 export function createAgentClient(options: { baseUrl?: string; fetcher?: typeof fetch; timeoutMs?: number } = {}): AgentClient {
   const baseUrl = (options.baseUrl ?? import.meta.env.VITE_MEOWLIVE_SERVER_URL ?? "http://127.0.0.1:19600").replace(/\/+$/, "");
-  const fetcher = options.fetcher ?? globalThis.fetch.bind(globalThis);
+  const fetcher = options.fetcher ?? createAuthenticatedFetch(baseUrl);
   const timeoutMs = options.timeoutMs ?? 8_000;
 
   async function request<T>(path: string, method: "GET" | "POST", read: (value: unknown) => T, signal?: AbortSignal, body?: RequestBody): Promise<T> {

@@ -41,6 +41,12 @@ function readReplay(value: string): { events?: LiveEventInput[]; error?: string 
 }
 
 function resultMessage(result: EventBatchResult): string {
+  if (result.persisted !== undefined) {
+    const suffix = result.unscheduled && result.unscheduled > 0
+      ? `，${result.unscheduled} 条未安排回应`
+      : "";
+    return `已持久保存 ${result.persisted} 条事件${suffix}。`;
+  }
   if (result.accepted === 0 && result.duplicates > 0) return `${result.duplicates} 条事件已存在，未重复接收。`;
   if (result.duplicates > 0) return `已接收 ${result.accepted} 条事件，忽略 ${result.duplicates} 条重复事件。`;
   return `已接收 ${result.accepted} 条事件。`;
@@ -103,7 +109,6 @@ export function EventSimulator({ disabled, onSubmit }: {
 
   return (
     <section className="panel event-simulator" aria-labelledby="event-simulator-heading">
-      <p className="eyebrow">输入</p>
       <h2 id="event-simulator-heading">直播事件</h2>
       <div className="segmented-control" aria-label="模拟事件类型">
         <button type="button" aria-pressed={mode === "chat"} onClick={() => setMode("chat")}>聊天</button>

@@ -86,3 +86,11 @@ pub enum ClientMessage {
         result: crate::resources::DesktopResourceResult,
     },
 }
+
+/// Anonymous liveness without speech text or internal session identifiers.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, ts_rs::TS)]
+pub struct ServerHealth {
+    pub service: String,
+    pub protocol_version: u16,
+    pub bridge_connected: bool,
+}

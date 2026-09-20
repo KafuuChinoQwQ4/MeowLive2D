@@ -124,7 +124,12 @@ export function useAgentController(client: AgentClient, pollIntervalMs: number) 
     resume: () => updateStatus("resume", (signal) => client.resume(signal)),
     submitEvents: async (batch: EventBatchRequest): Promise<EventBatchResult | null> => {
       const result = await beginAction("events", (signal) => client.submitEvents(batch, signal));
-      if (result) feedback.notify({ kind: "info", title: "直播事件已提交", message: `已接收 ${result.accepted} 条事件，忽略 ${result.duplicates} 条重复事件。后续处理结果请查看事件记录。` });
+      if (result) {
+        const message = result.persisted === undefined
+          ? `已接收 ${result.accepted} 条事件，忽略 ${result.duplicates} 条重复事件。后续处理结果请查看事件记录。`
+          : `已持久保存 ${result.persisted} 条事件${result.unscheduled ? `，${result.unscheduled} 条未安排回应` : ""}。`;
+        feedback.notify({ kind: "info", title: "直播事件已提交", message });
+      }
       return result;
     },
   };

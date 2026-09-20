@@ -54,6 +54,16 @@ describe("直播事件模拟与回放", () => {
     expect(screen.getByLabelText("事件回放 JSON")).toHaveValue("");
   });
 
+  it("反馈已持久保存但未安排回应的事件", async () => {
+    const onSubmit = vi.fn().mockResolvedValue({ accepted: 0, duplicates: 0, persisted: 1, unscheduled: 1 });
+    render(<EventSimulator disabled={false} onSubmit={onSubmit} />);
+    fireEvent.change(screen.getByLabelText("观众名称"), { target: { value: "小猫" } });
+    fireEvent.change(screen.getByLabelText("聊天内容"), { target: { value: "保存但不播报" } });
+    fireEvent.click(screen.getByRole("button", { name: "发送模拟事件" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("已持久保存 1 条事件，1 条未安排回应。");
+  });
+
   it.each([
     ["非数组", JSON.stringify({ events: [] }), "JSON 数组"],
     ["空批次", "[]", "1 到 100"],

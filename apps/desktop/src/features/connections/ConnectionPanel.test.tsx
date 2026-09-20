@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { createLiveClient } from "../../services/server/live";
-import { liveSnapshot } from "../../test/live-fixtures";
+import { liveSnapshot, withLiveSettingsResponses } from "../../test/live-fixtures";
 import { jsonResponse } from "../../test/server-fixtures";
 import { ConnectionPanel } from "./ConnectionPanel";
 
@@ -16,7 +16,7 @@ describe("直播连接面板", () => {
       reconnect_attempts: 1,
     })));
 
-    render(<ConnectionPanel client={createLiveClient({ fetcher })} />);
+    render(<ConnectionPanel client={createLiveClient({ fetcher: withLiveSettingsResponses(fetcher) })} />);
 
     expect(await screen.findByRole("heading", { name: "直播间已连接" })).toBeVisible();
     const metrics = within(screen.getByLabelText("直播事件统计"));
@@ -30,16 +30,16 @@ describe("直播连接面板", () => {
 
   it("未配置时解释原因且不能连接", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(liveSnapshot({ configured: false, phase: "disabled" })));
-    render(<ConnectionPanel client={createLiveClient({ fetcher })} />);
+    render(<ConnectionPanel client={createLiveClient({ fetcher: withLiveSettingsResponses(fetcher) })} />);
 
     expect(await screen.findByRole("heading", { name: "直播接入未启用" })).toBeVisible();
     expect(screen.getByRole("button", { name: "连接直播间" })).toBeDisabled();
-    expect(screen.getByText(/主服务配置/)).toBeVisible();
+    expect(screen.getByText(/下方填写直播配置/)).toBeVisible();
   });
 
   it("服务端正在断开时保持控制按钮禁用", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(liveSnapshot({ phase: "disconnecting" })));
-    render(<ConnectionPanel client={createLiveClient({ fetcher })} />);
+    render(<ConnectionPanel client={createLiveClient({ fetcher: withLiveSettingsResponses(fetcher) })} />);
 
     expect(await screen.findByRole("button", { name: "正在断开…" })).toBeDisabled();
   });
@@ -48,7 +48,7 @@ describe("直播连接面板", () => {
     const fetcher = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(jsonResponse(liveSnapshot({ phase })))
       .mockResolvedValueOnce(jsonResponse(liveSnapshot({ phase: "connecting" })));
-    render(<ConnectionPanel client={createLiveClient({ fetcher })} />);
+    render(<ConnectionPanel client={createLiveClient({ fetcher: withLiveSettingsResponses(fetcher) })} />);
 
     fireEvent.click(await screen.findByRole("button", { name: "连接直播间" }));
 
@@ -59,7 +59,7 @@ describe("直播连接面板", () => {
     const fetcher = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(jsonResponse(liveSnapshot({ phase })))
       .mockResolvedValueOnce(jsonResponse(liveSnapshot({ phase: "disconnecting" })));
-    render(<ConnectionPanel client={createLiveClient({ fetcher })} />);
+    render(<ConnectionPanel client={createLiveClient({ fetcher: withLiveSettingsResponses(fetcher) })} />);
 
     fireEvent.click(await screen.findByRole("button", { name: "断开直播间" }));
 
@@ -71,7 +71,7 @@ describe("直播连接面板", () => {
     const fetcher = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(jsonResponse(liveSnapshot()))
       .mockResolvedValueOnce(jsonResponse({ code: "platform_unavailable", message: "直播平台暂时不可用" }, 503));
-    render(<ConnectionPanel client={createLiveClient({ fetcher })} />);
+    render(<ConnectionPanel client={createLiveClient({ fetcher: withLiveSettingsResponses(fetcher) })} />);
 
     fireEvent.click(await screen.findByRole("button", { name: "连接直播间" }));
 
@@ -81,7 +81,7 @@ describe("直播连接面板", () => {
 
   it("快照中的平台错误对用户可见", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(liveSnapshot({ phase: "failed", last_error: "平台鉴权失败" })));
-    render(<ConnectionPanel client={createLiveClient({ fetcher })} />);
+    render(<ConnectionPanel client={createLiveClient({ fetcher: withLiveSettingsResponses(fetcher) })} />);
 
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("平台鉴权失败"));
   });

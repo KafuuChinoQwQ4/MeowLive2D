@@ -74,6 +74,7 @@ pub async fn measure(
             let reply = tokio::time::timeout(
                 Duration::from_secs(owned.config.llm.timeout_seconds),
                 model.decide(DecisionRequest {
+                    memory_context: vec![],
                     persona: "你是一位中文主播，请简短回应这条测试弹幕。".into(),
                     topic: "本地联合运行测量".into(),
                     history: vec![],
@@ -81,7 +82,9 @@ pub async fn measure(
                         id: "measurement".into(),
                         source: "local".into(),
                         viewer: "测试".into(),
+                        viewer_identity: None,
                         occurred_at_ms: 0,
+                        gift_metadata: None,
                         kind: EventKind::Chat { text: request.text },
                     }],
                 }),

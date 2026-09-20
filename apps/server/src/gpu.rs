@@ -173,7 +173,9 @@ mod tests {
             id: "event".into(),
             source: "test".into(),
             viewer: "viewer".into(),
+            viewer_identity: None,
             occurred_at_ms: 0,
+            gift_metadata: None,
             kind: meowlive_domain::event::EventKind::Chat {
                 text: "hello".into(),
             },

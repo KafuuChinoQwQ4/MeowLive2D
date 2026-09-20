@@ -1,10 +1,24 @@
 import type { LiveConnectionSnapshot } from "@meowlive/contracts";
 import { describe, expect, it, vi } from "vitest";
-import { liveSnapshot } from "../../test/live-fixtures";
+import { liveSettingsSnapshot, liveSnapshot } from "../../test/live-fixtures";
 import { deferred, jsonResponse } from "../../test/server-fixtures";
 import { createLiveClient } from "./live";
 
 describe("直播连接响应校验", () => {
+  it.each([
+    { app_id: 123 },
+    { app_id: "9223372036854775808" },
+    { app_id: "1e5" },
+    { enabled: "yes" },
+    { identity_code_configured: null },
+    { access_key_id_configured: "true" },
+    { access_key_secret_configured: undefined },
+    { storage_available: undefined },
+  ])("拒绝格式错误的配置快照 %j", async (overrides) => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({ ...liveSettingsSnapshot(), ...overrides }));
+    await expect(createLiveClient({ fetcher }).getSettings()).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
   it.each([
     ["未知阶段", liveSnapshot({ phase: "waiting" as LiveConnectionSnapshot["phase"] })],
     ["空平台", liveSnapshot({ platform: "" })],

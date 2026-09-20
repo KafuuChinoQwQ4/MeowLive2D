@@ -14,6 +14,7 @@ tests/  # 应用用例的队列与状态流转集成测试
 │   └── mod.rs  # 已连接队列、下发和完成流程测试夹具
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 ├── agent_decisions.rs  # 输出校验、暂停隔离及决策冷却测试
+├── agent_fairness.rs  # 稳定身份公平调度与完成反馈边界测试
 ├── agent_lifecycle.rs  # 配置、暂停、停止和播放生命周期测试
 ├── agent_memory.rs  # 已完成对话数量及内容长度边界测试
 ├── agent_settings.rs  # 人设配置与运行资源上限测试
@@ -34,4 +35,4 @@ tests/  # 应用用例的队列与状态流转集成测试
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: e7266f5991f22744fe6214b088709e25b87e7afb3f264c6c02cf0e010163b5d2 -->
+<!-- directory-tree-sha256: 5fe409b27df7d6fe2d4276b41f32748161b0484cd1eae19dbeab9810c149d326 -->

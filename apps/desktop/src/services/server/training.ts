@@ -1,5 +1,6 @@
 import type { TrainingCreateRequest, TrainingPerformance, TrainingModelRuntimeSnapshot, TrainingJob, TrainingSnapshot, TrainingTranscription, RuntimePresetSnapshot } from "@meowlive/contracts";
 import { readServerError, ServerRequestError } from "./responses";
+import { createAuthenticatedFetch } from "./auth";
 
 export interface TrainingClient {
   modelStatus(signal?: AbortSignal): Promise<TrainingModelRuntimeSnapshot>;
@@ -70,7 +71,7 @@ export function readPreset(v: unknown): RuntimePresetSnapshot {
 }
 export function createTrainingClient(options: { baseUrl?: string; fetcher?: typeof fetch; timeoutMs?: number } = {}): TrainingClient {
   const base = (options.baseUrl ?? import.meta.env.VITE_MEOWLIVE_SERVER_URL ?? "http://127.0.0.1:19600").replace(/\/+$/u, "");
-  const fetcher = options.fetcher ?? globalThis.fetch.bind(globalThis);
+  const fetcher = options.fetcher ?? createAuthenticatedFetch(base);
   async function request(path: string, init: RequestInit, signal?: AbortSignal, audio = false): Promise<unknown> {
     signal?.throwIfAborted();
     const ctrl = new AbortController();

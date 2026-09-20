@@ -11,3 +11,11 @@ pub mod speech;
 pub mod voice;
 
 pub mod training;
+
+pub use event::{GiftMetadata, ViewerIdentity, ViewerIdentityKind};
+
+pub mod affinity;
+
+pub mod memory;
+
+pub mod relationships;

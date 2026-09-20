@@ -1,7 +1,8 @@
 use meowlive_protocol::{
-    agent::*, audio::*, control::*, execution::*, launcher::*, live::*, llm::*, model_library::*,
-    obs::*, resources::*, training::*, training_runtime::*,
+    agent::*, audio::*, auth::*, control::*, execution::*, launcher::*, live::*, llm::*,
+    model_library::*, obs::*, resources::*, training::*, training_runtime::*,
 };
+use meowlive_protocol::{companionship, memory, relationships, viewer_merge, viewers};
 use std::{env, fs, path::PathBuf, process::ExitCode};
 use ts_rs::TS;
 
@@ -9,6 +10,42 @@ fn main() -> ExitCode {
     let path =
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../packages/contracts/src/index.ts");
     let types = [
+        viewer_merge::MergeViewerSummary::decl(),
+        viewer_merge::ViewerMergePreview::decl(),
+        viewer_merge::ViewerMergePreviewRequest::decl(),
+        viewer_merge::ViewerMergeRequest::decl(),
+        viewer_merge::ViewerMergeOutcome::decl(),
+        relationships::RelationshipEntity::decl(),
+        relationships::RelationshipEvidence::decl(),
+        relationships::ViewerRelationship::decl(),
+        relationships::RelationshipPage::decl(),
+        relationships::RelationshipCreateRequest::decl(),
+        relationships::RelationshipChangeRequest::decl(),
+        relationships::KnowledgeMaintenanceRequest::decl(),
+        relationships::GraphStatus::decl(),
+        companionship::AffinityLedgerEntry::decl(),
+        companionship::GiftLedgerEntry::decl(),
+        companionship::CompanionshipDetail::decl(),
+        companionship::AffinityAdjustmentRequest::decl(),
+        companionship::AffinityReversalRequest::decl(),
+        companionship::GiftConfirmationRequest::decl(),
+        companionship::AdminMutationResult::decl(),
+        companionship::CompanionshipHealth::decl(),
+        companionship::ReceiptProblem::decl(),
+        memory::MemoryEvidence::decl(),
+        memory::ViewerMemory::decl(),
+        memory::MemoryPage::decl(),
+        memory::MemoryMutationRequest::decl(),
+        memory::MemoryJobsStatus::decl(),
+        AdminSessionRequest::decl(),
+        AdminSessionStatus::decl(),
+        AdminSessionToken::decl(),
+        viewers::ViewerAlias::decl(),
+        viewers::ViewerIdentity::decl(),
+        viewers::ViewerSummary::decl(),
+        viewers::PersistedViewerEvent::decl(),
+        viewers::ViewerPage::decl(),
+        viewers::ViewerEventPage::decl(),
         LlmSettings::decl(),
         LlmSettingsSnapshot::decl(),
         LlmSettingsRequest::decl(),
@@ -52,12 +89,19 @@ fn main() -> ExitCode {
         VtsHotkey::decl(),
         ObsOperation::decl(),
         ObsSnapshot::decl(),
+        ObsSettingsSnapshot::decl(),
+        ObsSettingsRequest::decl(),
         DesktopResourceOperation::decl(),
         DesktopResourceResult::decl(),
         LiveConnectionPhase::decl(),
         LiveConnectionSnapshot::decl(),
+        LiveSettingsSnapshot::decl(),
+        LiveSettingsRequest::decl(),
         AgentSettings::decl(),
         EventPayload::decl(),
+        ViewerIdentityKind::decl(),
+        ViewerIdentityInput::decl(),
+        GiftMetadataInput::decl(),
         LiveEventInput::decl(),
         EventBatchRequest::decl(),
         EventBatchResult::decl(),
@@ -71,6 +115,7 @@ fn main() -> ExitCode {
         SpeechStatus::decl(),
         SpeechSnapshot::decl(),
         ServerStatus::decl(),
+        ServerHealth::decl(),
         ErrorResponse::decl(),
         ExecutionStatus::decl(),
         ExecutionReceipt::decl(),
@@ -84,6 +129,11 @@ fn main() -> ExitCode {
         meowlive_protocol::PROTOCOL_VERSION
     ));
     for declaration in types {
+        let declaration = declaration
+            .lines()
+            .map(str::trim_end)
+            .collect::<Vec<_>>()
+            .join("\n");
         output.push_str(&format!("export {declaration}\n\n"));
     }
     if env::args().any(|arg| arg == "--check") {

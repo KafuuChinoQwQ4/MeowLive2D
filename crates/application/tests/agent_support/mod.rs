@@ -10,7 +10,9 @@ pub fn chat(id: &str, at: u64) -> LiveEvent {
         id: id.into(),
         source: "simulator".into(),
         viewer: "小猫".into(),
+        viewer_identity: None,
         occurred_at_ms: at,
+        gift_metadata: None,
         kind: EventKind::Chat {
             text: format!("你好 {id}"),
         },
@@ -57,5 +59,16 @@ pub fn speech(id: &str, status: SpeechStatus) -> SpeechTask {
         voice_id: VoiceId::new("default").unwrap(),
         status,
         error: None,
+    }
+}
+
+pub fn stable_gift(id: &str, at: u64, count: u32) -> LiveEvent {
+    LiveEvent {
+        viewer_identity: Some(meowlive_domain::event::ViewerIdentity {
+            namespace: "room:1".into(),
+            kind: meowlive_domain::event::ViewerIdentityKind::OpenId,
+            external_id: "viewer:1".into(),
+        }),
+        ..gift(id, at, count)
     }
 }

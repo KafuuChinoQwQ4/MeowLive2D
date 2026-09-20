@@ -11,7 +11,7 @@ llm/  # 云端及本地 LLM 的协议适配
 ├── mod.rs  # 模型协议适配。兼容同一协议的云端与本地服务复用实现，其他协议独立添加。
 ├── multi_provider.rs  # OpenAI Responses、Anthropic Messages、Gemini 与兼容聊天的协议适配
 ├── openai_compatible.rs  # 非流式 Chat Completions 传输、认证、响应大小与临时错误分类
-├── prompt.rs  # 跨 LLM 协议共享的结构化 Agent 提示与输入校验
+├── prompt.rs  # 跨 LLM 协议共享的事件回复与主动发言提示隔离及输入校验
 └── response.rs  # LLM 文本决策内容与 OpenAI 聊天响应的严格校验
 ```
 
@@ -19,4 +19,4 @@ llm/  # 云端及本地 LLM 的协议适配
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 8b7d9cac093a6df6c21895669554768046069beffdc598163024503a77f8631b -->
+<!-- directory-tree-sha256: ba6c6921cd1b1583168ef766ba7d461242c8fcac9e4633d2a76a5bba76fdb3d0 -->

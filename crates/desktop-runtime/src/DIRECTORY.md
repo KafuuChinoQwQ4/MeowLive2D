@@ -35,18 +35,19 @@ src/  # 播放、连接、口型、VTS、OBS 与模型导入的执行源码
 │   └── envelope.rs  # 按经过时间执行开闭口平滑与静音复位的纯计算器
 ├── obs/  # OBS 本地连接配置与校验
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   └── config.rs  # OBS 本机地址、密码环境变量名与整次操作超时校验
+│   ├── config.rs  # OBS 本机 WebSocket 连接、兼容环境变量和私有设置路径校验
+│   └── settings.rs  # 执行端 OBS 设置私有文件读写、凭据保留清除及公开状态脱敏
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 ├── assets.rs  # 本机 Live2D 模型包校验、安装、枚举及删除能力导出
 ├── audio.rs  # 音频设备边界、播放事件与设备输出能量观测接口
 ├── avatar.rs  # VTube Studio 独立连接入口、配置与可观察状态导出
 ├── cli.rs  # 桌面客户端配置加载、服务重连、VTS 组装与限时退出入口
 ├── config.rs  # 执行客户端连接、缓冲、VTS 与口型配置校验及路径解析
-├── connection.rs  # 主动双 WebSocket 配对、控制优先接收与断线清理
+├── connection.rs  # 携带独立设备凭据连接主服务、接收控制音频及回传播放回执
 ├── host.rs  # Tauri 与 CLI 共用的可取消执行宿主及退出清理
 ├── lib.rs  # Windows 执行库：与 Tauri 和 React 解耦，生命周期由桌面进程管理。
 ├── lip_sync.rs  # 设备输出口型的配置、平滑器与观察后端导出
-├── obs.rs  # OBS v5 鉴权、有界状态查询、场景录制控制与状态读回
+├── obs.rs  # 使用本机面板设置的 OBS WebSocket v5 鉴权、场景切换及录制控制
 ├── playback.rs  # 播放状态机、代次取消、乱序校验与设备回执
 ├── presentation.rs  # 桌面口型驱动生命周期与角色参数切换组装
 └── resource_control.rs  # 桌面模型导入列举删除、VTS 加载热键与 OBS 控制执行
@@ -65,4 +66,4 @@ src/  # 播放、连接、口型、VTS、OBS 与模型导入的执行源码
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: a97805695f8a448b8180efe9a41a0fbd8e03c9362c1ba56c911679697d97a593 -->
+<!-- directory-tree-sha256: 55d3139ce073cea394b7cb1893673f23aa07bc011e8001c80c91428ab872942d -->

@@ -15,7 +15,7 @@ use tokio::{
 };
 use tokio_tungstenite::{
     MaybeTlsStream, WebSocketStream, connect_async_with_config,
-    tungstenite::{Message, protocol::WebSocketConfig},
+    tungstenite::{Message, client::IntoClientRequest, protocol::WebSocketConfig},
 };
 
 type Socket = WebSocketStream<MaybeTlsStream<TcpStream>>;
@@ -47,18 +47,49 @@ pub fn audio_url(origin: &str, session_id: &str, bridge_id: &str) -> Result<Stri
     Ok(url.into())
 }
 
-async fn connect(url: &str, maximum: usize, duration: Duration) -> Result<Socket, String> {
+async fn connect(
+    url: &str,
+    maximum: usize,
+    duration: Duration,
+    token: Option<&str>,
+) -> Result<Socket, String> {
     let config = WebSocketConfig::default()
         .max_message_size(Some(maximum))
         .max_frame_size(Some(maximum));
+    let mut request = url
+        .into_client_request()
+        .map_err(|_| "invalid WebSocket request")?;
+    if let Some(token) = token {
+        let mut header = format!("Bearer {token}")
+            .parse::<tokio_tungstenite::tungstenite::http::HeaderValue>()
+            .map_err(|_| "invalid device credential")?;
+        header.set_sensitive(true);
+        request.headers_mut().insert("authorization", header);
+    }
     let (socket, _) = timeout(
         duration,
-        connect_async_with_config(url, Some(config), false),
+        connect_async_with_config(request, Some(config), false),
     )
     .await
     .map_err(|_| "WebSocket connect timed out")?
     .map_err(|error| error.to_string())?;
     Ok(socket)
+}
+
+fn read_device_token(path: Option<&std::path::Path>) -> Result<Option<String>, String> {
+    use std::io::Read;
+    let Some(path) = path else {
+        return Ok(None);
+    };
+    let mut content = String::new();
+    std::fs::File::open(path)
+        .and_then(|f| f.take(1025).read_to_string(&mut content))
+        .map_err(|_| "cannot read private device credential")?;
+    let token = content.trim();
+    if !(32..=512).contains(&token.len()) || !token.bytes().all(|b| b.is_ascii_graphic()) {
+        return Err("invalid private device credential".into());
+    }
+    Ok(Some(token.to_owned()))
 }
 
 async fn send<S: AsyncRead + AsyncWrite + Unpin>(
@@ -96,10 +127,12 @@ pub async fn run_once_with_mouth<B: AudioBackend>(
     mouth: Option<crate::presentation::MouthControl>,
 ) -> Result<(), String> {
     let duration = Duration::from_millis(config.handshake_timeout_ms);
+    let device_token = read_device_token(config.device_token_file.as_deref())?;
     let mut control = connect(
         socket_url(&config.server_url, "/ws/control")?.as_str(),
         65_536,
         duration,
+        device_token.as_deref(),
     )
     .await?;
     send(
@@ -134,6 +167,7 @@ pub async fn run_once_with_mouth<B: AudioBackend>(
         &audio_url(&config.server_url, &session_id, &bridge_id)?,
         MAX_AUDIO_FRAME_BYTES,
         duration,
+        device_token.as_deref(),
     )
     .await?;
     run_paired_resources(
