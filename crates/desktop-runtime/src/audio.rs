@@ -2,6 +2,7 @@
 
 use meowlive_protocol::audio::AudioFormat;
 
+pub mod buffer;
 pub mod conversion;
 pub mod meter;
 mod simulated;

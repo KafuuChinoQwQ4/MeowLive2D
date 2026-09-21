@@ -267,9 +267,27 @@
 .model-empty { display: grid; justify-items: center; text-align: center; align-content: center; min-height: 220px; padding: 24px; gap: 12px; color: #87677b; }
 .model-empty > span { font-size: 35px; color: #c899b4; }
 .model-empty p { font-size: 12px; max-width: 380px; line-height: 1.8; }
-.model-search { display: grid; grid-template-columns: minmax(0, 1fr) 180px; gap: 14px; margin-bottom: 20px; }
+.model-search { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 14px; margin-bottom: 20px; }
+.model-purpose-filter { grid-template-columns: minmax(0, 320px); }
 .studio-shell .model-search label { margin: 0; font-size: 11px; color: #967588; }
 .model-search input, .model-search select { display: block; margin-top: 7px; }
+.studio-shell .model-search select { appearance: none; min-height: 41px; padding-right: 36px; color: #794861; border-color: #e5c7d7; background: linear-gradient(45deg, transparent 50%, #a76b89 50%) right 19px center / 5px 5px no-repeat, linear-gradient(135deg, #a76b89 50%, transparent 50%) right 14px center / 5px 5px no-repeat, linear-gradient(120deg, #fffafd, #fbeaf2); box-shadow: inset 0 1px 0 #fff; }
+.studio-shell .model-search select:hover { border-color: #ca91ad; }
+.studio-shell .model-search :is(option, optgroup) { background: #fff8fc; color: #794861; }
+@supports (appearance: base-select) {
+  .studio-shell .model-search select.model-scope-select, .studio-shell .model-scope-select::picker(select) { appearance: base-select; }
+  .studio-shell .model-search .model-scope-select { display: flex; align-items: center; padding-right: 14px; background: linear-gradient(120deg, #fffafd, #fbeaf2); }
+  .studio-shell .model-scope-select::picker-icon { color: #a76b89; }
+  .studio-shell .model-scope-select::picker(select) { border: 1px solid #e5c7d7; border-radius: 12px; padding: 6px; margin-top: 6px; background: #fff8fc; box-shadow: 0 12px 30px #89516e20; }
+  .studio-shell .model-scope-select option { padding: 9px 12px; border-radius: 7px; font-size: 12px; }
+  .studio-shell .model-scope-select option:is(:hover, :checked) { background: #f7dfeb; color: #8e4165; }
+  .studio-shell .model-scope-select optgroup { padding: 5px; font-size: 11px; }
+}
+.model-catalog-groups { display: grid; gap: 28px; }
+.model-catalog-group + .model-catalog-group { padding-top: 24px; border-top: 1px solid #efdbe4; }
+.model-category-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 15px; padding: 14px 16px; border: 1px solid #efdbe4; border-radius: 11px; background: var(--studio-wash); }
+.model-category-heading h3 { margin: 0; color: #794861; font-size: 14px; }
+.model-category-heading p { margin-top: 5px; color: #967588; font-size: 12px; line-height: 1.6; }
 .model-catalog-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .model-catalog-card { display: flex; flex-direction: column; padding: 19px; border: 1px solid #efdbe4; border-radius: 12px; background: var(--studio-surface); box-shadow: 0 5px 18px #9c527b08, inset 0 1px 0 #fff; min-width: 0; }
 .model-card-title h3 { margin: 0; overflow-wrap: anywhere; color: #70465e; font-size: 14px; }
@@ -298,7 +316,7 @@
   .model-environment-details span { font-size: 11px; }
   .model-tabs { gap: 3px; margin-bottom: 18px; padding-bottom: 13px; }
   .studio-shell .model-tabs button { font-size: 10px; padding: 7px 8px; }
-  .model-search { grid-template-columns: minmax(0, 1fr) 130px; gap: 10px; }
+  .model-search { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .model-local-card { flex-direction: column; align-items: stretch; padding: 15px; gap: 12px; }
   .model-local-card button { align-self: flex-start; }
   .model-catalog-card { padding: 16px; }

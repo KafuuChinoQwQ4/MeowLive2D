@@ -15,4 +15,4 @@ model-library/  # 前端访问启动管理器语音模型能力的服务适配�
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 642b8c4c602851942bd1bece0efd2397c34c6d4013afedb82a1f7ce9d062bd24 -->
+<!-- directory-tree-sha256: 82c516dc313267afea9d180ea6819ab41e5fc05079604c736401416387f6bba3 -->

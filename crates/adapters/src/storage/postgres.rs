@@ -534,6 +534,8 @@ fn event_type(kind: &EventKind) -> &'static str {
     match kind {
         EventKind::Chat { .. } => "chat",
         EventKind::Gift { .. } => "gift",
+        EventKind::SuperChat { .. } => "super_chat",
+        EventKind::RoomEnter => "room_enter",
     }
 }
 
@@ -541,6 +543,18 @@ fn event_payload(event: &LiveEvent) -> Value {
     let mut payload = match &event.kind {
         EventKind::Chat { text } => json!({ "text": text }),
         EventKind::Gift { name, count } => json!({ "name": name, "count": count }),
+        EventKind::SuperChat {
+            text,
+            amount_cny,
+            start_at_ms,
+            end_at_ms,
+        } => json!({
+            "text": text,
+            "amount_cny": amount_cny,
+            "start_at_ms": start_at_ms,
+            "end_at_ms": end_at_ms
+        }),
+        EventKind::RoomEnter => json!({}),
     };
     if let Some(identity) = &event.viewer_identity {
         payload["viewer_identity"] = json!({
@@ -579,6 +593,33 @@ fn payload_kind(event_type: String, payload: &Value) -> Result<EventKind, Viewer
                 .map_err(|_| ViewerStoreError::new("stored gift payload is invalid")),
             _ => Err(ViewerStoreError::new("stored gift payload is invalid")),
         },
+        "super_chat" => {
+            let invalid = || ViewerStoreError::new("stored super chat payload is invalid");
+            let text = payload
+                .get("text")
+                .and_then(Value::as_str)
+                .ok_or_else(invalid)?;
+            let amount_cny = payload
+                .get("amount_cny")
+                .and_then(Value::as_u64)
+                .and_then(|amount| u32::try_from(amount).ok())
+                .ok_or_else(invalid)?;
+            let start_at_ms = payload
+                .get("start_at_ms")
+                .and_then(Value::as_u64)
+                .ok_or_else(invalid)?;
+            let end_at_ms = payload
+                .get("end_at_ms")
+                .and_then(Value::as_u64)
+                .ok_or_else(invalid)?;
+            Ok(EventKind::SuperChat {
+                text: text.into(),
+                amount_cny,
+                start_at_ms,
+                end_at_ms,
+            })
+        }
+        "room_enter" => Ok(EventKind::RoomEnter),
         _ => Err(ViewerStoreError::new("stored event type is invalid")),
     }
 }
@@ -759,3 +800,93 @@ fn database_error(_error: sqlx::Error) -> ViewerStoreError {
 mod relationships;
 
 mod viewer_merge;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stored_super_chat_retains_amount_text_and_active_period() {
+        let kind = payload_kind(
+            "super_chat".into(),
+            &json!({
+                "text": "请介绍今天的主题",
+                "amount_cny": 30,
+                "start_at_ms": 1_700_000_000_000_u64,
+                "end_at_ms": 1_700_000_060_000_u64
+            }),
+        );
+        assert_eq!(
+            kind.unwrap(),
+            EventKind::SuperChat {
+                text: "请介绍今天的主题".into(),
+                amount_cny: 30,
+                start_at_ms: 1_700_000_000_000,
+                end_at_ms: 1_700_000_060_000,
+            }
+        );
+    }
+
+    #[test]
+    fn stored_room_entry_does_not_require_chat_or_gift_fields() {
+        let kind = payload_kind("room_enter".into(), &json!({}));
+        assert_eq!(kind.unwrap(), EventKind::RoomEnter);
+    }
+
+    #[test]
+    fn event_payload_keeps_sc_money_and_times_separate_from_gifts() {
+        let mut event = LiveEvent {
+            id: "sc-1".into(),
+            source: "bilibili".into(),
+            viewer: "Alice".into(),
+            viewer_identity: None,
+            occurred_at_ms: 1_700_000_000_000,
+            gift_metadata: None,
+            kind: EventKind::SuperChat {
+                text: "请介绍今天的主题".into(),
+                amount_cny: 30,
+                start_at_ms: 1_700_000_000_000,
+                end_at_ms: 1_700_000_060_000,
+            },
+        };
+        assert_eq!(event_type(&event.kind), "super_chat");
+        assert_eq!(
+            event_payload(&event),
+            json!({
+                "text": "请介绍今天的主题",
+                "amount_cny": 30,
+                "start_at_ms": 1_700_000_000_000_u64,
+                "end_at_ms": 1_700_000_060_000_u64,
+            })
+        );
+        event.kind = EventKind::RoomEnter;
+        assert_eq!(event_type(&event.kind), "room_enter");
+        assert_eq!(event_payload(&event), json!({}));
+    }
+
+    #[test]
+    fn stored_super_chat_rejects_missing_or_non_integer_fields() {
+        let base = json!({
+            "text": "hello",
+            "amount_cny": 30,
+            "start_at_ms": 1_700_000_000_000_u64,
+            "end_at_ms": 1_700_000_060_000_u64,
+        });
+        for field in ["text", "amount_cny", "start_at_ms", "end_at_ms"] {
+            let mut payload = base.clone();
+            payload.as_object_mut().unwrap().remove(field);
+            assert!(payload_kind("super_chat".into(), &payload).is_err());
+        }
+        for (field, value) in [
+            ("amount_cny", json!(-1)),
+            ("amount_cny", json!(30.5)),
+            ("amount_cny", json!(u64::MAX)),
+            ("start_at_ms", json!(-1)),
+            ("end_at_ms", json!("later")),
+        ] {
+            let mut payload = base.clone();
+            payload[field] = value;
+            assert!(payload_kind("super_chat".into(), &payload).is_err());
+        }
+    }
+}

@@ -27,4 +27,4 @@ live/  # 直播源连接、事件标准化与模拟输入
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 8da0f4102c5b8cd4089ca17e20ff6b5c5a54b0e96a31615e0d41c0eb46b1840f -->
+<!-- directory-tree-sha256: 3c5437d91c55032027b7c38e8ad38fd1daeedb2c699416212330b58fba4a5d7e -->

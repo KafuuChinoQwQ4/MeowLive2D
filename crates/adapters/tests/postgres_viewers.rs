@@ -1,4 +1,5 @@
 use meowlive_adapters::storage::postgres::PostgresViewerEventStore;
+use meowlive_application::ports::companionship::CompanionshipStore;
 use meowlive_application::ports::viewers::ViewerEventStore;
 use meowlive_domain::event::{
     EventKind, GiftMetadata, LiveEvent, ViewerIdentity, ViewerIdentityKind,
@@ -41,6 +42,108 @@ fn chat(
             text: "hello".into(),
         },
     }
+}
+
+#[tokio::test]
+#[ignore = "requires dedicated PostgreSQL and MEOWLIVE_TEST_DATABASE_URL"]
+async fn super_chat_and_room_entry_round_trip_without_gift_accounting() {
+    let database_url = std::env::var("MEOWLIVE_TEST_DATABASE_URL")
+        .expect("MEOWLIVE_TEST_DATABASE_URL must point at the dedicated MeowLive2D PostgreSQL");
+    let store = PostgresViewerEventStore::connect(&database_url)
+        .await
+        .unwrap();
+    let scope_id = format!("postgres-superchat-{}", uuid::Uuid::new_v4());
+    let super_chat = LiveEvent {
+        id: "bilibili:99:sc:12345".into(),
+        source: "bilibili".into(),
+        viewer: "Alice".into(),
+        viewer_identity: Some(ViewerIdentity {
+            namespace: "bilibili:global".into(),
+            kind: ViewerIdentityKind::Uid,
+            external_id: "42".into(),
+        }),
+        occurred_at_ms: 1_700_000_000_000,
+        gift_metadata: None,
+        kind: EventKind::SuperChat {
+            text: "请介绍今天的主题".into(),
+            amount_cny: 30,
+            start_at_ms: 1_700_000_000_000,
+            end_at_ms: 1_700_000_060_000,
+        },
+    };
+    let entry = LiveEvent {
+        id: "bilibili:99:enter-1".into(),
+        occurred_at_ms: 1_700_000_000_100,
+        kind: EventKind::RoomEnter,
+        ..super_chat.clone()
+    };
+    let outcomes = store
+        .accept_events(
+            &scope_id,
+            "session-sc",
+            &[super_chat.clone(), entry],
+            1_700_000_000_200,
+        )
+        .await
+        .expect("SC and room entry must persist under the migrated constraint");
+    assert_eq!(outcomes.len(), 2);
+    assert!(outcomes.iter().all(|outcome| !outcome.duplicate));
+    let viewer_id = outcomes[0].viewer_id.as_deref().unwrap();
+    assert_eq!(outcomes[1].viewer_id.as_deref(), Some(viewer_id));
+
+    let reopened = PostgresViewerEventStore::connect(&database_url)
+        .await
+        .unwrap();
+    let duplicate = reopened
+        .accept_events(
+            &scope_id,
+            "session-sc-reopened",
+            &[super_chat],
+            1_700_000_000_300,
+        )
+        .await
+        .unwrap();
+    assert!(duplicate[0].duplicate);
+    assert_eq!(duplicate[0].viewer_id.as_deref(), Some(viewer_id));
+
+    let events = reopened.list_events(&scope_id, 10, 0).await.unwrap();
+    assert_eq!(events.len(), 2);
+    let stored_sc = events
+        .iter()
+        .find(|event| event.event_id == "bilibili:99:sc:12345")
+        .unwrap();
+    assert_eq!(
+        stored_sc.kind,
+        EventKind::SuperChat {
+            text: "请介绍今天的主题".into(),
+            amount_cny: 30,
+            start_at_ms: 1_700_000_000_000,
+            end_at_ms: 1_700_000_060_000,
+        }
+    );
+    assert_eq!(stored_sc.gift_metadata, None);
+    assert_eq!(
+        events
+            .iter()
+            .find(|event| event.event_id == "bilibili:99:enter-1")
+            .unwrap()
+            .kind,
+        EventKind::RoomEnter
+    );
+    let companionship = reopened
+        .detail(&scope_id, viewer_id, 20)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(
+        companionship.gifts.is_empty(),
+        "SC must not become a gift receipt"
+    );
+    assert_eq!(
+        companionship.affinity_milli, 0,
+        "SC amount must not grant implicit gift scores"
+    );
+    cleanup_scope(&database_url, &scope_id).await;
 }
 
 #[tokio::test]

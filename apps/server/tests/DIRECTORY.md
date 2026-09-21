@@ -30,6 +30,7 @@ tests/  # 主服务配置、HTTP、桥接与完整播报集成测试
 ├── agent_retries.rs  # 模型临时错误分类和有限重试次数的集成测试
 ├── agent_runtime.rs  # 模拟事件单次回复到设备播放完成、冷却后不重播及断线未知状态集成测试
 ├── agent_settings.rs  # Agent 设置持久保存、配置隔离、并发一致性与失败保留测试
+├── agent_tools_e2e.rs  # 原生流式模型、网页检索、后续决策、播放回执和用量集成测试
 ├── bridge_handshake.rs  # 协议版本、唯一执行端与双连接配对测试
 ├── configuration.rs  # 示例配置兼容及无效参数拒绝测试
 ├── http_api.rs  # 状态、播报输入与停止接口测试
@@ -42,7 +43,12 @@ tests/  # 主服务配置、HTTP、桥接与完整播报集成测试
 ├── live_process.rs  # 真实主服务进程的直播凭据组装、默认不连接与公开响应脱敏测试
 ├── live_runtime.rs  # 受控平台礼物与重复帧经真实适配器、Agent、语音和静音设备完成回执的联调测试
 ├── live_settings.rs  # 直播面板配置持久化、热生效、凭据保留清除、请求校验与真实重启测试
+├── llm_models.rs  # 模型目录 HTTP 获取、草稿不落盘、所选模型连通测试、密钥隔离及请求限流回归
 ├── llm_profile.rs  # LLM 协议组装、私有配置持久化、重启加载及 HTTP 验证
+├── llm_reasoning.rs  # 推理预览认证、档位映射、预算校验、配置重载和实际连接请求测试
+├── llm_runtime_http.rs  # 运行配置读写、密钥脱敏和管理鉴权测试
+├── llm_runtime_metering.rs  # 模型用量快照、取消错误、换段及重启持久化测试
+├── llm_runtime_store.rs  # 价格、日期过滤、密钥持久化、损坏恢复和配置并发测试
 ├── m5_config.rs  # 本地预设地址资源上限及训练配置约束测试
 ├── obs_http.rs  # OBS 控制及私有设置 HTTP 参数、执行端桥接和脱敏结果测试
 ├── request_origin.rs  # HTTP 来源拒绝和无副作用保障测试
@@ -53,6 +59,7 @@ tests/  # 主服务配置、HTTP、桥接与完整播报集成测试
 ├── resources_runtime.rs  # 面板经真实桌面执行库到受控 VTS 的角色、热键与停止链路测试
 ├── runtime_loop.rs  # 真实服务与独立桌面运行时的静音播放集成测试
 ├── speech_delivery.rs  # PCM 下发、设备回执门控及独立停止通道测试
+├── superchat_runtime.rs  # 真实直播接收链路的 SC 金额正文和长时效、进房延迟及组合语音集成测试
 ├── synthesis_cancellation.rs  # 合成停止、断线未知与重连不重播集成测试
 ├── training_http.rs  # 训练配置、音色版本删除与当前选择清理、存储故障的 HTTP 测试
 ├── training_models.rs  # 受控 HTTP 验证模型开关及无需开启训练的默认推理流程
@@ -74,4 +81,4 @@ tests/  # 主服务配置、HTTP、桥接与完整播报集成测试
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: ad1766caf42b78b60157229908f3507c0de030e5cb2b4b50e39d6f330191ae81 -->
+<!-- directory-tree-sha256: 2beac8df614b6cb341debff6fae2968cd98de960ce7bab00e90ebafce9bb4119 -->

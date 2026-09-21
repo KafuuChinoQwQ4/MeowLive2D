@@ -1,5 +1,6 @@
 use crate::state::AppState;
-use meowlive_application::ports::llm::{AgentDecision, DecisionRequest, LanguageModel, LlmError};
+#[cfg(test)]
+use meowlive_application::ports::llm::{AgentDecision, DecisionRequest, LanguageModel};
 use std::time::Duration;
 
 pub async fn run_agent(state: AppState) {
@@ -53,10 +54,7 @@ pub async fn run_agent(state: AppState) {
         let result = tokio::select! {
             biased;
             _=cancel.cancelled()=>continue,
-            result=tokio::time::timeout(Duration::from_secs(state.config.llm.timeout_seconds),
-                decide(model.as_ref(),work.request,state.config.llm.max_retries))=> {
-                result.unwrap_or_else(|_|Err(LlmError::new("LLM 决策超时",false)))
-            },
+            result=super::runtime::decide(&state,model.as_ref(),work.request,state.config.llm.max_retries)=>result,
         };
         let resources = state.resources.clone();
         let voice_id =
@@ -122,7 +120,10 @@ pub async fn run_agent(state: AppState) {
                             );
                             continue;
                         }
-                        if let Err(error) = inner.queue.enqueue(&speech_id, prepared.text, voice_id)
+                        if let Err(error) =
+                            inner
+                                .queue
+                                .enqueue_broadcast(&speech_id, prepared.text, voice_id)
                         {
                             inner
                                 .agent
@@ -152,22 +153,6 @@ pub async fn run_agent(state: AppState) {
             Err(error) => inner.agent.fail(work.id, error.message, now),
         }
     }
-}
-
-async fn decide(
-    model: &dyn LanguageModel,
-    request: DecisionRequest,
-    max_retries: u32,
-) -> Result<AgentDecision, LlmError> {
-    for attempt in 0..=max_retries {
-        match model.decide(request.clone()).await {
-            Err(error) if error.retryable && attempt < max_retries => {
-                tokio::time::sleep(Duration::from_millis(100)).await
-            }
-            result => return result,
-        }
-    }
-    unreachable!("each final attempt returns its result")
 }
 
 #[cfg(test)]

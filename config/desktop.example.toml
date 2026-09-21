@@ -1,6 +1,7 @@
 # 由 meowlive-client 读取；Windows 到 WSL 的地址依据本机网络调整。
 server_url = "http://127.0.0.1:19600"
-max_buffer_samples = 5760000
+# 输入 PCM16 上限 32 MiB；Windows 重采样输出按需分配，实际排队 f32 音频上限 128 MiB。
+max_buffer_samples = 16777216
 handshake_timeout_ms = 5000
 reconnect_delay_ms = 2000
 # 主服务启用 auth 时填写仅用于执行端的凭据文件；相对于本配置所在目录。

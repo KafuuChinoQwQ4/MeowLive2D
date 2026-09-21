@@ -57,7 +57,7 @@ async fn event_batch_is_validated_atomically_and_replay_ids_are_deduplicated() {
 #[tokio::test]
 async fn saving_settings_pauses_and_stop_clears_pending_events() {
     let state = state();
-    let settings =
+    let mut settings =
         json!({"persona":"温柔猫咪","topic":"游戏","proactive_enabled":true,"cooldown_ms":1000});
     let (code, snapshot) = request(
         router(state.clone()),
@@ -67,6 +67,8 @@ async fn saving_settings_pauses_and_stop_clears_pending_events() {
     )
     .await;
     assert_eq!(code, 200);
+    settings["interaction"] =
+        serde_json::to_value(meowlive_protocol::agent::InteractionSettings::default()).unwrap();
     assert_eq!(snapshot["settings"], settings);
     assert_eq!(snapshot["paused"], true);
     let event = json!({"id":"gift-1","source":"simulator","viewer":"观众","kind":{"type":"gift","name":"花","count":2}});

@@ -73,7 +73,7 @@ fn completed_associations_are_selected_only_and_drained_once() {
     let done = a.take_completed();
     assert_eq!(done.len(), 1);
     assert_eq!(done[0].events[0].id, "a");
-    assert_eq!(done[0].assistant, "你好呀");
+    assert_eq!(done[0].assistant, "小猫说：你好 a。你好呀");
     a.sync_speech(&speech("s", SpeechStatus::Completed), 0);
     assert!(a.take_completed().is_empty());
 }

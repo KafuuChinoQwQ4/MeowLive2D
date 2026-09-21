@@ -5,6 +5,7 @@ pub struct AgentSettings {
     pub topic: String,
     pub proactive_enabled: bool,
     pub cooldown_ms: u64,
+    pub interaction: super::InteractionSettings,
 }
 impl Default for AgentSettings {
     fn default() -> Self {
@@ -13,11 +14,13 @@ impl Default for AgentSettings {
             topic: String::new(),
             proactive_enabled: false,
             cooldown_ms: 30_000,
+            interaction: super::InteractionSettings::default(),
         }
     }
 }
 impl AgentSettings {
     pub fn validate(&self) -> Result<(), String> {
+        self.interaction.validate()?;
         validate_text("persona", &self.persona, 2000, false)?;
         validate_text("topic", &self.topic, 200, true)?;
         if !(1000..=3_600_000).contains(&self.cooldown_ms) {

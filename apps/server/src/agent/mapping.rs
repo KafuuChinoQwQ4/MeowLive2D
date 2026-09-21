@@ -4,6 +4,44 @@ use meowlive_domain::event::{
 };
 use meowlive_protocol::agent as dto;
 
+pub(crate) fn interaction(
+    value: dto::InteractionSettings,
+) -> meowlive_application::agent::InteractionSettings {
+    use meowlive_application::agent::{ChatReadMode, InteractionSettings};
+    InteractionSettings {
+        chat_read_mode: match value.chat_read_mode {
+            dto::ChatReadMode::Auto => ChatReadMode::Auto,
+            dto::ChatReadMode::All => ChatReadMode::All,
+            dto::ChatReadMode::Selective => ChatReadMode::Selective,
+        },
+        welcome_enabled: value.welcome_enabled,
+        busy_chat_count: value.busy_chat_count,
+        busy_enter_count: value.busy_enter_count,
+        busy_pending_count: value.busy_pending_count,
+        welcome_cooldown_ms: value.welcome_cooldown_ms,
+        welcome_viewer_cooldown_ms: value.welcome_viewer_cooldown_ms,
+    }
+}
+
+pub(crate) fn interaction_dto(
+    value: meowlive_application::agent::InteractionSettings,
+) -> dto::InteractionSettings {
+    use meowlive_application::agent::ChatReadMode;
+    dto::InteractionSettings {
+        chat_read_mode: match value.chat_read_mode {
+            ChatReadMode::Auto => dto::ChatReadMode::Auto,
+            ChatReadMode::All => dto::ChatReadMode::All,
+            ChatReadMode::Selective => dto::ChatReadMode::Selective,
+        },
+        welcome_enabled: value.welcome_enabled,
+        busy_chat_count: value.busy_chat_count,
+        busy_enter_count: value.busy_enter_count,
+        busy_pending_count: value.busy_pending_count,
+        welcome_cooldown_ms: value.welcome_cooldown_ms,
+        welcome_viewer_cooldown_ms: value.welcome_viewer_cooldown_ms,
+    }
+}
+
 pub(super) fn event(input: dto::LiveEventInput, now_ms: u64) -> LiveEvent {
     LiveEvent {
         id: input.id,
@@ -27,6 +65,18 @@ pub(super) fn event(input: dto::LiveEventInput, now_ms: u64) -> LiveEvent {
         kind: match input.kind {
             dto::EventPayload::Chat { text } => EventKind::Chat { text },
             dto::EventPayload::Gift { name, count } => EventKind::Gift { name, count },
+            dto::EventPayload::SuperChat {
+                text,
+                amount_cny,
+                start_at_ms,
+                end_at_ms,
+            } => EventKind::SuperChat {
+                text,
+                amount_cny,
+                start_at_ms,
+                end_at_ms,
+            },
+            dto::EventPayload::RoomEnter => EventKind::RoomEnter,
         },
     }
 }
@@ -45,6 +95,7 @@ pub(super) fn snapshot(view: AgentView, configured: bool, connected: bool) -> dt
             topic: view.settings.topic,
             proactive_enabled: view.settings.proactive_enabled,
             cooldown_ms: view.settings.cooldown_ms as u32,
+            interaction: interaction_dto(view.settings.interaction),
         },
         events: view
             .events
@@ -59,6 +110,18 @@ pub(super) fn snapshot(view: AgentView, configured: bool, connected: bool) -> dt
                     kind: match r.event.kind {
                         EventKind::Chat { text } => dto::EventPayload::Chat { text },
                         EventKind::Gift { name, count } => dto::EventPayload::Gift { name, count },
+                        EventKind::SuperChat {
+                            text,
+                            amount_cny,
+                            start_at_ms,
+                            end_at_ms,
+                        } => dto::EventPayload::SuperChat {
+                            text,
+                            amount_cny,
+                            start_at_ms,
+                            end_at_ms,
+                        },
+                        EventKind::RoomEnter => dto::EventPayload::RoomEnter,
                     },
                 },
                 status: match r.status {

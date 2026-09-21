@@ -1,6 +1,7 @@
 import type { ViewerEventPage, ViewerPage } from "@meowlive/contracts";
 import { createAuthenticatedFetch } from "./auth";
 import { readServerError, ServerRequestError } from "./responses";
+import { isEventPayload } from "./eventPayload";
 
 const PAGE_SIZE = 50;
 
@@ -21,7 +22,8 @@ function validViewer(v: unknown): boolean {
 }
 function validEvent(e: unknown): boolean {
   return isRecord(e) && ["event_id", "source", "viewer"].every(k => typeof e[k] === "string") && isRecord(e.kind)
-    && ((e.kind.type === "chat" && typeof e.kind.text === "string") || (e.kind.type === "gift" && typeof e.kind.name === "string" && Number.isSafeInteger(e.kind.count)))
+    && isEventPayload(e.kind)
+    && (e.gift_metadata === undefined || e.gift_metadata === null || e.kind.type === "gift")
     && (e.gift_metadata === null || e.gift_metadata === undefined || (isRecord(e.gift_metadata) && (e.gift_metadata.price === undefined || e.gift_metadata.price === null || Number.isSafeInteger(e.gift_metadata.price))));
 }
 

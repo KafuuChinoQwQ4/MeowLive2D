@@ -1,13 +1,10 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import type { EventBatchRequest, EventBatchResult, LiveEventInput } from "@meowlive/contracts";
+import type { EventBatchRequest, EventBatchResult, EventPayload, LiveEventInput } from "@meowlive/contracts";
 import { useFeedback } from "../../app/feedback/OperationFeedback";
+import { eventPayloadError } from "../../services/server/eventPayload";
 
-type EventMode = "chat" | "gift";
-
-function positiveUint32(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 0xffff_ffff;
-}
+type EventMode = EventPayload["type"];
 
 function readReplay(value: string): { events?: LiveEventInput[]; error?: string } {
   let parsed: unknown;
@@ -26,15 +23,11 @@ function readReplay(value: string): { events?: LiveEventInput[]; error?: string 
       || typeof event.viewer !== "string" || !event.viewer.trim()) {
       return { error: "事件 ID、来源和观众名称不能为空。" };
     }
-    if (typeof event.kind !== "object" || event.kind === null) return { error: "事件载荷无效。" };
-    const kind = event.kind as Record<string, unknown>;
-    if (kind.type === "chat") {
-      if (typeof kind.text !== "string" || !kind.text.trim()) return { error: "聊天内容不能为空。" };
-    } else if (kind.type === "gift") {
-      if (typeof kind.name !== "string" || !kind.name.trim()) return { error: "礼物名称不能为空。" };
-      if (!positiveUint32(kind.count)) return { error: "礼物数量必须是正整数。" };
-    } else {
-      return { error: "事件类型必须是 chat 或 gift。" };
+    const error = eventPayloadError(event.kind);
+    if (error) return { error };
+    if (event.gift_metadata !== undefined && event.gift_metadata !== null
+      && (event.kind as Record<string, unknown>).type !== "gift") {
+      return { error: "礼物元数据只能附加在 gift 事件上。" };
     }
   }
   return { events: parsed as LiveEventInput[] };
@@ -62,18 +55,27 @@ export function EventSimulator({ disabled, onSubmit }: {
   const [chatText, setChatText] = useState("");
   const [giftName, setGiftName] = useState("");
   const [giftCount, setGiftCount] = useState("1");
+  const [superChatText, setSuperChatText] = useState("");
+  const [superChatAmount, setSuperChatAmount] = useState("30");
+  const [superChatSeconds, setSuperChatSeconds] = useState("60");
   const [replay, setReplay] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
 
   async function submitSimulated(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    let error: string | null = null;
-    if (!viewer.trim()) error = "观众名称不能为空。";
-    if (mode === "chat" && !chatText.trim()) error = "聊天内容不能为空。";
-    const count = Number(giftCount);
-    if (mode === "gift" && !giftName.trim()) error = "礼物名称不能为空。";
-    if (mode === "gift" && !positiveUint32(count)) error = "礼物数量必须是正整数。";
+    const now = Date.now();
+    let kind: EventPayload;
+    switch (mode) {
+      case "chat": kind = { type: "chat", text: chatText.trim() }; break;
+      case "gift": kind = { type: "gift", name: giftName.trim(), count: Number(giftCount) }; break;
+      case "super_chat": kind = { type: "super_chat", text: superChatText.trim(), amount_cny: Number(superChatAmount), start_at_ms: now, end_at_ms: now + Number(superChatSeconds) * 1_000 }; break;
+      case "room_enter": kind = { type: "room_enter" }; break;
+    }
+    let error = !viewer.trim() ? "观众名称不能为空。" : eventPayloadError(kind);
+    if (mode === "super_chat" && (!Number.isSafeInteger(Number(superChatSeconds)) || Number(superChatSeconds) < 1)) {
+      error = "SC 有效时长必须是正整数秒。";
+    }
     if (error) {
       setValidationError(error);
       notices.error("模拟事件检查失败", error);
@@ -81,14 +83,12 @@ export function EventSimulator({ disabled, onSubmit }: {
     }
     setValidationError(null);
     setFeedback(null);
-    const kind = mode === "chat"
-      ? { type: "chat" as const, text: chatText.trim() }
-      : { type: "gift" as const, name: giftName.trim(), count };
     const result = await onSubmit({ events: [{ id: crypto.randomUUID(), source: "simulator", viewer: viewer.trim(), kind }] });
     if (!result) return;
     setFeedback(resultMessage(result));
     if (mode === "chat") setChatText("");
-    else setGiftName("");
+    if (mode === "gift") setGiftName("");
+    if (mode === "super_chat") setSuperChatText("");
   }
 
   async function submitReplay(event: FormEvent<HTMLFormElement>) {
@@ -110,20 +110,35 @@ export function EventSimulator({ disabled, onSubmit }: {
   return (
     <section className="panel event-simulator" aria-labelledby="event-simulator-heading">
       <h2 id="event-simulator-heading">直播事件</h2>
+      <p className="muted">这里发送模拟事件，用于检查播报和互动策略。SC 金额单位为人民币元。</p>
       <div className="segmented-control" aria-label="模拟事件类型">
         <button type="button" aria-pressed={mode === "chat"} onClick={() => setMode("chat")}>聊天</button>
         <button type="button" aria-pressed={mode === "gift"} onClick={() => setMode("gift")}>礼物</button>
+        <button type="button" aria-pressed={mode === "super_chat"} onClick={() => setMode("super_chat")}>SC</button>
+        <button type="button" aria-pressed={mode === "room_enter"} onClick={() => setMode("room_enter")}>进房</button>
       </div>
       <form noValidate onSubmit={(event) => { void submitSimulated(event); }}>
         <label htmlFor="event-viewer">观众名称</label>
         <input id="event-viewer" value={viewer} disabled={disabled} onChange={(event) => setViewer(event.target.value)} />
-        {mode === "chat" ? <>
+        {mode === "chat" && <>
           <label htmlFor="event-chat">聊天内容</label>
           <textarea id="event-chat" rows={4} value={chatText} disabled={disabled} onChange={(event) => setChatText(event.target.value)} />
-        </> : <div className="compact-fields">
+        </>}
+        {mode === "gift" && <div className="compact-fields">
           <div><label htmlFor="event-gift-name">礼物名称</label><input id="event-gift-name" value={giftName} disabled={disabled} onChange={(event) => setGiftName(event.target.value)} /></div>
           <div><label htmlFor="event-gift-count">礼物数量</label><input id="event-gift-count" type="number" min="1" step="1" value={giftCount} disabled={disabled} onChange={(event) => setGiftCount(event.target.value)} /></div>
         </div>}
+        {mode === "super_chat" && <>
+          <label htmlFor="event-super-chat">SC 内容</label>
+          <textarea id="event-super-chat" rows={4} value={superChatText} disabled={disabled} onChange={(event) => setSuperChatText(event.target.value)} />
+          <div className="compact-fields">
+            <div><label htmlFor="event-super-chat-amount">SC 金额（元）</label>
+              <input id="event-super-chat-amount" type="number" min="1" max="1000000" step="1" value={superChatAmount} disabled={disabled} onChange={(event) => setSuperChatAmount(event.target.value)} /></div>
+            <div><label htmlFor="event-super-chat-duration">SC 有效时长（秒）</label>
+              <input id="event-super-chat-duration" type="number" min="1" step="1" value={superChatSeconds} disabled={disabled} onChange={(event) => setSuperChatSeconds(event.target.value)} /></div>
+          </div>
+        </>}
+        {mode === "room_enter" && <p className="field-hint">进房事件携带当前昵称；是否欢迎由 Agent 的互动策略决定。</p>}
         <div className="form-actions"><button className="primary-button" type="submit" disabled={disabled}>发送模拟事件</button></div>
       </form>
 

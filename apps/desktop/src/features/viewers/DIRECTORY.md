@@ -23,4 +23,4 @@ viewers/  # 管理员只读观众档案与持久事件查询页面
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 66a7a1f55bebf9ba1ba65815aaa0c27b6a82a1e824b57ddd025a06b26d6cf0e2 -->
+<!-- directory-tree-sha256: 429e767c794c25463caf6d6e422ca796f651fd790dc6f27d3d829f5736945601 -->

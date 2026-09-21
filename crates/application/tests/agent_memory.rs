@@ -57,12 +57,18 @@ fn selected_context_is_bounded_without_including_skipped_events() {
     }
     agent.set_paused(false, 0);
     let work = agent.begin(0).unwrap();
-    let selected: Vec<_> = ids.iter().map(String::as_str).collect();
+    // A complete original plus the reply must fit in one broadcast; other
+    // long messages stay pending and must not leak into completed history.
+    assert_eq!(work.request.events.len(), 1);
+    let selected = [work.request.events[0].id.as_str()];
     agent
         .resolve(work.id, answer(&selected), "speech".into(), 0)
         .unwrap();
     agent.sync_speech(&speech("speech", SpeechStatus::Completed), 0);
     agent.submit(chat("next", 1000), 1000).unwrap();
     let next = agent.begin(1000).unwrap();
-    assert_eq!(next.request.history[0].user.chars().count(), 4000);
+    assert_eq!(
+        next.request.history[0].user,
+        format!("小猫：{}", "猫".repeat(500))
+    );
 }

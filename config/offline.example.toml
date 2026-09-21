@@ -9,13 +9,14 @@ timeout_seconds = 60
 max_response_bytes = 65536
 max_tokens = 512
 json_mode = true
+reasoning_effort = "default" # default / minimal / low / medium / high / xhigh / max / ultra
 max_retries = 0
 
 [speech]
 base_url = "http://127.0.0.1:9880"
 reference_audio = ""
 max_concurrency = 1
-timeout_seconds = 120
+timeout_seconds = 300
 
 [resources]
 directory = "../data/resources"

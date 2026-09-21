@@ -31,7 +31,7 @@ fn rejects_unsafe_or_out_of_bounds_configuration_and_hides_key() {
         config.max_response_bytes = bytes;
         assert!(OpenAiCompatible::new(config).is_err());
     }
-    for tokens in [63, 4097] {
+    for tokens in [63, 65537] {
         let mut config = llm_support::config("http://localhost:1234".into());
         config.max_tokens = tokens;
         assert!(OpenAiCompatible::new(config).is_err());

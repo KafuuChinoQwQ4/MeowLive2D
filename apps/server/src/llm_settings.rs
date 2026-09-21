@@ -1,6 +1,12 @@
 //! 本机 LLM 配置持久化；保存仅影响下次启动，密钥不进入查询 DTO。
 use crate::config::LlmConfig;
-use meowlive_protocol::llm::{LlmSettings, LlmSettingsRequest, LlmSettingsSnapshot};
+use meowlive_adapters::llm::{
+    models::{ModelCatalogConfig, canonical_base_url},
+    multi_provider::ApiFormat,
+};
+use meowlive_protocol::llm::{
+    LlmModelsRequest, LlmSettings, LlmSettingsRequest, LlmSettingsSnapshot,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     io::Write,
@@ -100,28 +106,14 @@ impl LlmSettingsStore {
     fn resolve(&self, request: LlmSettingsRequest) -> Result<LlmConfig, String> {
         let old = self.current()?;
         let settings = request.settings;
-        let same_destination = settings.base_url.trim_end_matches('/')
-            == old.base_url.trim_end_matches('/')
-            && settings.api_format == old.api_format
-            && settings.provider == old.provider;
-        if request.clear_api_key && request.api_key.is_some() {
-            return Err("不能同时提交和清除密钥".into());
-        }
-        let api_key = if request.clear_api_key {
-            None
-        } else if let Some(key) = request.api_key {
-            Some(key)
-        } else if same_destination {
-            old.api_key.or_else(|| {
-                if old.api_key_env.is_empty() {
-                    None
-                } else {
-                    std::env::var(&old.api_key_env).ok()
-                }
-            })
-        } else {
-            None
-        };
+        let api_key = resolve_key(
+            &old,
+            &settings.provider,
+            &settings.api_format,
+            &settings.base_url,
+            request.api_key,
+            request.clear_api_key,
+        )?;
         let config = LlmConfig {
             provider: settings.provider,
             api_format: settings.api_format,
@@ -131,6 +123,7 @@ impl LlmSettingsStore {
             timeout_seconds: u64::from(settings.timeout_seconds),
             max_tokens: settings.max_tokens,
             json_mode: settings.json_mode,
+            reasoning_effort: settings.reasoning_effort,
             api_key,
             api_key_env: String::new(),
             max_retries: if old.mode == "local" {
@@ -146,7 +139,7 @@ impl LlmSettingsStore {
         }
         config.validate()?;
         if !config.is_configured() {
-            return Err("请填写 API 地址和模型名".into());
+            return Err("请填写 API 地址并选择模型".into());
         }
         // Validate headers and adapter configuration before persisting any change.
         crate::bootstrap::build_model(&config)?;
@@ -155,6 +148,63 @@ impl LlmSettingsStore {
     pub async fn candidate(&self, request: LlmSettingsRequest) -> Result<LlmConfig, String> {
         let _edit = self.edits.lock().await;
         self.resolve(request)
+    }
+    pub async fn models_candidate(
+        &self,
+        request: LlmModelsRequest,
+    ) -> Result<ModelCatalogConfig, String> {
+        let _edit = self.edits.lock().await;
+        if request.provider.trim().is_empty()
+            || request.provider.len() > 64
+            || request.provider.chars().any(char::is_control)
+        {
+            return Err("LLM 服务商标识无效".into());
+        }
+        if !matches!(request.mode.as_str(), "cloud" | "local") {
+            return Err("LLM 运行模式无效".into());
+        }
+        let format = request
+            .api_format
+            .parse::<ApiFormat>()
+            .map_err(|_| "LLM API 格式无效")?;
+        let canonical =
+            canonical_base_url(&request.base_url, format).map_err(|error| error.message)?;
+        let supplied_key = request.api_key.is_some();
+        let api_key = resolve_key(
+            &self.current()?,
+            &request.provider,
+            &request.api_format,
+            &request.base_url,
+            request.api_key,
+            request.clear_api_key,
+        )?;
+        if request.mode == "local" {
+            let local = request
+                .base_url
+                .parse::<axum::http::Uri>()
+                .ok()
+                .and_then(|uri| uri.host().map(str::to_owned))
+                .is_some_and(|host| {
+                    host.trim_matches(['[', ']'])
+                        .parse::<std::net::IpAddr>()
+                        .is_ok_and(|address| address.is_loopback())
+                });
+            if !local || api_key.is_some() {
+                return Err("本地模型列表须使用回环 IP 地址且不携带 API 密钥".into());
+            }
+        }
+        Ok(ModelCatalogConfig {
+            // Reusing a saved credential must stay inside its original API prefix.
+            // An explicit models endpoint disables discovery's version probes.
+            base_url: if !supplied_key && api_key.is_some() {
+                format!("{canonical}/models")
+            } else {
+                request.base_url
+            },
+            api_key,
+            api_format: format,
+            timeout: std::time::Duration::from_secs(30),
+        })
     }
     pub async fn save(&self, request: LlmSettingsRequest) -> Result<LlmSettingsSnapshot, String> {
         let _edit = self.edits.lock().await;
@@ -196,6 +246,49 @@ impl LlmSettingsStore {
     }
 }
 
+fn resolve_key(
+    old: &LlmConfig,
+    provider: &str,
+    format: &str,
+    base_url: &str,
+    api_key: Option<String>,
+    clear_api_key: bool,
+) -> Result<Option<String>, String> {
+    if clear_api_key && api_key.is_some() {
+        return Err("不能同时提交和清除密钥".into());
+    }
+    let same_destination = old.provider == provider
+        && old.api_format == format
+        && format.parse::<ApiFormat>().ok().is_some_and(|kind| {
+            match (
+                canonical_base_url(&old.base_url, kind),
+                canonical_base_url(base_url, kind),
+            ) {
+                (Ok(old), Ok(new)) => old == new,
+                _ => false,
+            }
+        });
+    let key = if clear_api_key {
+        None
+    } else if api_key.is_some() {
+        api_key
+    } else if same_destination {
+        old.api_key.clone().or_else(|| {
+            (!old.api_key_env.is_empty())
+                .then(|| std::env::var(&old.api_key_env).ok())
+                .flatten()
+        })
+    } else {
+        None
+    };
+    if key.as_ref().is_some_and(|key| {
+        key.trim().is_empty() || key.len() > 4096 || key.chars().any(char::is_control)
+    }) {
+        return Err("LLM API 密钥无效".into());
+    }
+    Ok(key)
+}
+
 fn public_settings(config: &LlmConfig) -> LlmSettings {
     LlmSettings {
         provider: config.provider.clone(),
@@ -206,5 +299,6 @@ fn public_settings(config: &LlmConfig) -> LlmSettings {
         timeout_seconds: config.timeout_seconds as u32,
         max_tokens: config.max_tokens,
         json_mode: config.json_mode,
+        reasoning_effort: config.reasoning_effort.clone(),
     }
 }

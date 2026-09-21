@@ -3,6 +3,7 @@
  * markers cover selected weights and loading configuration, not proof that an engine can run.
  * GPT G2PWModel.zip is extracted separately by the launcher into GPT_SoVITS/text/G2PWModel.
  */
+import { ASR_MODELS } from './model-catalog-asr.mjs';
 export const MODEL_CATALOG = [
   {
     "id": "gpt-sovits-v2",
@@ -906,5 +907,6 @@ export const MODEL_CATALOG = [
       "tokenizer_config.json",
       "vocab.json"
     ]
-  }
+  },
+  ...ASR_MODELS
 ];

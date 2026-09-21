@@ -1,6 +1,8 @@
 //! 独立桌面客户端的显式 TOML 配置与资源上限校验。
 
-use crate::{avatar::VtsConfig, lip_sync::LipSyncConfig, obs::ObsConfig};
+use crate::{
+    audio::buffer::MAX_INPUT_SAMPLES, avatar::VtsConfig, lip_sync::LipSyncConfig, obs::ObsConfig,
+};
 use serde::Deserialize;
 
 #[derive(Clone, Debug, Deserialize)]
@@ -23,7 +25,7 @@ impl Default for ClientConfig {
             model_directory: None,
             device_token_file: None,
             server_url: "http://127.0.0.1:19600".into(),
-            max_buffer_samples: 5_760_000,
+            max_buffer_samples: MAX_INPUT_SAMPLES,
             handshake_timeout_ms: 5_000,
             reconnect_delay_ms: 2_000,
             vtube_studio: VtsConfig::default(),
@@ -67,7 +69,7 @@ impl ClientConfig {
                     .into(),
             );
         }
-        if !(1..=11_520_000).contains(&config.max_buffer_samples)
+        if !(1..=MAX_INPUT_SAMPLES).contains(&config.max_buffer_samples)
             || !(100..=60_000).contains(&config.handshake_timeout_ms)
             || !(100..=60_000).contains(&config.reconnect_delay_ms)
         {

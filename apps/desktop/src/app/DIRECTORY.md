@@ -21,7 +21,7 @@ app/  # React 根页面组装与全局样式
 │   ├── ResourcesPanel.lifecycle.test.tsx  # 资源读取与操作的卸载取消测试
 │   ├── ResourcesPanel.preview.test.tsx  # 音色试听状态跟踪、执行端断线、失败与重试的前端回归测试
 │   ├── ResourcesPanel.regressions.test.tsx  # 当前角色重新加载与安装成功后刷新失败回归
-│   ├── ResourcesPanel.tsx  # 组装角色与音色面板并显示资源操作状态
+│   ├── ResourcesPanel.tsx  # 组装角色音色面板与同服务本地转写客户端并显示资源操作状态
 │   ├── index.ts  # 资源管理页面公共入口
 │   └── useResourcesController.ts  # 角色音色快照、资源删除及桌面模型管理共享控制器
 ├── AdminGate.test.tsx  # 认证启停、登录退出、错误重试与过期响应竞态回归测试
@@ -52,4 +52,4 @@ app/  # React 根页面组装与全局样式
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 611192860964192a9046bc218d6946e2b485b6dbb95292e2afff426d0f0fd5bb -->
+<!-- directory-tree-sha256: e10101428b369a3ec0ea8f61b9b0587adf58d4d4c298f3e47dba0911581bf2be -->

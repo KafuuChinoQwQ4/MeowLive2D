@@ -49,4 +49,22 @@ pub type DecisionFuture<'a> =
     Pin<Box<dyn Future<Output = Result<AgentDecision, LlmError>> + Send + 'a>>;
 pub trait LanguageModel: Send + Sync {
     fn decide(&self, request: DecisionRequest) -> DecisionFuture<'_>;
+
+    fn turn(
+        &self,
+        request: DecisionRequest,
+        _options: super::llm_runtime::ModelOptions,
+    ) -> super::llm_runtime::ModelTurnFuture<'_> {
+        Box::pin(async move {
+            self.decide(request)
+                .await
+                .map(|decision| super::llm_runtime::ModelTurn {
+                    decision: Some(decision),
+                    tool_calls: Vec::new(),
+                    continuation: None,
+                    usage: super::llm_runtime::TokenUsage::default(),
+                    finish_reason: "stop".into(),
+                })
+        })
+    }
 }

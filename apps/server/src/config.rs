@@ -83,9 +83,28 @@ impl Default for SpeechConfig {
             prompt_language: "zh".into(),
             text_language: "zh".into(),
             max_concurrency: 1,
-            timeout_seconds: 120,
-            max_audio_bytes: 8 * 1024 * 1024,
+            timeout_seconds: 300,
+            max_audio_bytes: 32 * 1024 * 1024,
         }
+    }
+}
+
+#[cfg(test)]
+mod speech_limits_tests {
+    use super::AppConfig;
+
+    #[test]
+    fn default_limits_allow_a_four_minute_32khz_mono_wav() {
+        let config = AppConfig::default();
+        let wav_bytes = 44 + 32_000 * 240 * 2;
+        assert!(config.speech.max_audio_bytes >= wav_bytes);
+        assert_eq!(config.speech.timeout_seconds, 300);
+    }
+
+    #[test]
+    fn speech_configuration_accepts_32_mib_and_rejects_larger_wav_limits() {
+        assert!(AppConfig::parse("[speech]\nmax_audio_bytes=33554432").is_ok());
+        assert!(AppConfig::parse("[speech]\nmax_audio_bytes=33554433").is_err());
     }
 }
 
@@ -110,6 +129,7 @@ impl AppConfig {
             config.agent.topic = agent.topic;
             config.agent.proactive_enabled = agent.proactive_enabled;
             config.agent.cooldown_ms = agent.cooldown_ms;
+            config.agent.interaction = crate::agent::mapping::interaction_dto(agent.interaction);
         }
         config.validate()?;
         Ok(config)
@@ -149,9 +169,9 @@ impl AppConfig {
         }
         if self.speech.max_concurrency != 1
             || !(1..=300).contains(&self.speech.timeout_seconds)
-            || !(1024..=8 * 1024 * 1024).contains(&self.speech.max_audio_bytes)
+            || !(1024..=32 * 1024 * 1024).contains(&self.speech.max_audio_bytes)
         {
-            return Err("首版语音并发必须为 1，超时为 1..300 秒，WAV 上限为 1 KiB..8 MiB".into());
+            return Err("首版语音并发必须为 1，超时为 1..300 秒，WAV 上限为 1 KiB..32 MiB".into());
         }
         for origin in &self.server.allowed_origins {
             let uri = origin

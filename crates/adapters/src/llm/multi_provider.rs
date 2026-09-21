@@ -1,4 +1,4 @@
-//! 多提供商非流式 LLM 协议适配器。
+//! 多提供商决策与原生运行层适配器。
 
 use std::str::FromStr;
 
@@ -41,6 +41,7 @@ impl FromStr for ApiFormat {
 
 pub struct MultiProvider {
     inner: Provider,
+    runtime: super::runtime::RuntimeProvider,
 }
 
 enum Provider {
@@ -56,9 +57,11 @@ struct NativeProvider {
 
 impl MultiProvider {
     pub fn new(config: LlmConfig, format: ApiFormat) -> Result<Self, LlmError> {
+        let runtime = super::runtime::RuntimeProvider::new(config.clone(), format)?;
         if format == ApiFormat::OpenaiChat {
             return Ok(Self {
                 inner: Provider::OpenaiChat(OpenAiCompatible::new(config)?),
+                runtime,
             });
         }
 
@@ -77,6 +80,7 @@ impl MultiProvider {
             .build()
             .map_err(|_| LlmError::new("could not initialize the LLM HTTP client", false))?;
         Ok(Self {
+            runtime,
             inner: Provider::Native(NativeProvider {
                 client,
                 config,
@@ -87,6 +91,14 @@ impl MultiProvider {
 }
 
 impl LanguageModel for MultiProvider {
+    fn turn(
+        &self,
+        request: DecisionRequest,
+        options: meowlive_application::ports::llm_runtime::ModelOptions,
+    ) -> meowlive_application::ports::llm_runtime::ModelTurnFuture<'_> {
+        Box::pin(self.runtime.turn(request, options))
+    }
+
     fn decide(&self, request: DecisionRequest) -> DecisionFuture<'_> {
         match &self.inner {
             Provider::OpenaiChat(adapter) => adapter.decide(request),

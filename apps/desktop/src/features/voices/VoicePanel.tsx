@@ -4,6 +4,10 @@ import type { VoiceCreateRequest, VoiceProfile } from "@meowlive/contracts";
 import type { VoiceController } from "./types";
 import { useFeedback } from "../../app/feedback/OperationFeedback";
 import { AUDIO_FILE_ACCEPT, prepareAudioFile } from "../../services/audio";
+import { createTrainingClient, type TrainingClient } from "../../services/server/training";
+import { useReferenceTranscription } from "./useReferenceTranscription";
+
+const defaultTranscriber = createTrainingClient();
 
 const languages = [
   ["zh", "中文"], ["en", "英语"], ["ja", "日语"], ["ko", "韩语"], ["yue", "粤语"], ["auto", "自动识别"],
@@ -46,13 +50,14 @@ function VoiceRow({ voice, active, busy, controller }: {
   </li>;
 }
 
-export function VoicePanel({ controller }: { controller: VoiceController }) {
+export function VoicePanel({ controller, transcriber = defaultTranscriber }: { controller: VoiceController; transcriber?: Pick<TrainingClient, "transcribe"> }) {
   const feedback = useFeedback();
-  const [metadata, setMetadata] = useState<VoiceCreateRequest>({ name: "", language: "zh", reference_text: "" });
+  const [metadata, setMetadata] = useState<Pick<VoiceCreateRequest, "name" | "language">>({ name: "", language: "zh" });
   const audioGeneration = useRef(0);
   useEffect(() => () => { audioGeneration.current += 1; }, []);
   const input = useRef<HTMLInputElement>(null);
   const [audio, setAudio] = useState<File | null>(null);
+  const transcription = useReferenceTranscription(audio, metadata.language, transcriber);
   const [audioSummary, setAudioSummary] = useState<string | null>(null);
   const [audioError, setAudioError] = useState<string | null>(null);
   const [preparingAudio, setPreparingAudio] = useState(false);
@@ -60,8 +65,8 @@ export function VoicePanel({ controller }: { controller: VoiceController }) {
   const busy = controller.pendingAction !== null;
   const validMetadata = metadata.name.trim().length > 0
     && metadata.name.trim().length <= 80
-    && metadata.reference_text.trim().length > 0
-    && Array.from(metadata.reference_text).length <= 500;
+    && transcription.text.trim().length > 0
+    && Array.from(transcription.text).length <= 500;
 
   async function chooseAudio(file: File | undefined) {
     const generation = ++audioGeneration.current;
@@ -75,7 +80,7 @@ export function VoicePanel({ controller }: { controller: VoiceController }) {
       if (generation !== audioGeneration.current) return;
       setAudio(prepared);
       setAudioSummary(`${(info.durationMs / 1_000).toFixed(1)} 秒 · ${info.sampleRate / 1_000} kHz · ${info.channels === 1 ? "单声道" : "双声道"}`);
-      feedback.success("参考音频已准备", `${file.name} 已通过音频检查，请填写音色名称与对应参考文本后上传。`);
+      feedback.success("参考音频已准备", `${file.name} 已通过音频检查，空白参考文本会自动提取，请核对原文后上传。`);
     } catch (error) {
       if (generation !== audioGeneration.current) return;
       setAudioError(error instanceof Error ? error.message : "无法读取音频文件");
@@ -90,10 +95,11 @@ export function VoicePanel({ controller }: { controller: VoiceController }) {
     if (busy) return;
     if (!audio || !validMetadata) { feedback.error("音色检查失败", !audio ? "请先选择并通过检查的参考音频。" : "请填写 1–80 字的音色名称和 1–500 字的参考文本。"); return; }
     const value = await controller.uploadVoice({
-      name: metadata.name.trim(), language: metadata.language, reference_text: metadata.reference_text.trim(),
+      name: metadata.name.trim(), language: metadata.language, reference_text: transcription.text.trim(),
     }, audio);
     if (value) {
-      setMetadata({ name: "", language: "zh", reference_text: "" });
+      setMetadata({ name: "", language: "zh" });
+      transcription.setText("");
       audioGeneration.current += 1;
       if (input.current) input.current.value = "";
       setAudio(null);
@@ -141,9 +147,14 @@ export function VoicePanel({ controller }: { controller: VoiceController }) {
         {languages.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
       </select>
       <label htmlFor="voice-reference">参考文本</label>
-      <textarea id="voice-reference" rows={3} maxLength={500} value={metadata.reference_text} disabled={busy}
-        onChange={(event) => setMetadata((current) => ({ ...current, reference_text: event.target.value }))} />
-      <p className="field-hint">填写录音原文，语言需一致。</p>
+      <textarea id="voice-reference" rows={3} maxLength={500} value={transcription.text} disabled={busy}
+        onChange={(event) => transcription.setText(event.target.value)} />
+      <p className="field-hint">选择音频后自动提取空白参考文本。请核对录音原文，语言需一致；也可手工填写。</p>
+      {!transcription.supported && <p className="field-hint">自动转写前请选择录音的具体语言；也可直接手工填写参考文本。</p>}
+      {transcription.transcribing && <p role="status">正在本地提取参考文本…</p>}
+      {transcription.error && <p className="field-error" role="alert">{transcription.error}。可重试或手工填写。</p>}
+      <button type="button" disabled={!audio || busy || transcription.transcribing || !transcription.supported || !!transcription.text.trim()}
+        onClick={transcription.retry}>提取参考文本</button>
       <label htmlFor="voice-audio">参考音频</label>
       <input ref={input} id="voice-audio" type="file" accept={AUDIO_FILE_ACCEPT} disabled={busy}
         onChange={(event) => { void chooseAudio(event.target.files?.[0]); }} />

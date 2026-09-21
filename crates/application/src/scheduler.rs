@@ -2,7 +2,7 @@
 mod fairness;
 mod selection;
 use crate::agent::{AgentLimits, EventRecord, EventStatus, SubmitOutcome};
-use meowlive_domain::event::LiveEvent;
+use meowlive_domain::event::{EventKind, LiveEvent};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 #[derive(Clone)]
@@ -43,7 +43,7 @@ impl EventScheduler {
     pub fn submit(&mut self, event: LiveEvent, now_ms: u64) -> Result<SubmitOutcome, String> {
         let expires_at_ms = event
             .occurred_at_ms
-            .saturating_add(self.limits.event_ttl_ms);
+            .saturating_add(event.response_ttl_ms(self.limits.event_ttl_ms));
         self.submit_before(event, now_ms, expires_at_ms)
     }
 
@@ -53,7 +53,9 @@ impl EventScheduler {
         now_ms: u64,
         age_ms: u64,
     ) -> Result<SubmitOutcome, String> {
-        let remaining_ms = self.limits.event_ttl_ms.saturating_sub(age_ms);
+        let remaining_ms = event
+            .response_ttl_ms(self.limits.event_ttl_ms)
+            .saturating_sub(age_ms);
         self.submit_before(event, now_ms, now_ms.saturating_add(remaining_ms))
     }
 
@@ -85,7 +87,26 @@ impl EventScheduler {
                 .count()
                 >= self.limits.pending_capacity
         {
-            return Err("pending event capacity exceeded".into());
+            let priority = |kind: &EventKind| match kind {
+                EventKind::RoomEnter => 0,
+                EventKind::Chat { .. } => 1,
+                EventKind::Gift { .. } => 2,
+                EventKind::SuperChat { .. } => 3,
+            };
+            let displaced = self
+                .records
+                .iter_mut()
+                .filter(|row| {
+                    row.status == EventStatus::Pending
+                        && priority(&row.event.kind) < priority(&event.kind)
+                })
+                .min_by_key(|row| (priority(&row.event.kind), row.event.occurred_at_ms));
+            if let Some(row) = displaced {
+                row.status = EventStatus::Skipped;
+                row.error = Some("队列已满，为更高优先级互动让出位置".into());
+            } else {
+                return Err("pending event capacity exceeded".into());
+            }
         }
         // An identity may be reused after bounded dedup eviction; remove its old terminal row.
         self.records.retain(|row| row.event.id != event.id);

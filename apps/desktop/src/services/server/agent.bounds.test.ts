@@ -1,9 +1,10 @@
+import { interactionSettings } from "../../test/agent-fixtures";
 import { expect, it, vi } from "vitest";
 import { createAgentClient } from "./agent";
 import { jsonResponse } from "../../test/server-fixtures";
 
 function snapshot() {
-  return { paused:true,phase:"paused",settings:{persona:"猫咪主播",topic:"",proactive_enabled:false,cooldown_ms:30000},
+  return { paused:true,phase:"paused",settings:{persona:"猫咪主播",topic:"",proactive_enabled:false,cooldown_ms:30000,interaction:{...interactionSettings}},
     events:[{event:{id:"e1",source:"simulator",viewer:"观众",kind:{type:"gift",name:"花",count:1}},status:"pending",speech_id:null,error:null}],
     last_error:null,current_speech_id:null,llm_configured:false,bridge_connected:false };
 }

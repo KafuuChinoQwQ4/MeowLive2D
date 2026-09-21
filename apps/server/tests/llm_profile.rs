@@ -49,6 +49,7 @@ fn request(key: Option<&str>) -> LlmSettingsRequest {
             timeout_seconds: 10,
             max_tokens: 256,
             json_mode: true,
+            reasoning_effort: "default".into(),
         },
         api_key: key.map(str::to_owned),
         clear_api_key: false,
@@ -187,7 +188,7 @@ async fn connection_test_uses_draft_without_saving_it_or_echoing_provider_text()
     let upstream = tokio::spawn(async move {
         axum::serve(listener, Router::new().route("/v1/chat/completions", post(|Json(body): Json<Value>| async move {
             assert_eq!(body["model"], "draft-model");
-            Json(json!({"choices":[{"finish_reason":"stop","message":{"content":"{\"reply_to\":[],\"text\":\"private-provider-output\",\"topic\":null}"}}]}))
+            Json(json!({"choices":[{"finish_reason":"stop","message":{"role":"assistant","content":"{\"reply_to\":[],\"text\":\"private-provider-output\",\"topic\":null}"}}]}))
         }))).await.unwrap();
     });
     let fixture = Fixture::new();

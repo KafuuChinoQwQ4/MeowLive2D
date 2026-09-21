@@ -13,7 +13,12 @@ const PAGE_SIZE = 50;
 const defaultClient = createViewerClient();
 
 function eventLabel(event: ViewerEventPage["events"][number]): string {
-  return event.kind.type === "chat" ? event.kind.text : `${event.kind.name} × ${event.kind.count}`;
+  switch (event.kind.type) {
+    case "chat": return event.kind.text;
+    case "gift": return `${event.kind.name} × ${event.kind.count}`;
+    case "super_chat": return `SC · ${event.kind.amount_cny} 元 · ${event.kind.text}`;
+    case "room_enter": return "进入直播间";
+  }
 }
 
 function identityLabel(identity: ViewerPage["viewers"][number]["identities"][number]): string {

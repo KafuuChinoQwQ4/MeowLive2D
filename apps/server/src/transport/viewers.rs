@@ -118,6 +118,18 @@ pub async fn events(
                     meowlive_domain::event::EventKind::Gift { name, count } => {
                         EventPayload::Gift { name, count }
                     }
+                    meowlive_domain::event::EventKind::SuperChat {
+                        text,
+                        amount_cny,
+                        start_at_ms,
+                        end_at_ms,
+                    } => EventPayload::SuperChat {
+                        text,
+                        amount_cny,
+                        start_at_ms,
+                        end_at_ms,
+                    },
+                    meowlive_domain::event::EventKind::RoomEnter => EventPayload::RoomEnter,
                 },
                 gift_metadata: r.gift_metadata.map(|g| GiftMetadataInput {
                     price: g.price,

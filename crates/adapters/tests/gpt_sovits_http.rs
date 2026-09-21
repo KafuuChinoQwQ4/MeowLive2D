@@ -30,6 +30,48 @@ async fn sends_explicit_wav_request_and_decodes_audio() {
 }
 
 #[tokio::test]
+async fn sends_complete_long_superchat_and_reply_to_engine() {
+    let expected = format!(
+        "感谢小猫的30元SC。留言说：{}。{}",
+        "原".repeat(500),
+        "答".repeat(500)
+    );
+    let expected_body = expected.clone();
+    let mut samples = vec![1_234; 32_000 * 240];
+    samples[0] = 100;
+    *samples.last_mut().unwrap() = -100;
+    let wav = axum::body::Bytes::from(support::wav(&samples, 1));
+    assert!(wav.len() > 8 * 1024 * 1024);
+    assert!(samples.len() > 5_760_000);
+    let (url, task) = http::engine(Router::new().route(
+        "/tts",
+        post(move |Json(body): Json<Value>| {
+            let expected_body = expected_body.clone();
+            let wav = wav.clone();
+            async move {
+                assert_eq!(body["text"], expected_body);
+                wav
+            }
+        }),
+    ))
+    .await;
+    let mut request = http::request();
+    request.text = expected;
+    let mut config = http::config(url);
+    config.max_audio_bytes = 32 * 1024 * 1024;
+    config.timeout = std::time::Duration::from_secs(300);
+    let audio = GptSovits::new(config)
+        .unwrap()
+        .synthesize(request)
+        .await
+        .unwrap();
+    assert_eq!(audio.sample_rate, 32_000);
+    assert_eq!(audio.channels, 1);
+    assert_eq!(audio.samples, samples);
+    task.abort();
+}
+
+#[tokio::test]
 async fn rejects_engine_failure_without_exposing_body() {
     let (url, task) = http::engine(Router::new().route(
         "/tts",

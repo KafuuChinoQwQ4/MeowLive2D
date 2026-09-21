@@ -2,13 +2,18 @@ mod agent_support;
 use agent_support::stable_gift as gift;
 use agent_support::{answer, chat, ignore};
 use meowlive_application::agent::{
-    AgentLimits, AgentSession, AgentSettings, EventStatus, SubmitOutcome,
+    AgentLimits, AgentSession, AgentSettings, ChatReadMode, EventStatus, InteractionSettings,
+    SubmitOutcome,
 };
 
 fn limited() -> AgentSession {
     AgentSession::new(
         AgentSettings {
             cooldown_ms: 1000,
+            interaction: InteractionSettings {
+                chat_read_mode: ChatReadMode::Selective,
+                ..Default::default()
+            },
             ..AgentSettings::default()
         },
         AgentLimits {

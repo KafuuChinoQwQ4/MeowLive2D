@@ -65,6 +65,7 @@ impl AppState {
             topic: settings.topic,
             proactive_enabled: settings.proactive_enabled,
             cooldown_ms: u64::from(settings.cooldown_ms),
+            interaction: crate::agent::mapping::interaction(settings.interaction),
         };
         settings.validate().map_err(invalid)?;
         let mut inner = self.inner.lock().await;
@@ -157,7 +158,15 @@ impl AppState {
             unscheduled: None,
         };
         for event in events {
-            match staged.submit(event, now).map_err(|message| {
+            let age = if matches!(
+                event.kind,
+                meowlive_domain::event::EventKind::SuperChat { .. }
+            ) {
+                crate::viewers::event_age_ms(&event, crate::viewers::utc_ms())
+            } else {
+                0
+            };
+            match staged.submit_with_age(event, now, age).map_err(|message| {
                 if message.contains("capacity") || message.contains("full") {
                     ApiError::new(
                         StatusCode::TOO_MANY_REQUESTS,

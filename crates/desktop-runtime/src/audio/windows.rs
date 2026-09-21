@@ -2,6 +2,7 @@
 
 use super::{
     AudioBackend, BackendEvent,
+    buffer::{ConvertedBuffer, MAX_INPUT_SAMPLES},
     conversion::PcmConverter,
     meter::{OutputMeter, SampleEnergy},
     timing::DeviceClock,
@@ -12,7 +13,6 @@ use cpal::{
 };
 use meowlive_protocol::audio::AudioFormat;
 use std::{
-    collections::VecDeque,
     sync::{
         Arc, Mutex,
         atomic::{AtomicBool, Ordering},
@@ -21,8 +21,7 @@ use std::{
 };
 
 struct Buffer {
-    samples: VecDeque<f32>,
-    maximum: usize,
+    samples: ConvertedBuffer,
     ended: bool,
     clock: DeviceClock,
     meter: OutputMeter,
@@ -38,7 +37,7 @@ pub struct DeviceBackend {
 
 impl DeviceBackend {
     pub fn new(maximum: usize) -> Result<Self, String> {
-        if maximum == 0 || maximum > 11_520_000 {
+        if !(1..=MAX_INPUT_SAMPLES).contains(&maximum) {
             return Err("invalid device buffer capacity".into());
         }
         cpal::default_host()
@@ -136,19 +135,13 @@ impl AudioBackend for DeviceBackend {
             .map_err(|error| error.to_string())?;
         let config: cpal::StreamConfig = supported.clone().into();
         let converter = PcmConverter::new(format, config.sample_rate.0, config.channels)?;
-        let frames = self.maximum.div_ceil(usize::from(format.channels));
-        let maximum = ((frames as u64 * u64::from(config.sample_rate.0))
-            .div_ceil(u64::from(format.sample_rate)) as usize
-            + 1)
-        .checked_mul(usize::from(config.channels))
-        .ok_or("device buffer size overflow")?;
-        // Conversion expands samples; cap the actual device allocation as well.
-        if maximum > 33_554_432 {
-            return Err("converted Windows device buffer exceeds 128 MiB".into());
-        }
         let buffer = Arc::new(Mutex::new(Buffer {
-            samples: VecDeque::with_capacity(maximum),
-            maximum,
+            samples: ConvertedBuffer::new(
+                self.maximum,
+                format,
+                config.sample_rate.0,
+                config.channels,
+            )?,
             ended: false,
             clock: DeviceClock::default(),
             meter: OutputMeter::default(),
@@ -187,11 +180,10 @@ impl AudioBackend for DeviceBackend {
             .ok_or("Windows device buffer is unavailable")?
             .lock()
             .map_err(|_| "Windows device buffer lock poisoned")?;
-        if buffer.ended || converted.len() > buffer.maximum.saturating_sub(buffer.samples.len()) {
-            return Err("Windows device buffer capacity exceeded or already ended".into());
+        if buffer.ended {
+            return Err("Windows device buffer already ended".into());
         }
-        buffer.samples.extend(converted);
-        Ok(())
+        buffer.samples.extend(converted)
     }
 
     fn finish(&mut self) -> Result<(), String> {

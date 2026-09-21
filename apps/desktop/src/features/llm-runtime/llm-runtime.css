@@ -1,0 +1,37 @@
+.llm-runtime { display: grid; gap: 16px; min-width: 0; }
+.runtime-details, .runtime-activity { min-width: 0; }
+.runtime-details > summary { color: #89516f; cursor: pointer; font-weight: 700; }
+.runtime-details[open] > summary { margin-bottom: 18px; }
+.runtime-fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.runtime-fields, .runtime-toggle-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; }
+.runtime-fields label { min-width: 0; margin-top: 16px; }
+.runtime-toggle-grid { margin-bottom: 16px; }
+.runtime-toggle-grid .checkbox-field { margin: 6px 0; }
+.runtime-section-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; overflow-wrap: anywhere; }
+.runtime-section-heading h3, .runtime-subheading { margin: 0; font-size: .95rem; }
+.runtime-section-heading > span { font-size: .8rem; color: #896779; }
+.runtime-price-details, .runtime-record-details { margin-top: 22px; }
+.runtime-price-details > summary, .runtime-record-details > summary { cursor: pointer; color: #89516f; font-weight: 600; }
+.runtime-price-row { min-width: 0; margin: 18px 0; padding: 16px; border: 1px solid #ead3de; border-radius: 12px; background: #fffbfd; }
+.runtime-price-row legend { padding: 0 6px; color: #896779; font-size: .8rem; }
+.runtime-price-row .runtime-remove { margin-top: 14px; }
+.runtime-summary { margin: 22px 0; padding: 18px; border: 1px solid #ead3de; border-radius: 12px; background: #fff6fa; }
+.runtime-summary .runtime-section-heading > strong { color: #97546f; font-size: .9rem; }
+.runtime-token-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin: 18px 0; }
+.runtime-token-grid div { min-width: 0; }
+.runtime-token-grid dt { color: #896779; font-size: .76rem; }
+.runtime-token-grid dd { margin: 6px 0 0; font-size: .92rem; font-weight: 600; overflow-wrap: anywhere; }
+.runtime-group-list, .runtime-call-list, .runtime-tool-list { padding: 0; list-style: none; }
+.runtime-group-list, .runtime-call-list { max-height: 520px; overflow-y: auto; scrollbar-width: thin; }
+.runtime-group-list li, .runtime-call-list li, .runtime-tool-list li { padding: 16px 0; border-bottom: 1px solid #f0dfe7; overflow-wrap: anywhere; }
+.runtime-badge { display: inline-flex; padding: 5px 10px; background: #f9e6ef; color: #89516f; border-radius: 18px; font-size: .8rem; }
+.runtime-cost { color: #89516f; font-size: .82rem; }
+.runtime-sources { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 10px; font-size: .8rem; color: #896779; }
+.runtime-sources a { color: #97546f; overflow-wrap: anywhere; }
+.runtime-settings > .error-banner, .runtime-usage > .error-banner { margin: 16px 0; }
+.runtime-usage .field-hint { overflow-wrap: anywhere; }
+@media (max-width: 620px) {
+  .runtime-fields, .runtime-toggle-grid { grid-template-columns: minmax(0, 1fr); }
+  .runtime-token-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .runtime-price-row, .runtime-summary { padding: 12px; }
+}

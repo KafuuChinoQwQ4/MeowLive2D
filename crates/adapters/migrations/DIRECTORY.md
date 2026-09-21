@@ -14,6 +14,7 @@ migrations/  # PostgreSQL 观众身份与直播事件模式迁移
 ├── 0006_memory_operations.sql  # 记忆任务恢复和向量重建审计迁移
 ├── 0007_viewer_merge.sql  # 身份合并墓碑和原始账本归属审计迁移
 ├── 0008_memory_graph_invalidation.sql  # 记忆失效同事务生成关系墓碑与图同步任务的触发器
+├── 0009_superchat_room_enter_events.sql  # 扩展原始直播事件类型约束以支持醒目留言和进房事件
 └── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 ```
 
@@ -21,4 +22,4 @@ migrations/  # PostgreSQL 观众身份与直播事件模式迁移
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: a9128226ec832a9e88a0b2a4e114ed940c2ab51f99528014167eca8a0b049ead -->
+<!-- directory-tree-sha256: 9fe8837ecfe08a12ed606474a4142099df298b77d6932f68f83bfe3ea65f430d -->

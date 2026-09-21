@@ -4,10 +4,13 @@
 pub mod execution;
 pub mod live_source;
 pub mod llm;
+pub mod llm_runtime;
+pub mod reasoning;
 pub mod speech;
 pub mod storage;
 pub mod training;
 pub mod viewers;
+pub mod web_search;
 
 pub mod companionship;
 

@@ -8,6 +8,36 @@ import { ModelLibraryPanel } from "./ModelLibraryPanel";
 function client(): ModelLibraryClient {
   return { getStatus: vi.fn().mockResolvedValue(modelLibrarySnapshot()), scan: vi.fn().mockResolvedValue(modelLibrarySnapshot()), select: vi.fn().mockResolvedValue(modelLibrarySnapshot()), download: vi.fn().mockResolvedValue(modelLibrarySnapshot()), cancel: vi.fn().mockResolvedValue(modelLibrarySnapshot()) };
 }
+it("shows ASR downloads on the same page and starts only the requested download", async () => {
+  const api = client();
+  const base = modelLibrarySnapshot();
+  vi.mocked(api.getStatus).mockResolvedValue(modelLibrarySnapshot({ catalog: [...base.catalog,
+    { ...base.catalog[0], id: "turbo", purpose: "asr", name: "Whisper large-v3-turbo" },
+    { ...base.catalog[0], id: "sensevoice", purpose: "asr", name: "SenseVoiceSmall", compatibility: "download_only" },
+  ] }));
+  render(<ModelLibraryPanel client={api} token={"a".repeat(64)} onSelected={vi.fn()} />);
+  await userEvent.click(await screen.findByRole("tab", { name: /下载模型/ }));
+  await userEvent.selectOptions(screen.getByRole("combobox", { name: "使用范围" }), "asr");
+  const catalog = screen.getByRole("region", { name: "可下载模型" });
+  expect(within(catalog).getAllByRole("article")).toHaveLength(2);
+  expect(within(catalog).queryByText("GPT-SoVITS v2")).not.toBeInTheDocument();
+  expect(api.download).not.toHaveBeenCalled();
+  const turbo = screen.getByRole("heading", { name: "Whisper large-v3-turbo" }).closest("article")!;
+  await userEvent.click(within(turbo).getByRole("button", { name: "下载权重" }));
+  expect(api.download).toHaveBeenCalledExactlyOnceWith("turbo", "a".repeat(64), expect.any(AbortSignal));
+});
+
+it("keeps TTS selected while choosing the model used for automatic transcription", async () => {
+  const api = client();
+  const base = modelLibrarySnapshot();
+  vi.mocked(api.getStatus).mockResolvedValue(modelLibrarySnapshot({ installed: [...base.installed,
+    { ...base.installed[0], id: "local-turbo", model_id: "turbo", purpose: "asr", name: "Whisper large-v3-turbo", selected: false },
+  ] }));
+  render(<ModelLibraryPanel client={api} token={"a".repeat(64)} onSelected={vi.fn()} />);
+  expect(await screen.findByRole("button", { name: "当前使用" })).toBeDisabled();
+  await userEvent.click(screen.getByRole("button", { name: "用于自动转写" }));
+  expect(api.select).toHaveBeenCalledWith("local-turbo", "a".repeat(64), expect.any(AbortSignal));
+});
 it("shows environment and local model without requiring the main service", async () => {
   const api = client();
   render(<ModelLibraryPanel client={api} token={"a".repeat(64)} onSelected={vi.fn()} />);

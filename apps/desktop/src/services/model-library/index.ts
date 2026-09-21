@@ -14,14 +14,17 @@ const strings = (value: Record<string, unknown>, keys: string[]) => keys.every(k
 const list = (value: unknown, validator: (item: unknown) => boolean) => Array.isArray(value) && value.length <= 256 && value.every(validator);
 const https = (value: unknown) => { if (!string(value)) return false; try { const url = new URL(value); return url.protocol === "https:" && !url.username && !url.password; } catch { return false; } };
 const bytes = (value: unknown) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+const purpose = (value: unknown) => value === "tts" || value === "asr";
 function readSnapshot(value: unknown): ModelLibrarySnapshot {
   if (!object(value) || value.schema_version !== 1 || !(value.selected_id === null || string(value.selected_id))
+    || !(value.asr_selected_id === null || string(value.asr_selected_id))
+    || !(value.asr_error === null || string(value.asr_error))
     || !object(value.environment) || !strings(value.environment, ["kind", "release", "distro", "message"])
     || !["wsl2", "wsl1", "linux", "unknown"].includes(String(value.environment.kind)) || typeof value.environment.ready !== "boolean"
     || !object(value.runtime) || !strings(value.runtime, ["engine_root", "python_path", "message"]) || typeof value.runtime.ready !== "boolean"
     || !list(value.scan_roots, string)
-    || !list(value.installed, item => object(item) && strings(item, ["id", "model_id", "name", "path", "message"]) && typeof item.ready === "boolean" && typeof item.selected === "boolean")
-    || !list(value.catalog, item => object(item) && strings(item, ["id", "name", "languages", "description", "license", "note"]) && https(item.homepage) && https(item.source_url) && ["ready", "download_only"].includes(String(item.compatibility)))
+    || !list(value.installed, item => object(item) && strings(item, ["id", "model_id", "name", "path", "message"]) && purpose(item.purpose) && typeof item.ready === "boolean" && typeof item.selected === "boolean")
+    || !list(value.catalog, item => object(item) && strings(item, ["id", "name", "languages", "description", "license", "note"]) && purpose(item.purpose) && https(item.homepage) && https(item.source_url) && ["ready", "download_only"].includes(String(item.compatibility)))
     || !list(value.downloads, item => object(item) && strings(item, ["id", "model_id", "message", "path"]) && ["queued", "downloading", "completed", "failed", "cancelled"].includes(String(item.state)) && bytes(item.downloaded_bytes) && bytes(item.total_bytes))) {
     throw new ModelLibraryError("环境与模型返回了无效状态，请刷新控制面板。");
   }

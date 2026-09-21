@@ -1,12 +1,14 @@
 """Offline ASR shared by clip review and audio-only training; upstream stays read-only."""
 from contextlib import contextmanager, redirect_stdout
 import gc
+import json
 import os
 from pathlib import Path
 import sys
 import unicodedata
 
 LANGUAGES = {"zh", "en", "ja", "ko", "yue"}
+MODEL_FILES = ("model.bin", "config.json", "tokenizer.json", "preprocessor_config.json")
 
 
 def validate_text(text):
@@ -16,18 +18,43 @@ def validate_text(text):
     return text.strip()
 
 
+def selected_model():
+    path = Path(os.environ.get("MEOWLIVE_ASR_SELECTION") or
+                Path(__file__).resolve().parents[1] / "config/local/asr-model-selection.json")
+    if not path.is_absolute():
+        raise ValueError("语音识别模型选择文件须使用绝对路径")
+    if path.is_symlink():
+        raise ValueError("语音识别模型选择文件不能是符号链接，请在环境与模型重新选择")
+    if not path.exists():
+        return None
+    try:
+        if not path.is_file() or path.stat().st_size > 16384:
+            raise ValueError()
+        value = json.loads(path.read_text())
+        if (value.get("schema") != 1 or not isinstance(value.get("id"), str)
+                or value.get("model_id") not in {"faster-whisper-large-v3-turbo", "faster-whisper-large-v3"}
+                or not isinstance(value.get("path"), str) or not Path(value["path"]).is_absolute()):
+            raise ValueError()
+        return value["path"]
+    except (ValueError, OSError, AttributeError) as error:
+        raise ValueError("语音识别模型选择文件无效，请在环境与模型重新选择") from error
+
+
 def local_model(engine_root, model=None):
-    configured = model or os.environ.get("MEOWLIVE_ASR_MODEL")
-    path = Path(configured) if configured else Path(engine_root) / "tools/asr/models/faster-whisper-large-v3"
+    configured = selected_model() or model or os.environ.get("MEOWLIVE_ASR_MODEL")
+    turbo = Path(__file__).resolve().parents[1] / "data/models/faster-whisper-large-v3-turbo"
+    complete = all((turbo / name).is_file() and (turbo / name).stat().st_size > 0 for name in MODEL_FILES)
+    path = Path(configured) if configured else (turbo if complete else
+                                              Path(engine_root) / "tools/asr/models/faster-whisper-large-v3")
     if not path.is_absolute():
         raise ValueError("本地 ASR 模型须使用绝对目录路径")
     # A missing tokenizer makes faster-whisper fall back to a remote tokenizer,
     # even when its model constructor receives local_files_only=True.
     # Without its preprocessor config, large-v3 silently gets the 80-band
     # extractor default instead of the 128 bands expected by its encoder.
-    for filename in ("model.bin", "config.json", "tokenizer.json", "preprocessor_config.json"):
+    for filename in MODEL_FILES:
         if not (path / filename).is_file() or (path / filename).stat().st_size == 0:
-            raise ValueError(f"本地 ASR 模型缺少 {filename}：{path}；请配置 MEOWLIVE_ASR_MODEL，运行器不会下载模型")
+            raise ValueError(f"本地 ASR 模型缺少 {filename}：{path}；请在环境与模型下载并选择识别模型，运行器不会自动下载")
     return path.resolve(strict=True)
 
 

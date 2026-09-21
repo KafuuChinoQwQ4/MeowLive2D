@@ -1,6 +1,8 @@
 import type { AgentPhase } from "@meowlive/contracts";
 import { createAgentClient } from "../../services/server/agent";
 import type { AgentClient } from "../../services/server/agent";
+import { AgentActivityPanel } from "../llm-runtime/AgentActivityPanel";
+import type { LlmRuntimeClient } from "../../services/server/llm-runtime";
 import { AgentSettingsForm } from "./AgentSettingsForm";
 import { EventHistory } from "./EventHistory";
 import { EventSimulator } from "./EventSimulator";
@@ -14,7 +16,7 @@ const phaseLabels: Record<AgentPhase, string> = {
   speaking: "Agent 正在发言",
 };
 
-export function AgentPanel({ client = defaultClient, pollIntervalMs = 1_000 }: { client?: AgentClient; pollIntervalMs?: number }) {
+export function AgentPanel({ client = defaultClient, runtimeClient, pollIntervalMs = 1_000 }: { client?: AgentClient; runtimeClient?: LlmRuntimeClient; pollIntervalMs?: number }) {
   const controller = useAgentController(client, pollIntervalMs);
   const { status, connectionError, actionError, pendingAction } = controller;
   const phase = status ? (status.paused ? "paused" : status.phase) : null;
@@ -50,6 +52,8 @@ export function AgentPanel({ client = defaultClient, pollIntervalMs = 1_000 }: {
       </div>}
       {status && !status.llm_configured && <p className="availability-note">请先<a href="#llm">前往 LLM 接入</a>，重启主服务后恢复 Agent。</p>}
       {status && status.llm_configured && !status.bridge_connected && <p className="availability-note">请连接桌面执行端，再恢复 Agent。</p>}
+
+      {runtimeClient && <AgentActivityPanel client={runtimeClient} pollIntervalMs={pollIntervalMs} />}
 
       {status ? <>
         <div className="workspace-columns agent-config-grid">

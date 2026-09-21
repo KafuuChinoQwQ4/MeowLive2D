@@ -89,8 +89,8 @@ impl ValidatedConfig {
                 "LLM response size limit must be between 1024 bytes and 1 MiB",
             ));
         }
-        if !(64..=4096).contains(&config.max_tokens) {
-            return Err(config_error("LLM max tokens must be between 64 and 4096"));
+        if !(64..=65536).contains(&config.max_tokens) {
+            return Err(config_error("LLM max tokens must be between 64 and 65536"));
         }
         let api_key = config
             .api_key

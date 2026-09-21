@@ -10,20 +10,82 @@ pub struct AgentSettings {
     pub topic: String,
     pub proactive_enabled: bool,
     pub cooldown_ms: u32,
+    #[serde(default)]
+    pub interaction: InteractionSettings,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[serde(rename_all = "snake_case")]
+pub enum ChatReadMode {
+    #[default]
+    Auto,
+    All,
+    Selective,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[serde(default, deny_unknown_fields)]
+pub struct InteractionSettings {
+    pub chat_read_mode: ChatReadMode,
+    pub welcome_enabled: bool,
+    pub busy_chat_count: u32,
+    pub busy_enter_count: u32,
+    pub busy_pending_count: u32,
+    pub welcome_cooldown_ms: u32,
+    pub welcome_viewer_cooldown_ms: u32,
+}
+impl Default for InteractionSettings {
+    fn default() -> Self {
+        Self {
+            chat_read_mode: ChatReadMode::Auto,
+            welcome_enabled: true,
+            busy_chat_count: 6,
+            busy_enter_count: 3,
+            busy_pending_count: 4,
+            welcome_cooldown_ms: 30_000,
+            welcome_viewer_cooldown_ms: 600_000,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq, TS)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum EventPayload {
-    Chat { text: String },
-    Gift { name: String, count: u32 },
+    Chat {
+        text: String,
+    },
+    Gift {
+        name: String,
+        count: u32,
+    },
+    SuperChat {
+        text: String,
+        amount_cny: u32,
+        #[ts(type = "number")]
+        start_at_ms: u64,
+        #[ts(type = "number")]
+        end_at_ms: u64,
+    },
+    RoomEnter,
 }
 
 #[derive(Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 enum EventPayloadInput {
-    Chat { text: String },
-    Gift { name: String, count: u32 },
+    Chat {
+        text: String,
+    },
+    Gift {
+        name: String,
+        count: u32,
+    },
+    SuperChat {
+        text: String,
+        amount_cny: u32,
+        start_at_ms: u64,
+        end_at_ms: u64,
+    },
+    RoomEnter,
 }
 
 impl<'de> Deserialize<'de> for EventPayload {
@@ -34,6 +96,18 @@ impl<'de> Deserialize<'de> for EventPayload {
         Ok(match EventPayloadInput::deserialize(deserializer)? {
             EventPayloadInput::Chat { text } => Self::Chat { text },
             EventPayloadInput::Gift { name, count } => Self::Gift { name, count },
+            EventPayloadInput::SuperChat {
+                text,
+                amount_cny,
+                start_at_ms,
+                end_at_ms,
+            } => Self::SuperChat {
+                text,
+                amount_cny,
+                start_at_ms,
+                end_at_ms,
+            },
+            EventPayloadInput::RoomEnter => Self::RoomEnter,
         })
     }
 }

@@ -19,11 +19,14 @@ scripts/  # 开发工具、目录用途登记与索引同步检查
 │   ├── log.mjs  # 受管进程日志限量保存、密钥遮盖及常见启动故障识别
 │   ├── log.test.mjs  # 子进程日志跨数据块密钥遮盖与显存错误诊断测试
 │   ├── memory.mjs  # 读取 Linux/WSL 与 Windows 主机内存余量，提供受管 TTS 启动和运行保护判定
+│   ├── model-asr.mjs  # 识别模型选择读取、Whisper 文件完整性和训练 Python 依赖检查
+│   ├── model-catalog-asr.mjs  # Whisper Turbo 与其他可选本地语音识别模型的来源、文件范围和适配状态
 │   ├── model-catalog.mjs  # 核对官方来源的公开语音模型目录、下载文件范围和接入状态
 │   ├── model-download.mjs  # 官方模型文件下载、代理支持、磁盘检查、校验和完成文件复用
 │   ├── model-download.test.mjs  # 环境识别与模型下载完整性、取消、固定来源和路径校验测试
 │   ├── model-environment.mjs  # Linux 与 WSL 版本识别、GPT-SoVITS 模型完整性和本地选择读取
-│   ├── model-library.mjs  # 本地模型扫描、已发现模型选择、受管下载任务和状态汇总
+│   ├── model-library-asr.test.mjs  # 识别模型独立选择、持久化、依赖缺失与下载完整性测试
+│   ├── model-library.mjs  # 声音生成与识别模型独立扫描选择、受管下载任务和状态汇总
 │   ├── model-library.test.mjs  # 模型发现选择持久化、启动门控、外部进程保护及取消回归测试
 │   ├── paths.mjs  # 启动器配置路径解析与相对项目或用户目录的可移植路径显示
 │   ├── paths.test.mjs  # 项目目录、用户主目录及外部路径解析与显示回归测试
@@ -41,6 +44,7 @@ scripts/  # 开发工具、目录用途登记与索引同步检查
 ├── README.md  # 开发命令、Rust 构建缓存回收边界、启动器及模型训练工具说明
 ├── acceptance.mjs  # 只读持续观测、脱敏采样与整体验收 JSON 报告工具
 ├── acceptance.test.mjs  # 只读验收工具的受控 HTTP、限额、去敏和计数测试
+├── asr_selection_test.py  # 训练转写读取页面模型选择、配置优先级和无效选择拒绝测试
 ├── directory-descriptions.json  # 可提交工程的文件和目录用途登记；索引生成的说明源
 ├── directory-tree.mjs  # 递归生成目录树，校验用途覆盖并检测文件内容变化
 ├── directory-tree.test.mjs  # 验证递归索引、文件增删改、排除规则、本地文档隔离和符号链接边界
@@ -55,7 +59,7 @@ scripts/  # 开发工具、目录用途登记与索引同步检查
 ├── stop-control-panel.mjs  # Linux 与 WSL 手动清理本项目残留服务并报告停止结果的命令入口
 ├── train-gpt-sovits.py  # GPT-SoVITS 分阶段训练、同音色权重续训与产物校验入口
 ├── training_test.py  # 验证训练路径、性能传递、阶段进程与低显存兼容行为
-├── training_transcription.py  # 本地 faster-whisper 识别、缺失文本补全与离线输入输出校验
+├── training_transcription.py  # 本地 Whisper 转写、页面模型选择与旧配置兼容、离线校验及模型卸载
 ├── transcribe-training.py  # 单片训练语音转写命令入口，输出供用户校对的文本
 └── windows-bootstrap.test.ps1  # Windows PowerShell 入口语法、WSL 检测及参数边界回归测试
 ```
@@ -68,4 +72,4 @@ scripts/  # 开发工具、目录用途登记与索引同步检查
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: b9e41cc98052de752ed9ca37f8c2631cc48b0ca0c9a23dac7c8ca6f96ca33a71 -->
+<!-- directory-tree-sha256: fb346b8fd3150f97ede3d2eb13a7b8bcf356a8aae5c9faa40a688ac0d42a2887 -->

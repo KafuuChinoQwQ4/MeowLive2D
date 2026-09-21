@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { LlmSettings, LlmSettingsRequest, LlmSettingsSnapshot } from "@meowlive/contracts";
+import type { LlmModelsRequest, LlmSettings, LlmSettingsRequest, LlmSettingsSnapshot } from "@meowlive/contracts";
 import { createLlmClient, readLlmSnapshot } from "./llm";
 
 const settings: LlmSettings = {
@@ -11,6 +11,7 @@ const settings: LlmSettings = {
   timeout_seconds: 30,
   max_tokens: 1024,
   json_mode: true,
+  reasoning_effort: "default",
 };
 const snapshot: LlmSettingsSnapshot = {
   settings,
@@ -20,6 +21,10 @@ const snapshot: LlmSettingsSnapshot = {
   storage_available: true,
 };
 const request: LlmSettingsRequest = { settings, api_key: null, clear_api_key: false };
+const modelsRequest: LlmModelsRequest = {
+  provider: "openai", api_format: "openai_responses", base_url: "https://api.openai.com/v1",
+  mode: "cloud", api_key: null, clear_api_key: false,
+};
 
 describe("LLM 服务边界", () => {
   it("使用配置路由，并原样发送显式的密钥操作", async () => {
@@ -74,5 +79,62 @@ describe("LLM 服务边界", () => {
       JSON.stringify({ code: "llm_test_failed", message: "供应商拒绝了密钥" }), { status: 400 },
     )) });
     await expect(client.testSettings(request)).rejects.toThrow("供应商拒绝了密钥");
+  });
+
+  it("获取供应商模型时发送连接草稿，不需要模型名或保存配置", async () => {
+    const calls: Array<{ path: string; init?: RequestInit }> = [];
+    const result = { base_url: "https://api.openai.com/v1", models: [{ id: "gpt-4.1-mini", name: "GPT 4.1 Mini" }] };
+    const client = createLlmClient({ baseUrl: "http://localhost:19600", fetcher: async (url, init) => {
+      calls.push({ path: String(url), init });
+      return new Response(JSON.stringify(result));
+    } });
+    await expect(client.listModels({ ...modelsRequest, api_key: "draft-key" })).resolves.toEqual(result);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe("http://localhost:19600/api/llm/models");
+    expect(calls[0].init?.method).toBe("POST");
+    expect(JSON.parse(String(calls[0].init?.body))).toEqual({ ...modelsRequest, api_key: "draft-key" });
+  });
+
+  it.each([
+    { base_url: "https://example.com/v1", models: [{ id: "same", name: "A" }, { id: "same", name: "B" }] },
+    { base_url: "https://example.com/v1", models: [{ id: "猫".repeat(43), name: "long" }] },
+    { base_url: "https://example.com/v1", models: [{ id: "model", name: "猫".repeat(86) }] },
+    { base_url: "https://example.com/v1", models: [{ id: "model\n", name: "name" }] },
+    { base_url: "https://example.com/v1", models: [{ id: "model", name: "name", api_key: "leaked" }] },
+    { base_url: "file:///local", models: [] },
+    { base_url: "https://secret@example.com/v1", models: [] },
+    { base_url: "https://example.com/v1?key=secret", models: [] },
+    { base_url: "https://example.com/" + "a".repeat(4096), models: [] },
+    { base_url: "https://example.com/v1", models: Array.from({ length: 1001 }, (_, i) => ({ id: `model-${i}`, name: `Model ${i}` })) },
+  ])("拒绝无效、重复、过大或含额外字段的模型列表 %#", async result => {
+    const client = createLlmClient({ fetcher: async () => new Response(JSON.stringify(result)) });
+    await expect(client.listModels(modelsRequest)).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it("空模型列表保持为空，不合成模型选项", async () => {
+    const result = { base_url: "https://api.openai.com/v1", models: [] };
+    const client = createLlmClient({ fetcher: async () => new Response(JSON.stringify(result)) });
+    await expect(client.listModels(modelsRequest)).resolves.toEqual(result);
+  });
+
+  it("模型获取有独立超时并支持调用方取消，即使传输忽略信号", async () => {
+    vi.useFakeTimers();
+    try {
+      let requestSignal: AbortSignal | undefined;
+      const client = createLlmClient({ fetcher: async (_url, init) => {
+        requestSignal = init?.signal ?? undefined;
+        return new Promise<Response>(() => {});
+      } });
+      const pending = client.listModels(modelsRequest);
+      const assertion = expect(pending).rejects.toMatchObject({ code: "request_timeout" });
+      await vi.advanceTimersByTimeAsync(31_999);
+      expect(requestSignal?.aborted).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      await assertion;
+      const controller = new AbortController();
+      const canceled = client.listModels(modelsRequest, controller.signal);
+      controller.abort();
+      await expect(canceled).rejects.toMatchObject({ name: "AbortError" });
+    } finally { vi.useRealTimers(); }
   });
 });

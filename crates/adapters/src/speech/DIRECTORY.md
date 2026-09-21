@@ -18,4 +18,4 @@ speech/  # GPT-SoVITS 等语音引擎的请求和音频格式适配
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 9954d6a4e35f07c6208876b50b6d0b8f5b1124900869f8e929d31c324f390ec6 -->
+<!-- directory-tree-sha256: 72ede29660bbeb349d02bb0fa32dc3835afe2e02854875c605f8b0f8e02b20ad -->

@@ -11,7 +11,7 @@ tests/  # 业务测试归属说明与回放数据入口
 │   └── README.md  # 协议序列化、版本兼容与类型一致性的测试规划
 ├── e2e/  # Windows 实际播放和直播链路验证的归属
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   └── README.md  # Windows 播放、口型、停止及重连的端到端验证约定
+│   └── README.md  # Windows 播放口型、SC 与流量互动、停止及重连的端到端验证约定
 ├── fixtures/  # 可提交的小型模拟和回放数据
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   ├── README.md  # 小型事件回放素材的内容边界及确定性要求
@@ -34,4 +34,4 @@ tests/  # 业务测试归属说明与回放数据入口
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 09478ebc2469b2350ce4b9cb0231823c010a5bfd391ad5376e518ed3c45b6a4a -->
+<!-- directory-tree-sha256: 44f24f0477a06bff9c0935ced3be1b36b0b128c72330b80df864f600790293a1 -->

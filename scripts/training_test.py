@@ -277,8 +277,9 @@ class Loader:
         fake = root / "fake"
         fake.mkdir()
         (fake / "faster_whisper.py").write_text(FAKE_WHISPER)
-        env = {**os.environ, "PYTHONPATH": str(fake), "FAKE_ASR_LOG": str(root / "asr.jsonl")}
-        env.pop("MEOWLIVE_ASR_MODEL", None)
+        env = {**os.environ, "PYTHONPATH": str(fake), "FAKE_ASR_LOG": str(root / "asr.jsonl"),
+               "MEOWLIVE_ASR_SELECTION": str(root / "selection.json")}
+        env["MEOWLIVE_ASR_MODEL"] = str(model)
         return model, env
 
     def run_asr(self, root, env, language="zh", extra=()):

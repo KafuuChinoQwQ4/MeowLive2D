@@ -47,4 +47,4 @@ storage/  # PostgreSQL 观众事件与 Linux 素材文件存储
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: a31527bb399fb0f498ef5244b029a82bc13bc4fed47cb5fc84f4f9f2e256943c -->
+<!-- directory-tree-sha256: 6bc6e58bb8d2e6d717c6d6c3addbb6136655d4c8248309f950a15dc237b17869 -->

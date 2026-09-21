@@ -15,6 +15,7 @@ import { createResourceClient } from "../services/server/resources";
 import { createTrainingClient } from "../services/server/training";
 import { createObsClient } from "../services/server/obs";
 import { createLlmClient } from "../services/server/llm";
+import { createLlmRuntimeClient } from "../services/server/llm-runtime";
 import { createViewerClient } from "../services/server/viewers";
 import { createAdminSessionClient } from "../services/server/auth";
 import { ObsPanel } from "../features/obs";
@@ -62,18 +63,18 @@ function AppContent() {
     speech: createServerClient({ baseUrl }), agent: createAgentClient({ baseUrl }),
     live: createLiveClient({ baseUrl }), resources: createResourceClient({ baseUrl }),
     training: createTrainingClient({ baseUrl }), obs: createObsClient({ baseUrl }),
-    llm: createLlmClient({ baseUrl }), viewers: createViewerClient({ baseUrl }),
+    llm: createLlmClient({ baseUrl }), runtime: createLlmRuntimeClient({ baseUrl }), viewers: createViewerClient({ baseUrl }),
     auth: createAdminSessionClient({ baseUrl }),
   }), [baseUrl]);
   const panels: WorkspaceProps["pages"] = {
     live: <ConnectionPanel client={clients.live} />,
     obs: <ObsPanel client={clients.obs} />,
-    resources: <ResourcesPanel resourceClient={clients.resources} speechClient={clients.speech} />,
+    resources: <ResourcesPanel resourceClient={clients.resources} speechClient={clients.speech} trainingClient={clients.training} />,
     training: <TrainingPanel client={clients.training} resources={clients.resources} />,
     speech: <SpeechPanel client={clients.speech} />,
-    agent: <AgentPanel client={clients.agent} />,
+    agent: <AgentPanel client={clients.agent} runtimeClient={clients.runtime} />,
     viewers: <ViewerPanel client={clients.viewers} />,
-    llm: <LlmPanel client={clients.llm} />,
+    llm: <LlmPanel client={clients.llm} runtimeClient={clients.runtime} />,
   };
   const errorNotice = error && <div className="error-banner" role="alert">{error} <button onClick={() => setAttempt(value => value + 1)}>重试桌面连接</button></div>;
   if (desktop === undefined) return <main className="studio-initial"><h1>MeowLive2D</h1>{errorNotice || <p role="status">正在读取桌面配置…</p>}</main>;

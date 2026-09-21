@@ -88,7 +88,17 @@ pub fn router(state: AppState) -> Router {
             "/api/llm/settings",
             get(super::llm::settings).post(super::llm::save),
         )
+        .route(
+            "/api/agent/runtime",
+            get(super::llm_runtime::settings)
+                .post(super::llm_runtime::save)
+                .layer(DefaultBodyLimit::max(512 * 1024)),
+        )
+        .route("/api/llm/usage", get(super::llm_runtime::usage))
+        .route("/api/agent/activity", get(super::llm_runtime::activity))
         .route("/api/llm/test", post(super::llm::test))
+        .route("/api/llm/reasoning", post(super::llm::reasoning))
+        .route("/api/llm/models", post(super::llm::models))
         .route(
             "/api/obs",
             get(super::obs::status).post(super::obs::control),

@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
 import type { ModelLibraryClient } from "../../services/model-library";
 import { useModelLibrary } from "./useModelLibrary";
+import { InstalledModels } from "./InstalledModels";
 
 const stateLabels: Record<string, string> = { queued: "等待下载", downloading: "下载中", completed: "下载完成", failed: "下载失败", cancelled: "已取消" };
 const formatBytes = (value: number) => value >= 1073741824 ? `${(value / 1073741824).toFixed(1)} GB` : `${(value / 1048576).toFixed(1)} MB`;
@@ -12,12 +13,11 @@ export function ModelLibraryPanel({ client, token, onSelected }: { client: Model
   const [tab, setTab] = useState<"installed" | "catalog" | "downloads">("installed");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
-  const [page, setPage] = useState(0);
+  const [purpose, setPurpose] = useState("all");
+  const [pages, setPages] = useState<Record<string, number>>({});
   const tabId = useId();
   const disabled = !token || stale || busy || !snapshot?.environment.ready;
-  const models = snapshot?.catalog.filter(model => `${model.name} ${model.languages} ${model.description}`.toLowerCase().includes(query.toLowerCase()) && (filter === "all" || model.compatibility === filter)) ?? [];
-  const pageCount = Math.max(1, Math.ceil(models.length / 4));
-  const currentPage = Math.min(page, pageCount - 1);
+  const models = snapshot?.catalog.filter(model => `${model.name} ${model.languages} ${model.description}`.toLowerCase().includes(query.toLowerCase()) && (filter === "all" || model.compatibility === filter || model.purpose === filter)) ?? [];
   const activeDownloads = snapshot?.downloads.filter(download => ["queued", "downloading"].includes(download.state)) ?? [];
   const chooseTab = (next: typeof tab) => setTab(next);
   return <div className="model-library">
@@ -32,20 +32,32 @@ export function ModelLibraryPanel({ client, token, onSelected }: { client: Model
         <details className="model-system-details"><summary>查看检测详情</summary><p>内核：<code>{snapshot.environment.release}</code></p><p>引擎：<code>{snapshot.runtime.engine_root}</code></p><p>Python：<code>{snapshot.runtime.python_path}</code></p><p>扫描范围：</p><ul>{snapshot.scan_roots.map(path => <li key={path}><code>{path}</code></li>)}</ul><p>安装后点击“重新扫描”。</p></details>
       </section>
       <section className="panel model-browser">
+        {tab === "installed" && <div className="model-search model-purpose-filter"><label>模型用途<select value={purpose} onChange={event => { setPurpose(event.target.value); setPages({}); }}><option value="all">全部用途</option><option value="tts">声音生成 · 播报与训练</option><option value="asr">语音识别 · 训练文本提取</option></select></label></div>}
         <div className="model-tabs" role="tablist" aria-label="模型管理分类">{([ ["installed", `本地模型 · ${snapshot.installed.length}`], ["catalog", `下载模型 · ${snapshot.catalog.length}`], ["downloads", `下载任务${activeDownloads.length ? ` · ${activeDownloads.length}` : ""}`] ] as const).map(([id, label]) => <button key={id} id={`${tabId}-${id}`} role="tab" aria-selected={tab === id} aria-controls={`${tabId}-${id}-panel`} tabIndex={tab === id ? 0 : -1} onClick={() => chooseTab(id)} onKeyDown={event => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) { event.preventDefault(); const tabs = ["installed", "catalog", "downloads"] as const; const index = event.key === "Home" ? 0 : event.key === "End" ? 2 : (tabs.indexOf(id) + (event.key === "ArrowRight" ? 1 : 2)) % 3; chooseTab(tabs[index]); document.getElementById(`${tabId}-${tabs[index]}`)?.focus(); } }}>{label}</button>)}</div>
         <div id={`${tabId}-installed-panel`} role="tabpanel" aria-labelledby={`${tabId}-installed`} hidden={tab !== "installed"}>
-          <div className="model-section-heading"><div><h2>选择本地语音模型</h2><p className="muted">切换模型前请关闭 TTS。</p></div><button disabled={disabled} onClick={() => void run("scan")}>{busy ? "处理中…" : "重新扫描"}</button></div>
-          {snapshot.installed.length ? <div className="model-local-list">{snapshot.installed.map(model => <article className="model-local-card" key={model.id}><div><div className="model-card-title"><h3>{model.name}</h3><span className={`model-badge ${model.ready ? "is-ready" : "is-pending"}`}>{model.selected ? "当前使用" : model.ready ? "可以使用" : "尚未就绪"}</span></div><p>{model.message}</p><code className="model-path">{model.path}</code></div><button className={model.ready && !model.selected ? "primary-button" : ""} disabled={disabled || !model.ready || model.selected} onClick={() => void run("select", model.id)}>{model.selected ? "当前使用" : model.ready ? "选择此模型" : "需要准备引擎"}</button></article>)}</div> : <div className="model-empty"><span aria-hidden="true">✧</span><h3>还没有找到语音模型</h3><p>下载 GPT-SoVITS v2，并准备推理引擎。</p><button className="primary-button" onClick={() => chooseTab("catalog")}>浏览可下载模型</button></div>}
+          <div className="model-section-heading"><div><h2>选择本地语音模型</h2><p className="muted">声音生成与语音识别分别选择，识别模型帮助自动填写训练文本。</p></div><button disabled={disabled} onClick={() => void run("scan")}>{busy ? "处理中…" : "重新扫描"}</button></div>
+          {snapshot.asr_error && <p className="error-banner" role="alert">{snapshot.asr_error}</p>}
+          <InstalledModels models={snapshot.installed} purpose={purpose} disabled={disabled} select={id => { void run("select", id); }}
+            browse={kind => { setPurpose(kind); setQuery(""); setFilter(kind); setPages({}); chooseTab("catalog"); }} />
         </div>
         <div id={`${tabId}-catalog-panel`} role="tabpanel" aria-labelledby={`${tabId}-catalog`} hidden={tab !== "catalog"}>
           <div className="model-section-heading"><div><h2>模型库</h2><p className="muted">“已接入”可直接使用；“需适配”仅供下载。</p></div></div>
-          <div className="model-search"><label>搜索语音模型<input type="search" placeholder="模型名称、语言或用途" value={query} onChange={event => { setQuery(event.target.value); setPage(0); }} /></label><label>使用范围<select value={filter} onChange={event => { setFilter(event.target.value); setPage(0); }}><option value="all">全部模型</option><option value="ready">本项目已接入</option><option value="download_only">可下载 · 需适配</option></select></label></div>
-          <div className="model-catalog-grid" role="region" aria-label="可下载模型">{models.slice(currentPage * 4, (currentPage + 1) * 4).map(model => {
+          <div className="model-search"><label>搜索语音模型<input type="search" placeholder="模型名称、语言或用途" value={query} onChange={event => { setQuery(event.target.value); setPages({}); }} /></label><label>使用范围<select className="model-scope-select" value={filter} onChange={event => { setFilter(event.target.value); setPages({}); }}><option value="all">全部模型</option><optgroup label="按模型用途"><option value="tts">音色训练与声音生成</option><option value="asr">语音转文本</option></optgroup><optgroup label="按接入状态"><option value="ready">本项目已接入</option><option value="download_only">可下载 · 需适配</option></optgroup></select></label></div>
+          <div className="model-catalog-groups" role="region" aria-label="可下载模型">{(["tts", "asr"] as const).map(kind => {
+            const items = models.filter(model => model.purpose === kind);
+            if (!items.length) return null;
+            const pageCount = Math.max(1, Math.ceil(items.length / 4));
+            const currentPage = Math.min(pages[kind] ?? 0, pageCount - 1);
+            return <section className="model-catalog-group" key={kind} aria-label={kind === "tts" ? "音色训练与声音生成" : "语音转文本"}>
+              <div className="model-category-heading"><div><h3>{kind === "tts" ? "音色训练与声音生成" : "语音转文本"}</h3><p>{kind === "tts" ? "克隆音色、训练声音，用于语音播报。" : "识别本地录音，自动填写参考文本与训练文本。"}</p></div><span className="model-badge">{items.length} 个模型</span></div>
+              <div className="model-catalog-grid">{items.slice(currentPage * 4, (currentPage + 1) * 4).map(model => {
             const downloading = activeDownloads.some(download => download.model_id === model.id);
-            return <article className="model-catalog-card" key={model.id}><div className="model-card-title"><h3>{model.name}</h3><span className={`model-badge ${model.compatibility === "ready" ? "is-ready" : "is-pending"}`}>{model.compatibility === "ready" ? "已接入" : "需适配"}</span></div><p className="model-language">{model.languages}</p><p className="model-description">{model.description}</p><p className="model-compatibility">{model.note}</p><p className="model-license">许可：{model.license}</p><div className="model-card-actions"><button className={model.compatibility === "ready" ? "primary-button" : ""} disabled={disabled || downloading} onClick={() => { void run("download", model.id); chooseTab("downloads"); }}>{downloading ? "下载进行中" : "下载权重"}</button><a href={model.homepage} target="_blank" rel="noreferrer">官方说明 ↗</a><a href={model.source_url} target="_blank" rel="noreferrer">权重来源 ↗</a></div></article>;
+            return <article className="model-catalog-card" key={model.id}><div className="model-card-title"><h3>{model.name}</h3><span className={`model-badge ${model.compatibility === "ready" ? "is-ready" : "is-pending"}`}>{model.compatibility === "ready" ? "已接入" : "需适配"}</span></div><p className="model-language">{model.purpose === "asr" ? "语音识别" : "声音生成"} · {model.languages}</p><p className="model-description">{model.description}</p><p className="model-compatibility">{model.note}</p><p className="model-license">许可：{model.license}</p><div className="model-card-actions"><button className={model.compatibility === "ready" ? "primary-button" : ""} disabled={disabled || downloading} onClick={() => { void run("download", model.id); chooseTab("downloads"); }}>{downloading ? "下载进行中" : "下载权重"}</button><a href={model.homepage} target="_blank" rel="noreferrer">官方说明 ↗</a><a href={model.source_url} target="_blank" rel="noreferrer">权重来源 ↗</a></div></article>;
+              })}</div>
+              <div className="model-pagination"><span>共 {items.length} 个模型 · 第 {currentPage + 1} / {pageCount} 页</span>{pageCount > 1 && <div><button disabled={currentPage === 0} onClick={() => setPages(previous => ({ ...previous, [kind]: currentPage - 1 }))}>上一页</button><button disabled={currentPage + 1 >= pageCount} onClick={() => setPages(previous => ({ ...previous, [kind]: currentPage + 1 }))}>下一页</button></div>}</div>
+            </section>;
           })}</div>
           {!models.length && <p className="model-empty">没有匹配的模型，试试其他名称或语言。</p>}
-          <div className="model-pagination"><span>共 {models.length} 个模型 · 第 {currentPage + 1} / {pageCount} 页</span><div><button disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>上一页</button><button disabled={currentPage + 1 >= pageCount} onClick={() => setPage(currentPage + 1)}>下一页</button></div></div>
         </div>
         <div id={`${tabId}-downloads-panel`} role="tabpanel" aria-labelledby={`${tabId}-downloads`} hidden={tab !== "downloads"}>
           <div className="model-section-heading"><div><h2>下载任务</h2><p className="muted">保持启动终端打开，下载后重新扫描。</p></div></div>

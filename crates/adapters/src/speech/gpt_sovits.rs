@@ -107,7 +107,7 @@ impl GptSovits {
                 "only the configured default voice is available",
             ));
         }
-        let text = SpeechText::new(request.text)
+        let text = SpeechText::broadcast(request.text)
             .map_err(|error| SynthesisError::new(error.to_string()))?;
         let payload = TtsRequest {
             text: text.as_str(),

@@ -8,6 +8,7 @@ pub mod error;
 pub mod http;
 pub mod live;
 pub mod llm;
+pub mod llm_runtime;
 pub mod mapping;
 pub mod obs;
 pub mod origin;

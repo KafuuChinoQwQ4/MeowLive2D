@@ -1,3 +1,4 @@
+import { interactionSettings } from "../../test/agent-fixtures";
 import { describe, expect, it, vi } from "vitest";
 import type { AgentSnapshot, EventBatchRequest } from "@meowlive/contracts";
 import { jsonResponse } from "../../test/server-fixtures";
@@ -12,6 +13,7 @@ function agentSnapshot(overrides: Partial<AgentSnapshot> = {}): AgentSnapshot {
       topic: "轻松聊天",
       proactive_enabled: false,
       cooldown_ms: 30_000,
+      interaction: { ...interactionSettings },
     },
     events: [],
     last_error: null,
@@ -32,7 +34,7 @@ describe("Agent HTTP 请求", () => {
   });
 
   it("原样保存设置并接受暂停后的快照", async () => {
-    const settings = { persona: "冷静的主持人", topic: "动作游戏", proactive_enabled: true, cooldown_ms: 45_000 };
+    const settings = { persona: "冷静的主持人", topic: "动作游戏", proactive_enabled: true, cooldown_ms: 45_000, interaction: { ...interactionSettings } };
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(agentSnapshot({ settings })));
 
     await expect(createAgentClient({ fetcher }).saveSettings(settings)).resolves.toMatchObject({ paused: true, settings });

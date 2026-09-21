@@ -2,6 +2,10 @@
 
 export const PROTOCOL_VERSION = 3 as const;
 
+export type ChatReadMode = "auto" | "all" | "selective";
+
+export type InteractionSettings = { chat_read_mode: ChatReadMode, welcome_enabled: boolean, busy_chat_count: number, busy_enter_count: number, busy_pending_count: number, welcome_cooldown_ms: number, welcome_viewer_cooldown_ms: number, };
+
 export type MergeViewerSummary = { viewer_id: string, alias: string | null, identities: number, events: number, memories: number, relationships: number, familiarity_milli: number, affinity_milli: number, };
 
 export type ViewerMergePreview = { source: MergeViewerSummary, target: MergeViewerSummary, revision: number, fingerprint: string, resulting_familiarity_milli: number, resulting_affinity_milli: number, risks: Array<string>, };
@@ -78,25 +82,81 @@ export type ViewerEventPage = { scope_id: string, events: Array<PersistedViewerE
  */
 unconfirmed_events: number, };
 
-export type LlmSettings = { provider: string, api_format: string, base_url: string, model: string, mode: string, timeout_seconds: number, max_tokens: number, json_mode: boolean, };
+export type LlmPrice = { provider: string, base_url: string, model: string, input_usd_per_million: number, output_usd_per_million: number, cache_read_usd_per_million: number, cache_write_usd_per_million: number, };
+
+export type AgentRuntimeSettings = { cache_enabled: boolean, streaming: boolean, tools_enabled: boolean, environment_enabled: boolean, web_search_enabled: boolean,
+/**
+ * brave / searxng
+ */
+search_provider: string, search_endpoint: string, max_tool_rounds: number, tool_timeout_seconds: number, prices: Array<LlmPrice>, };
+
+export type AgentRuntimeSettingsSnapshot = { settings: AgentRuntimeSettings, search_key_configured: boolean, storage_available: boolean, };
+
+export type AgentRuntimeSettingsRequest = { settings: AgentRuntimeSettings, search_api_key: string | null, clear_search_api_key: boolean, };
+
+export type LlmTokenUsage = { input_tokens: number | null, output_tokens: number | null, cache_read_tokens: number | null, cache_write_tokens: number | null, reasoning_tokens: number | null, };
+
+export type LlmUsageRecord = { id: string, started_at_ms: number, provider: string, api_format: string, base_url: string, model: string, operation: string,
+/**
+ * running / completed / failed / cancelled / interrupted
+ */
+status: string, latency_ms: number, first_token_ms: number | null, usage: LlmTokenUsage,
+/**
+ * 微美元，null 表示未报告用量或未配置单价。
+ */
+estimated_cost_microusd: number | null, };
+
+export type LlmUsageTotals = { calls: number, input_tokens: number, output_tokens: number, cache_read_tokens: number, cache_write_tokens: number, reasoning_tokens: number, estimated_cost_microusd: number, unpriced_calls: number, unknown_usage_calls: number, };
+
+export type LlmUsageGroup = { provider: string, base_url: string, model: string, totals: LlmUsageTotals, };
+
+export type LlmUsageSnapshot = { totals: LlmUsageTotals, groups: Array<LlmUsageGroup>, records: Array<LlmUsageRecord>, storage_available: boolean, truncated: boolean, };
+
+export type AgentToolActivity = { name: string,
+/**
+ * running / completed / failed
+ */
+status: string, elapsed_ms: number, sources: Array<string>, };
+
+export type AgentActivitySnapshot = { run_id: string | null,
+/**
+ * idle / thinking / receiving / tool / completed / failed / cancelled
+ */
+phase: string, started_at_ms: number | null, updated_at_ms: number, output_characters: number, tool_round: number, tools: Array<AgentToolActivity>, message: string, };
+
+export type LlmSettings = { provider: string, api_format: string, base_url: string, model: string, mode: string, timeout_seconds: number, max_tokens: number, json_mode: boolean, reasoning_effort: string, };
 
 export type LlmSettingsSnapshot = { settings: LlmSettings, key_configured: boolean, restart_required: boolean, active_model: string, storage_available: boolean, };
 
 export type LlmSettingsRequest = { settings: LlmSettings, api_key: string | null, clear_api_key: boolean, };
 
+export type LlmReasoningRequest = { provider: string, api_format: string, model: string, reasoning_effort: string, max_tokens: number, };
+
+export type LlmReasoningResult = { requested: string, effective: string | null, supported: Array<string>, strategy: string, budget_tokens: number | null, note: string, error: string | null, };
+
 export type LlmTestResult = { message: string, };
+
+export type LlmModelsRequest = { provider: string, api_format: string, base_url: string, mode: string, api_key: string | null, clear_api_key: boolean, };
+
+export type LlmModelOption = { id: string, name: string, };
+
+export type LlmModelsResult = {
+/**
+ * API base accepted by discovery, reused for subsequent model requests.
+ */
+base_url: string, models: Array<LlmModelOption>, };
 
 export type ModelEnvironment = { kind: string, release: string, distro: string, ready: boolean, message: string, };
 
 export type ModelRuntime = { engine_root: string, python_path: string, ready: boolean, message: string, };
 
-export type CatalogModel = { id: string, name: string, languages: string, description: string, license: string, homepage: string, source_url: string, compatibility: string, note: string, };
+export type CatalogModel = { id: string, purpose: string, name: string, languages: string, description: string, license: string, homepage: string, source_url: string, compatibility: string, note: string, };
 
-export type InstalledModel = { id: string, model_id: string, name: string, path: string, ready: boolean, selected: boolean, message: string, };
+export type InstalledModel = { id: string, purpose: string, model_id: string, name: string, path: string, ready: boolean, selected: boolean, message: string, };
 
 export type ModelDownload = { id: string, model_id: string, state: string, message: string, downloaded_bytes: number, total_bytes: number, path: string, };
 
-export type ModelLibrarySnapshot = { schema_version: number, environment: ModelEnvironment, runtime: ModelRuntime, scan_roots: Array<string>, installed: Array<InstalledModel>, catalog: Array<CatalogModel>, downloads: Array<ModelDownload>, selected_id: string | null, };
+export type ModelLibrarySnapshot = { schema_version: number, environment: ModelEnvironment, runtime: ModelRuntime, scan_roots: Array<string>, installed: Array<InstalledModel>, catalog: Array<CatalogModel>, downloads: Array<ModelDownload>, selected_id: string | null, asr_selected_id: string | null, asr_error: string | null, };
 
 export type LauncherServiceId = "server" | "tts" | "windows";
 
@@ -188,9 +248,9 @@ app_id: string, access_key_id_configured: boolean, access_key_secret_configured:
 
 export type LiveSettingsRequest = { enabled: boolean, app_id: string, access_key_id: string | null, access_key_secret: string | null, identity_code: string | null, clear_credentials: boolean, };
 
-export type AgentSettings = { persona: string, topic: string, proactive_enabled: boolean, cooldown_ms: number, };
+export type AgentSettings = { persona: string, topic: string, proactive_enabled: boolean, cooldown_ms: number, interaction: InteractionSettings, };
 
-export type EventPayload = { "type": "chat", text: string, } | { "type": "gift", name: string, count: number, };
+export type EventPayload = { "type": "chat", text: string, } | { "type": "gift", name: string, count: number, } | { "type": "super_chat", text: string, amount_cny: number, start_at_ms: number, end_at_ms: number, } | { "type": "room_enter" };
 
 export type ViewerIdentityKind = "open_id" | "uid";
 

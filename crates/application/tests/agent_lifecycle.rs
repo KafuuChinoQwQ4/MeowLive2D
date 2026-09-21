@@ -16,7 +16,7 @@ fn only_completed_playback_enters_history_and_releases_cooldown() {
             .unwrap()
             .unwrap()
             .text,
-        "你好呀"
+        "小猫说：你好 one。你好呀"
     );
     agent.submit(chat("two", 1), 1).unwrap();
     for (status, expected) in [
@@ -36,7 +36,10 @@ fn only_completed_playback_enters_history_and_releases_cooldown() {
     assert_eq!(next.request.history.len(), 1);
     assert!(next.request.history[0].user.contains("小猫"));
     assert!(next.request.history[0].user.contains("你好 one"));
-    assert_eq!(next.request.history[0].assistant, "你好呀");
+    assert_eq!(
+        next.request.history[0].assistant,
+        "小猫说：你好 one。你好呀"
+    );
 }
 
 #[test]

@@ -18,6 +18,24 @@ fn validates_the_limit_by_unicode_characters() {
 }
 
 #[test]
+fn combined_broadcast_has_a_separate_bounded_unicode_limit() {
+    assert!(SpeechText::broadcast("猫".repeat(1200)).is_ok());
+    assert_eq!(
+        SpeechText::broadcast("猫".repeat(1201)),
+        Err(SpeechValidationError::TextTooLong { max: 1200 })
+    );
+    assert_eq!(
+        SpeechText::broadcast(" \t\n"),
+        Err(SpeechValidationError::EmptyText)
+    );
+    assert_eq!(
+        SpeechText::broadcast("原文\0回复"),
+        Err(SpeechValidationError::InvalidText)
+    );
+    assert!(SpeechText::new("猫".repeat(501)).is_err());
+}
+
+#[test]
 fn trims_surrounding_whitespace_without_changing_spoken_content() {
     let text = SpeechText::new(" \n你好， 世界！\t").unwrap();
     assert_eq!(text.as_str(), "你好， 世界！");

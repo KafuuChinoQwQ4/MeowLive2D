@@ -35,7 +35,7 @@ M5 引擎工具：`train-gpt-sovits.py` 读取服务端生成的任务清单，�
 
 同音色续训由应用层选择最近一次成功版本，存储层校验并复制成对权重到新任务的 `base/`，在 `job.json` 中记录来源与 SHA-256。训练器使用这组权重初始化 GPT 和 SoVITS，语义预处理仍使用通用编码器；优化器与本次轮次重新计数。无历史成功版本或旧清单没有 `base` 时沿用通用模型。来源文件损坏时明确失败，不静默从通用模型重训；新任务使用私有副本，删除旧版本不破坏新版本。
 
-训练支持仅提供音频和人工校对文本两种方式。`training_transcription.py` 复用本地 faster-whisper 模型，在 CPU 上提取缺少的文本；`transcribe-training.py` 提供单片转写命令，供面板回填和校对。示例：`python scripts/transcribe-training.py --audio /绝对路径/片段.wav --language zh --engine-root /绝对路径/GPT-SoVITS --model /绝对路径/识别模型`。`--model` 可省略，默认使用引擎 `tools/asr/models/faster-whisper-large-v3`，或由服务设置 `MEOWLIVE_ASR_MODEL`。识别只使用本地模型，不自动下载；文本校验失败时中止，已手填文本不会被覆盖。
+训练支持仅提供音频和人工校对文本两种方式。`training_transcription.py` 复用本地 faster-whisper 模型，在 CPU 上提取缺少的文本；`transcribe-training.py` 提供单片转写命令，供面板回填和校对。示例：`python scripts/transcribe-training.py --audio /绝对路径/片段.wav --language zh --engine-root /绝对路径/GPT-SoVITS --model /绝对路径/识别模型`。优先读取页面保存的 `config/local/asr-model-selection.json`（`MEOWLIVE_ASR_SELECTION` 可指定独立选择文件）；没有保存选择时，依次使用 `--model`、`MEOWLIVE_ASR_MODEL`、项目 `data/models/faster-whisper-large-v3-turbo`，最后兼容旧引擎 `tools/asr/models/faster-whisper-large-v3`。选择失效不自动回退。`launcher/model-catalog-asr.mjs` 定义识别模型下载范围，`launcher/model-asr.mjs` 检查识别依赖和本地权重；`asr_selection_test.py` 验证选择优先级及失败行为。识别只使用本地模型，不自动下载；文本校验失败时中止，已手填文本不会被覆盖。
 
 M6 观测工具：`npm run acceptance:observe -- --duration-seconds 600 --execution simulated` 只查询主服务状态并保存脱敏 JSON；`--observe` 是显式只读模式，默认也是只读。输出文件必须不存在。`npm run test:acceptance` 使用受控 HTTP 服务检查采样、超时、限流量、历史基线和重启计数；已纳入 `check`。Tauri 自动生成的 `src-tauri/gen/` 整体排除索引，避免生成 schema 的父目录触发用途缺项。
 

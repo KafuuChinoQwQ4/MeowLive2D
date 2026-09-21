@@ -3,6 +3,9 @@
 mod config;
 mod prompt;
 mod response;
+mod runtime;
 
+pub mod models;
 pub mod multi_provider;
 pub mod openai_compatible;
+pub mod reasoning;

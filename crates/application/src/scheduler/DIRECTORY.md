@@ -8,11 +8,11 @@
 scheduler/  # 候选事件优先级与礼物分组策略
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 ├── fairness.rs  # 完成驱动的观众公平、有限重选和追问焦点
-└── selection.rs  # 礼物优先选择和有界原始事件分组
+└── selection.rs  # SC 独立优先选择、欢迎单轮隔离、朗读长度约束与礼物分组
 ```
 
 用途说明源：`scripts/directory-descriptions.json`。新增、删除、移动文件或调整职责时先同步说明源，再运行生成命令。
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: b0e8524c747749474665fd2ca7288aa14e746a8c567dc57148f021aaa2146c7d -->
+<!-- directory-tree-sha256: 71e037d61668ea65de7a40dd617e08dfb67cde36605c191f1545dc16f0bde65b -->

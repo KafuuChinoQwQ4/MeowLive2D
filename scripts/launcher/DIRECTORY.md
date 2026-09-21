@@ -18,11 +18,14 @@ launcher/  # Linux 本机服务启动管理、配置读取、状态探测与控�
 ├── log.mjs  # 受管进程日志限量保存、密钥遮盖及常见启动故障识别
 ├── log.test.mjs  # 子进程日志跨数据块密钥遮盖与显存错误诊断测试
 ├── memory.mjs  # 读取 Linux/WSL 与 Windows 主机内存余量，提供受管 TTS 启动和运行保护判定
+├── model-asr.mjs  # 识别模型选择读取、Whisper 文件完整性和训练 Python 依赖检查
+├── model-catalog-asr.mjs  # Whisper Turbo 与其他可选本地语音识别模型的来源、文件范围和适配状态
 ├── model-catalog.mjs  # 核对官方来源的公开语音模型目录、下载文件范围和接入状态
 ├── model-download.mjs  # 官方模型文件下载、代理支持、磁盘检查、校验和完成文件复用
 ├── model-download.test.mjs  # 环境识别与模型下载完整性、取消、固定来源和路径校验测试
 ├── model-environment.mjs  # Linux 与 WSL 版本识别、GPT-SoVITS 模型完整性和本地选择读取
-├── model-library.mjs  # 本地模型扫描、已发现模型选择、受管下载任务和状态汇总
+├── model-library-asr.test.mjs  # 识别模型独立选择、持久化、依赖缺失与下载完整性测试
+├── model-library.mjs  # 声音生成与识别模型独立扫描选择、受管下载任务和状态汇总
 ├── model-library.test.mjs  # 模型发现选择持久化、启动门控、外部进程保护及取消回归测试
 ├── paths.mjs  # 启动器配置路径解析与相对项目或用户目录的可移植路径显示
 ├── paths.test.mjs  # 项目目录、用户主目录及外部路径解析与显示回归测试
@@ -42,4 +45,4 @@ launcher/  # Linux 本机服务启动管理、配置读取、状态探测与控�
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 546988f69d138f4d4bd0915e0c7bcc4b1f614159cd883e135a33c7fe89741d2a -->
+<!-- directory-tree-sha256: 97923df94934d469e5146aa951449b6ba64691d6e2b5847c276f77e9e550147d -->

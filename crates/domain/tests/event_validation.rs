@@ -138,3 +138,56 @@ fn retains_raw_gift_metadata_without_computing_a_total() {
     };
     assert!(event.validate().is_err());
 }
+
+#[test]
+fn superchat_requires_complete_text_positive_amount_and_ordered_safe_times() {
+    for (text, amount_cny, start_at_ms, end_at_ms, valid) in [
+        (
+            "猫".repeat(500),
+            30,
+            1_800_000_000_000,
+            1_800_000_300_000,
+            true,
+        ),
+        ("".into(), 30, 1, 2, false),
+        ("猫".repeat(501), 30, 1, 2, false),
+        ("猫".into(), 0, 1, 2, false),
+        ("猫".into(), 1_000_001, 1, 2, false),
+        ("猫".into(), 30, 2, 2, false),
+        ("猫".into(), 30, 2, 1, false),
+        ("猫".into(), 30, 1, 9_007_199_254_740_992, false),
+    ] {
+        let event = LiveEvent {
+            kind: EventKind::SuperChat {
+                text,
+                amount_cny,
+                start_at_ms,
+                end_at_ms,
+            },
+            ..chat()
+        };
+        assert_eq!(event.validate().is_ok(), valid);
+    }
+}
+
+#[test]
+fn room_entries_and_superchats_cannot_masquerade_as_scoring_gifts() {
+    for kind in [
+        EventKind::RoomEnter,
+        EventKind::SuperChat {
+            text: "你好".into(),
+            amount_cny: 30,
+            start_at_ms: 1,
+            end_at_ms: 300001,
+        },
+    ] {
+        let mut event = LiveEvent { kind, ..chat() };
+        assert!(event.validate().is_ok());
+        event.gift_metadata = Some(GiftMetadata {
+            paid: Some(true),
+            price: Some(30_000),
+            ..Default::default()
+        });
+        assert!(event.validate().is_err());
+    }
+}

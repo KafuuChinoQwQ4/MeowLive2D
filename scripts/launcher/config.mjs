@@ -40,6 +40,7 @@ print(json.dumps({
  'listen':data.get('server',{}).get('listen_address','127.0.0.1:19600'),
  'tts':data.get('speech',{}).get('base_url','http://127.0.0.1:9880'),
  'viewers':{'enabled':data.get('viewers',{}).get('enabled',True),'database_url_env':data.get('viewers',{}).get('database_url_env','MEOWLIVE_DATABASE_URL')},
+ 'training':{k:data.get('training',{}).get(k,'') for k in ['python','engine_root','asr_model']},
  'llm':{**{k:llm.get(k,'') for k in ['base_url','model','api_key_env']},'key_saved':key_saved}
 }))`;
   const { stdout } = await execute('python3', ['-c', script, path], { timeout: 5000, maxBuffer: 65536 });
@@ -104,7 +105,9 @@ export async function loadConfiguration(root, { env = process.env } = {}) {
   const llmConfigured = Boolean(metadata?.llm?.base_url && metadata?.llm?.model && (metadata.llm.key_saved || !keyName || serverEnv[keyName]));
   const ttsEnv = Object.fromEntries(Object.entries(env).filter(([name]) => name !== keyName && name !== metadata?.viewers?.database_url_env && !/KEY|TOKEN|PASSWORD|SECRET/i.test(name)));
   return {
-    modelSettings: { root, home, engine, python, environment, hfHome: env.HF_HOME },
+    modelSettings: { root, home, engine, python, environment, hfHome: env.HF_HOME,
+      asrPython: metadata?.training?.python || python, asrEngine: metadata?.training?.engine_root || engine,
+      asrModel: metadata?.training?.asr_model || env.MEOWLIVE_ASR_MODEL || '', asrSelection: env.MEOWLIVE_ASR_SELECTION },
     setup: { configuration_path: publicPath(configurationPath), server_config: publicPath(serverConfig), llm_configured: llmConfigured,
       llm_message: llmConfigured ? 'LLM 配置已读取，密钥仅用于主服务。' : 'LLM 尚未就绪。启动主服务后进入“LLM 接入”，填写接口格式、地址、模型和密钥。',
       windows_client_path: './target/windows-client' },

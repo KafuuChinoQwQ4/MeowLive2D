@@ -35,7 +35,7 @@ async fn rejects_unknown_voices_and_invalid_text_before_contacting_the_engine() 
             .message
             .contains("voice")
     );
-    for text in [" ".into(), "喵".repeat(501)] {
+    for text in [" ".into(), "喵".repeat(1201)] {
         let mut request = http::request();
         request.text = text;
         assert!(adapter.synthesize(request).await.is_err());

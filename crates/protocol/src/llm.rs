@@ -13,6 +13,34 @@ pub struct LlmSettings {
     pub timeout_seconds: u32,
     pub max_tokens: u32,
     pub json_mode: bool,
+    #[serde(default = "default_reasoning_effort")]
+    pub reasoning_effort: String,
+}
+
+fn default_reasoning_effort() -> String {
+    "default".into()
+}
+
+/// Capability preview is local and never includes credentials or contacts a provider.
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[serde(deny_unknown_fields)]
+pub struct LlmReasoningRequest {
+    pub provider: String,
+    pub api_format: String,
+    pub model: String,
+    pub reasoning_effort: String,
+    pub max_tokens: u32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
+pub struct LlmReasoningResult {
+    pub requested: String,
+    pub effective: Option<String>,
+    pub supported: Vec<String>,
+    pub strategy: String,
+    pub budget_tokens: Option<u32>,
+    pub note: String,
+    pub error: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
@@ -36,4 +64,29 @@ pub struct LlmSettingsRequest {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
 pub struct LlmTestResult {
     pub message: String,
+}
+
+/// A connection draft can discover models before one has been selected.
+#[derive(Clone, Deserialize, Serialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct LlmModelsRequest {
+    pub provider: String,
+    pub api_format: String,
+    pub base_url: String,
+    pub mode: String,
+    pub api_key: Option<String>,
+    pub clear_api_key: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
+pub struct LlmModelOption {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
+pub struct LlmModelsResult {
+    /// API base accepted by discovery, reused for subsequent model requests.
+    pub base_url: String,
+    pub models: Vec<LlmModelOption>,
 }

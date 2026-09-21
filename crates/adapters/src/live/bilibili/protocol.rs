@@ -237,7 +237,8 @@ pub(crate) fn authority_result(bytes: &[u8], maximum: usize) -> Result<Option<bo
 #[derive(Deserialize)]
 struct NoticeData {
     room_id: u64,
-    msg_id: String,
+    #[serde(default)]
+    msg_id: Option<String>,
     uname: String,
     timestamp: u64,
     #[serde(default)]
@@ -258,6 +259,33 @@ struct NoticeData {
     fans_medal_level: Option<u32>,
     #[serde(default)]
     guard_level: Option<u32>,
+    #[serde(default)]
+    message_id: Option<NoticeId>,
+    #[serde(default)]
+    message: Option<String>,
+    #[serde(default)]
+    rmb: Option<u32>,
+    #[serde(default)]
+    start_time: Option<u64>,
+    #[serde(default)]
+    end_time: Option<u64>,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum NoticeId {
+    Number(u64),
+    Text(String),
+}
+
+impl NoticeId {
+    fn into_id(self) -> Option<String> {
+        match self {
+            Self::Number(value) if value > 0 => Some(value.to_string()),
+            Self::Text(value) if !value.trim().is_empty() => Some(value),
+            _ => None,
+        }
+    }
 }
 
 enum NoticeOutcome {
@@ -291,10 +319,23 @@ fn map_notice(
     let Ok(data) = serde_json::from_value::<NoticeData>(envelope["data"].clone()) else {
         return NoticeOutcome::Ignored;
     };
-    if data.room_id.to_string() != expected_room || data.msg_id.trim().is_empty() {
+    if data.room_id.to_string() != expected_room {
         return NoticeOutcome::Ignored;
     }
-    let id = format!("bilibili:{expected_room}:{}", data.msg_id);
+    let message_id = if command == "LIVE_OPEN_PLATFORM_SUPER_CHAT" {
+        data.message_id
+            .and_then(NoticeId::into_id)
+            .map(|id| format!("sc:{id}"))
+    } else {
+        data.msg_id.filter(|id| !id.trim().is_empty())
+    };
+    let Some(message_id) = message_id else {
+        return NoticeOutcome::Ignored;
+    };
+    let Some(occurred_at_ms) = platform_timestamp(data.timestamp) else {
+        return NoticeOutcome::Ignored;
+    };
+    let id = format!("bilibili:{expected_room}:{message_id}");
     let kind = match command {
         "LIVE_OPEN_PLATFORM_DM" => match data.msg {
             Some(text) => EventKind::Chat { text },
@@ -307,6 +348,23 @@ fn map_notice(
             },
             _ => return NoticeOutcome::Ignored,
         },
+        "LIVE_OPEN_PLATFORM_SUPER_CHAT" => match (
+            data.message,
+            data.rmb,
+            data.start_time.and_then(platform_timestamp),
+            data.end_time.and_then(platform_timestamp),
+        ) {
+            (Some(text), Some(amount_cny), Some(start_at_ms), Some(end_at_ms)) => {
+                EventKind::SuperChat {
+                    text,
+                    amount_cny,
+                    start_at_ms,
+                    end_at_ms,
+                }
+            }
+            _ => return NoticeOutcome::Ignored,
+        },
+        "LIVE_OPEN_PLATFORM_LIVE_ROOM_ENTER" => EventKind::RoomEnter,
         _ => return NoticeOutcome::Ignored,
     };
     let gift_metadata = matches!(kind, EventKind::Gift { .. })
@@ -325,7 +383,7 @@ fn map_notice(
         source: "bilibili".into(),
         viewer: data.uname,
         viewer_identity: viewer_identity(data.uid, data.open_id, app_id),
-        occurred_at_ms: data.timestamp.saturating_mul(1000),
+        occurred_at_ms,
         gift_metadata,
         kind,
     };
@@ -334,6 +392,12 @@ fn map_notice(
     } else {
         NoticeOutcome::Ignored
     }
+}
+
+fn platform_timestamp(seconds: u64) -> Option<u64> {
+    seconds
+        .checked_mul(1000)
+        .filter(|milliseconds| *milliseconds <= 9_007_199_254_740_991)
 }
 
 fn viewer_identity(

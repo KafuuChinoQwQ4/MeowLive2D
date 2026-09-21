@@ -120,6 +120,7 @@ fn agent_snapshot_serializes_only_public_state() {
         paused: false,
         phase: AgentPhase::Speaking,
         settings: AgentSettings {
+            interaction: Default::default(),
             persona: "猫娘".into(),
             topic: "游戏".into(),
             proactive_enabled: false,
@@ -146,7 +147,16 @@ fn agent_snapshot_serializes_only_public_state() {
                 "persona": "猫娘",
                 "topic": "游戏",
                 "proactive_enabled": false,
-                "cooldown_ms": 30_000
+                "cooldown_ms": 30_000,
+                "interaction": {
+                    "chat_read_mode": "auto",
+                    "welcome_enabled": true,
+                    "busy_chat_count": 6,
+                    "busy_enter_count": 3,
+                    "busy_pending_count": 4,
+                    "welcome_cooldown_ms": 30_000,
+                    "welcome_viewer_cooldown_ms": 600_000
+                }
             },
             "events": [{
                 "event": {

@@ -12,11 +12,12 @@ desktop-runtime/  # 独立于界面的 Windows 播放与设备执行库
 │   │   └── model.rs  # 模型清单与路径校验、无覆盖安装、模型身份枚举及持久化删除重试
 │   ├── audio/  # 音频设备后端、采样转换与设备播放时钟
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   ├── buffer.rs  # 跨平台重采样输出缓冲，按需分配并限制实际排队 PCM 为 128 MiB，附长 SC 和溢出测试
 │   │   ├── conversion.rs  # 相位连续的 PCM 重采样与声道映射
 │   │   ├── meter.rs  # 固定容量的设备播放能量时间线与 RMS 累加器
 │   │   ├── simulated.rs  # 显式静音模拟后端，按模拟播放时间退役样本并观测能量
 │   │   ├── timing.rs  # 设备计划播放时间与完成回执时钟
-│   │   └── windows.rs  # Windows CPAL 默认设备、缓冲消费、播放时钟与 RMS 能量观测
+│   │   └── windows.rs  # Windows 默认输出设备、受限按需重采样缓冲及真实输出能量和时钟回执
 │   ├── avatar/  # VTube Studio 私有协议、配置校验、授权存储与口型连接状态机
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   ├── client.rs  # 有界 VTS WebSocket 请求响应、请求关联、API 错误和口型参数注入
@@ -89,6 +90,7 @@ desktop-runtime/  # 独立于界面的 Windows 播放与设备执行库
 │   ├── lip_sync_failures.rs  # 设备启动、写入和结束失败时的停止与口型复位测试
 │   ├── lip_sync_levels.rs  # 口型能量阈值、增益、时间平滑及非法输入测试
 │   ├── lip_sync_lifecycle.rs  # 设备驱动口型、停止、完成、失败和析构复位测试
+│   ├── long_speech.rs  # 默认桌面缓冲完整接收四分钟 SC 音频分片及完成回执边界测试
 │   ├── model_assets.rs  # 模型引用、路径限制、安装与覆盖保护测试
 │   ├── model_management.rs  # 已安装 Live2D 模型列表、删除、路径边界及跨端协议测试
 │   ├── obs_configuration.rs  # OBS 地址校验、本机保存与重启读取、密码保留清除及文件权限测试
@@ -113,4 +115,4 @@ desktop-runtime/  # 独立于界面的 Windows 播放与设备执行库
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 42e11fe7f4d74f1d618dca417f6841ef799d9e8b133cde70359f3423c55cd363 -->
+<!-- directory-tree-sha256: 7e4c4abf6a5a5eede4395e1c06563e9ae3c0ece93342913febcc1eb40d1393be -->

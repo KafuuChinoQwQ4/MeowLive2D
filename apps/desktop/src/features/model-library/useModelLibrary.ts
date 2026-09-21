@@ -68,7 +68,7 @@ export function useModelLibrary(client: ModelLibraryClient, token: string | null
           feedback.reportIssue(`models:download:${download.id}`, "模型下载失败", download.message);
         } else feedback.notify({ kind: kind === "download" || kind === "cancel" ? "info" : "success",
           title: ({ scan: "模型扫描完成", select: "模型已选择", download: "下载请求已提交", cancel: "取消下载请求已提交" })[kind],
-          message: kind === "download" ? "请在下载列表查看进度和最终结果；模型可用性以扫描结果为准。" : kind === "select" ? "模型选择已更新，请查看运行环境状态确认是否需要重启 TTS。" : kind === "scan" ? `已扫描模型目录，发现 ${next.installed.length} 个模型。` : "请查看下载列表确认最新状态。" });
+          message: kind === "select" && next.installed.find(item => item.id === id)?.purpose === "asr" ? "语音识别模型已选择，下一次提取文本或仅语音训练时生效。" : kind === "download" ? "请在下载列表查看进度和最终结果；模型可用性以扫描结果为准。" : kind === "select" ? "模型选择已更新，请查看运行环境状态确认是否需要重启 TTS。" : kind === "scan" ? `已扫描模型目录，发现 ${next.installed.length} 个模型。` : "请查看下载列表确认最新状态。" });
       }
     } catch (failure) {
       if (mounted.current && !controller.signal.aborted) { setError(`${failure instanceof Error ? failure.message : "模型操作失败"} 请刷新状态确认结果。`); setStale(true); feedback.error("模型操作失败", failure); }

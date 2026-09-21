@@ -56,10 +56,29 @@ impl SpeechQueue {
         text: impl Into<String>,
         voice_id: impl Into<String>,
     ) -> Result<SpeechTask, SpeechQueueError> {
+        let text = SpeechText::new(text).map_err(SpeechQueueError::InvalidInput)?;
+        self.enqueue_validated(id, text, voice_id)
+    }
+
+    pub fn enqueue_broadcast(
+        &mut self,
+        id: impl Into<String>,
+        text: impl Into<String>,
+        voice_id: impl Into<String>,
+    ) -> Result<SpeechTask, SpeechQueueError> {
+        let text = SpeechText::broadcast(text).map_err(SpeechQueueError::InvalidInput)?;
+        self.enqueue_validated(id, text, voice_id)
+    }
+
+    fn enqueue_validated(
+        &mut self,
+        id: impl Into<String>,
+        text: SpeechText,
+        voice_id: impl Into<String>,
+    ) -> Result<SpeechTask, SpeechQueueError> {
         if !self.connected {
             return Err(SpeechQueueError::Disconnected);
         }
-        let text = SpeechText::new(text).map_err(SpeechQueueError::InvalidInput)?;
         let voice_id = VoiceId::new(voice_id).map_err(SpeechQueueError::InvalidInput)?;
         let id = id.into();
         if self.get(&id).is_some() {

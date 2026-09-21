@@ -42,6 +42,7 @@ tests/  # 桌面执行运行时独立集成测试
 ├── lip_sync_failures.rs  # 设备启动、写入和结束失败时的停止与口型复位测试
 ├── lip_sync_levels.rs  # 口型能量阈值、增益、时间平滑及非法输入测试
 ├── lip_sync_lifecycle.rs  # 设备驱动口型、停止、完成、失败和析构复位测试
+├── long_speech.rs  # 默认桌面缓冲完整接收四分钟 SC 音频分片及完成回执边界测试
 ├── model_assets.rs  # 模型引用、路径限制、安装与覆盖保护测试
 ├── model_management.rs  # 已安装 Live2D 模型列表、删除、路径边界及跨端协议测试
 ├── obs_configuration.rs  # OBS 地址校验、本机保存与重启读取、密码保留清除及文件权限测试
@@ -66,4 +67,4 @@ tests/  # 桌面执行运行时独立集成测试
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 1e27e0248df80f72e1d8667c741f6229c629e00948ef50b8d686ddd3feda156f -->
+<!-- directory-tree-sha256: 3da8cb5df2893a7a3d52d07d7d3734bd3793aa7a3924c6d462d6a748b17c7acc -->

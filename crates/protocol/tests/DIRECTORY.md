@@ -18,4 +18,4 @@ tests/  # 通信协议独立集成测试
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 06c90742da169d18a51981ff0d7ca1a352f8f5ce54d402c8bef84f00339b1230 -->
+<!-- directory-tree-sha256: dc912f128784d46ab9206926de39882d375d9a95969d72dee6de7201c0a6fd8d -->

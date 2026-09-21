@@ -22,6 +22,7 @@ pub struct ModelRuntime {
 #[derive(Clone, Debug, Deserialize, Serialize, TS)]
 pub struct CatalogModel {
     pub id: String,
+    pub purpose: String,
     pub name: String,
     pub languages: String,
     pub description: String,
@@ -35,6 +36,7 @@ pub struct CatalogModel {
 #[derive(Clone, Debug, Deserialize, Serialize, TS)]
 pub struct InstalledModel {
     pub id: String,
+    pub purpose: String,
     pub model_id: String,
     pub name: String,
     pub path: String,
@@ -64,4 +66,6 @@ pub struct ModelLibrarySnapshot {
     pub catalog: Vec<CatalogModel>,
     pub downloads: Vec<ModelDownload>,
     pub selected_id: Option<String>,
+    pub asr_selected_id: Option<String>,
+    pub asr_error: Option<String>,
 }

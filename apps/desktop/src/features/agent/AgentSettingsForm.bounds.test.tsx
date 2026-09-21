@@ -1,8 +1,9 @@
+import { interactionSettings } from "../../test/agent-fixtures";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 import { AgentSettingsForm } from "./AgentSettingsForm";
 
-const settings = { persona: "猫咪主播", topic: "", proactive_enabled: false, cooldown_ms: 30000 };
+const settings = { persona: "猫咪主播", topic: "", proactive_enabled: false, cooldown_ms: 30000, interaction: { ...interactionSettings } };
 
 it("默认空话题允许保存，与后端约束一致", async () => {
   const onSave = vi.fn().mockResolvedValue(true);

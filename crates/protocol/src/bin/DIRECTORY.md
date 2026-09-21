@@ -14,4 +14,4 @@ bin/  # 协议开发命令入口
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 35942ad068db6b77f5bc373be611664485e66661a7ca0845192df5d2d7a84ef2 -->
+<!-- directory-tree-sha256: 5e8978c90780cb17899b63b0510cf921bd19147f0324ea9dfcc9cb77ffbc5622 -->

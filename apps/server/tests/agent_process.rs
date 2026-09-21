@@ -1,5 +1,10 @@
 mod process_support;
-use axum::{Json, Router, http::HeaderMap, routing::post};
+use axum::{
+    Json, Router,
+    http::HeaderMap,
+    response::{IntoResponse, Response},
+    routing::post,
+};
 use meowlive_desktop_runtime::{
     audio::SimulatedBackend, config::ClientConfig, connection::run_once,
 };
@@ -25,6 +30,11 @@ async fn saved_agent_settings_survive_server_restart_and_remain_paused() {
         "topic": "夜间电台",
         "proactive_enabled": true,
         "cooldown_ms": 12000,
+        "interaction": {
+            "chat_read_mode": "all", "welcome_enabled": false,
+            "busy_chat_count": 12, "busy_enter_count": 5, "busy_pending_count": 8,
+            "welcome_cooldown_ms": 45000, "welcome_viewer_cooldown_ms": 900000
+        }
     });
     // A second save must replace the previous file, including on Windows.
     for cooldown in [12000, 45000] {
@@ -62,12 +72,14 @@ async fn server_executable_wires_model_environment_events_and_real_speech_worker
         let observed=observed.clone();async move {
             assert_eq!(headers["authorization"],"Bearer fake-process-test-key");
             assert_eq!(body["model"],"controlled-model");
-            let events:Value=serde_json::from_str(body["messages"][1]["content"].as_str().unwrap()).unwrap();
+            let dynamic_user=body["messages"].as_array().unwrap().iter().rev()
+                .find(|message| message["role"]=="user").unwrap();
+            let events:Value=serde_json::from_str(dynamic_user["content"].as_str().unwrap()).unwrap();
             observed.fetch_add(1,Ordering::SeqCst);
-            Json(json!({"choices":[{"finish_reason":"stop","message":{"content":json!({"reply_to":[events["events"][0]["id"]],"text":"欢迎来到直播间","topic":"游戏"}).to_string()}}]}))
+            completion_response(&body, json!({"reply_to":[events["events"][0]["id"]],"text":"欢迎来到直播间","topic":"游戏"}))
         }
     })).route("/tts",post(|Json(body):Json<Value>|async move {
-        assert_eq!(body["text"],"欢迎来到直播间");
+        assert_eq!(body["text"],"观众说：晚上好。欢迎来到直播间");
         ([("content-type","audio/wav")],wav())
     }));
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -177,4 +189,19 @@ api_key_env="MEOWLIVE_TEST_MODEL_KEY"
             .is_err()
     );
     model_server.abort();
+}
+
+// These process fixtures exercise the production adapter's negotiated response mode.
+fn completion_response(request: &Value, decision: Value) -> Response {
+    if request["stream"] == true {
+        let content = json!({"choices":[{"index":0,"delta":{"role":"assistant","content":decision.to_string()},"finish_reason":null}]});
+        let stopped = json!({"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]});
+        (
+            [("content-type", "text/event-stream")],
+            format!("data: {content}\n\ndata: {stopped}\n\ndata: [DONE]\n\n"),
+        )
+            .into_response()
+    } else {
+        Json(json!({"choices":[{"index":0,"finish_reason":"stop","message":{"role":"assistant","content":decision.to_string()}}]})).into_response()
+    }
 }

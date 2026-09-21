@@ -152,6 +152,9 @@ pub async fn run(config_path: &Path) -> Result<(), String> {
         listener.local_addr().map_err(|e| e.to_string())?
     );
     let mut state = AppState::with_services(config, synthesizer, model, live_source);
+    state.llm_runtime = Arc::new(crate::llm_runtime::RuntimeStore::open(
+        state.config.resources.directory.join("agent-runtime"),
+    )?);
     state.live_settings = Arc::new(crate::live_settings::LiveSettingsStore::new(
         crate::live_settings::settings_path(config_path),
     ));

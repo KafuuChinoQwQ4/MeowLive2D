@@ -42,7 +42,140 @@ impl Drop for Fixture {
     }
 }
 fn settings() -> Value {
-    json!({"persona":"温柔猫咪\n简短回应","topic":"日常","proactive_enabled":true,"cooldown_ms":45000})
+    json!({
+        "persona":"温柔猫咪\n简短回应",
+        "topic":"日常",
+        "proactive_enabled":true,
+        "cooldown_ms":45000,
+        "interaction": {
+            "chat_read_mode": "auto",
+            "welcome_enabled": true,
+            "busy_chat_count": 6,
+            "busy_enter_count": 3,
+            "busy_pending_count": 4,
+            "welcome_cooldown_ms": 30000,
+            "welcome_viewer_cooldown_ms": 600000
+        }
+    })
+}
+
+#[tokio::test]
+async fn legacy_saved_settings_and_requests_default_missing_interaction() {
+    let fixture = Fixture::new();
+    let legacy = json!({
+        "persona": "温柔猫咪\n简短回应",
+        "topic": "日常",
+        "proactive_enabled": true,
+        "cooldown_ms": 45000
+    });
+    let saved = json!({"schema":1,"settings":legacy}).to_string();
+    fixture.write_override(&saved);
+    assert_eq!(
+        serde_json::to_value(fixture.state().agent_snapshot().await.settings).unwrap(),
+        settings()
+    );
+    assert_eq!(
+        std::fs::read_to_string(settings_path(&fixture.config)).unwrap(),
+        saved
+    );
+
+    let (code, snapshot) = request(
+        router(fixture.state()),
+        "POST",
+        "/api/agent/settings",
+        legacy,
+    )
+    .await;
+    assert_eq!(code, 200);
+    assert_eq!(snapshot["settings"], settings());
+    assert_eq!(
+        serde_json::to_value(fixture.state().agent_snapshot().await.settings).unwrap(),
+        settings()
+    );
+}
+
+#[tokio::test]
+async fn custom_interaction_preferences_survive_restart_without_resuming_agent() {
+    let fixture = Fixture::new();
+    let original = std::fs::read(&fixture.config).unwrap();
+    for mode in ["all", "selective"] {
+        let mut custom = settings();
+        custom["interaction"] = json!({
+            "chat_read_mode": mode,
+            "welcome_enabled": false,
+            "busy_chat_count": 12,
+            "busy_enter_count": 5,
+            "busy_pending_count": 8,
+            "welcome_cooldown_ms": 45000,
+            "welcome_viewer_cooldown_ms": 1200000
+        });
+        let (code, snapshot) = request(
+            router(fixture.state()),
+            "POST",
+            "/api/agent/settings",
+            custom.clone(),
+        )
+        .await;
+        assert_eq!(code, 200);
+        assert_eq!(snapshot["settings"], custom);
+        let restarted = fixture.state().agent_snapshot().await;
+        assert_eq!(serde_json::to_value(restarted.settings).unwrap(), custom);
+        assert!(restarted.paused);
+        let saved: Value =
+            serde_json::from_slice(&std::fs::read(settings_path(&fixture.config)).unwrap())
+                .unwrap();
+        assert_eq!(saved, json!({"schema":1,"settings":custom}));
+        assert_eq!(std::fs::read(&fixture.config).unwrap(), original);
+    }
+}
+
+#[tokio::test]
+async fn invalid_interaction_limits_preserve_active_and_saved_settings() {
+    let fixture = Fixture::new();
+    let state = fixture.state();
+    assert_eq!(
+        request(
+            router(state.clone()),
+            "POST",
+            "/api/agent/settings",
+            settings()
+        )
+        .await
+        .0,
+        200
+    );
+    let previous = std::fs::read(settings_path(&fixture.config)).unwrap();
+    for (field, value) in [
+        ("busy_chat_count", 0),
+        ("busy_chat_count", 1001),
+        ("busy_enter_count", 0),
+        ("busy_enter_count", 1001),
+        ("busy_pending_count", 0),
+        ("busy_pending_count", 513),
+        ("welcome_cooldown_ms", 999),
+        ("welcome_cooldown_ms", 3_600_001),
+        ("welcome_viewer_cooldown_ms", 999),
+        ("welcome_viewer_cooldown_ms", 86_400_001),
+    ] {
+        let mut invalid = settings();
+        invalid["interaction"][field] = json!(value);
+        let (code, _) = request(
+            router(state.clone()),
+            "POST",
+            "/api/agent/settings",
+            invalid,
+        )
+        .await;
+        assert_eq!(code, 400, "invalid {field}={value} must be rejected");
+        assert_eq!(
+            std::fs::read(settings_path(&fixture.config)).unwrap(),
+            previous
+        );
+        assert_eq!(
+            serde_json::to_value(state.agent_snapshot().await.settings).unwrap(),
+            settings()
+        );
+    }
 }
 
 #[tokio::test]

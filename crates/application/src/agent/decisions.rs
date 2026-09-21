@@ -8,7 +8,7 @@ impl AgentSession {
     pub fn resolve(
         &mut self,
         work_id: u64,
-        decision: AgentDecision,
+        mut decision: AgentDecision,
         speech_id: String,
         now_ms: u64,
     ) -> Result<Option<PreparedSpeech>, String> {
@@ -17,6 +17,73 @@ impl AgentSession {
             .as_ref()
             .filter(|flight| flight.id == work_id)
             .ok_or_else(|| "stale agent decision".to_owned())?;
+        let expired: Vec<_> = self
+            .scheduler
+            .records
+            .iter()
+            .filter(|r| {
+                flight.batch.events.iter().any(|e| e.id == r.event.id) && now_ms >= r.expires_at_ms
+            })
+            .map(|r| r.event.id.clone())
+            .collect();
+        // A decision is atomic; return still-valid candidates to the queue when part expires.
+        if !expired.is_empty() {
+            let flight = self.flight.take().expect("checked flight");
+            let remaining = flight
+                .batch
+                .events
+                .iter()
+                .filter(|e| !expired.contains(&e.id))
+                .map(|e| e.id.clone())
+                .collect::<Vec<_>>();
+            self.scheduler
+                .update(&expired, EventStatus::Expired, None, None);
+            self.scheduler
+                .update(&remaining, EventStatus::Pending, None, None);
+            return Ok(None);
+        }
+        if flight
+            .batch
+            .events
+            .iter()
+            .any(|e| matches!(e.kind, EventKind::RoomEnter))
+        {
+            let pending = self
+                .scheduler
+                .records
+                .iter()
+                .filter(|r| matches!(r.status, EventStatus::Pending | EventStatus::Deciding))
+                .count();
+            let busy = self
+                .interaction
+                .busy(&self.settings.interaction, pending, now_ms);
+            let important_waiting = self.scheduler.records.iter().any(|r| {
+                r.status == EventStatus::Pending && !matches!(r.event.kind, EventKind::RoomEnter)
+            });
+            if busy || important_waiting {
+                let ids = flight
+                    .batch
+                    .events
+                    .iter()
+                    .map(|e| e.id.clone())
+                    .collect::<Vec<_>>();
+                self.flight = None;
+                self.scheduler.update(
+                    &ids,
+                    EventStatus::Skipped,
+                    None,
+                    Some("生成期间直播间变忙，跳过欢迎"),
+                );
+                return Ok(None);
+            }
+        }
+        if flight.required_read && decision.text.is_none() && decision.reply_to.is_empty() {
+            decision.reply_to = flight.batch.events.iter().map(|e| e.id.clone()).collect();
+            decision.text = Some(match flight.batch.events[0].kind {
+                EventKind::RoomEnter => "很高兴见到你。".into(),
+                _ => "这条留言我收到了。".into(),
+            });
+        }
         let ids: HashSet<_> = flight
             .batch
             .events
@@ -62,9 +129,21 @@ impl AgentSession {
                 if speech_id.trim().is_empty() {
                     return Err("speech ID must not be empty".into());
                 }
+                let reply = SpeechText::new(text)
+                    .map_err(|error| error.to_string())?
+                    .as_str()
+                    .to_owned();
+                let mut composed = flight
+                    .batch
+                    .events
+                    .iter()
+                    .filter(|e| chosen.contains(e.id.as_str()))
+                    .map(super::interaction::read_prefix)
+                    .collect::<String>();
+                composed.push_str(&reply);
                 Some(
-                    SpeechText::new(text)
-                        .map_err(|error| error.to_string())?
+                    SpeechText::broadcast(composed)
+                        .map_err(|e| e.to_string())?
                         .as_str()
                         .to_owned(),
                 )
@@ -106,6 +185,10 @@ impl AgentSession {
                 EventKind::Gift { name, count } => {
                     format!("{} 赠送 {} × {}", event.viewer, name, count)
                 }
+                EventKind::SuperChat {
+                    text, amount_cny, ..
+                } => format!("{} 发送 {} 元SC：{}", event.viewer, amount_cny, text),
+                EventKind::RoomEnter => format!("{} 进入直播间", event.viewer),
             })
             .collect::<Vec<_>>()
             .join("\n")
@@ -118,6 +201,11 @@ impl AgentSession {
             Some(&speech_id),
             None,
         );
+        for event in &flight.batch.events {
+            if chosen.contains(event.id.as_str()) && matches!(event.kind, EventKind::RoomEnter) {
+                self.interaction.welcomed(event, now_ms);
+            }
+        }
         self.current = Some(ActiveSpeech {
             id: speech_id,
             events: flight

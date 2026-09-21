@@ -14,7 +14,8 @@ transport/  # 控制接口、跨端连接与协议到领域对象的转换
 ├── error.rs  # 稳定的结构化 HTTP 错误映射
 ├── http.rs  # HTTP 路由、最小健康接口及管理员与来源边界组装
 ├── live.rs  # 直播连接控制及脱敏设置查询和本机保存 HTTP 入口
-├── llm.rs  # LLM 接入配置读写与草稿连接测试 HTTP 入口
+├── llm.rs  # LLM 配置、模型目录、推理能力预览和显式连接测试的 HTTP 接口
+├── llm_runtime.rs  # 运行配置、实时活动和用量 HTTP 接口
 ├── mapping.rs  # protocol DTO 与 domain 类型的显式转换，避免序列化字段影响领域规则。
 ├── memory.rs  # 记忆纠正删除冻结及任务恢复管理接口
 ├── mod.rs  # HTTP / WebSocket 输入与输出适配；在协议 DTO 与领域对象之间进行映射。
@@ -34,4 +35,4 @@ transport/  # 控制接口、跨端连接与协议到领域对象的转换
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 14ed08013cb3edad6283cfae906bde7d2bdf32eec0c813ac73563509023b2631 -->
+<!-- directory-tree-sha256: 0f0c7884e345b2511661c57ea8f88411be38c1b1049a3dd5ce9473f7f01a729b -->

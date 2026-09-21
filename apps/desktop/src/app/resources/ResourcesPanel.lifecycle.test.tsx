@@ -9,7 +9,7 @@ describe("资源面板生命周期", () => {
   it("卸载时取消仍在等待的资源快照请求", async () => {
     let signal: AbortSignal | undefined;
     const resourceClient = {
-      baseUrl: "",
+      baseUrl: "http://127.0.0.1:19600",
       getSnapshot: vi.fn((_signal?: AbortSignal) => {
         signal = _signal;
         return new Promise(() => undefined);
@@ -28,7 +28,7 @@ describe("资源面板生命周期", () => {
     const user = userEvent.setup();
     let actionSignal: AbortSignal | undefined;
     const resourceClient = {
-      baseUrl: "",
+      baseUrl: "http://127.0.0.1:19600",
       getSnapshot: vi.fn().mockResolvedValue(resourceSnapshot()),
       desktop: vi.fn((_operation, signal?: AbortSignal) => {
         actionSignal = signal;

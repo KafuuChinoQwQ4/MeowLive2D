@@ -6,6 +6,15 @@ const statusLabels: Record<AgentEventStatus, string> = {
   completed: "已完成", cancelled: "已取消", failed: "失败", unknown: "结果未知",
 };
 
+function eventLabel(kind: AgentEventSnapshot["event"]["kind"]): string {
+  switch (kind.type) {
+    case "chat": return kind.text;
+    case "gift": return `${kind.name} × ${kind.count}`;
+    case "super_chat": return `SC · ${kind.amount_cny} 元 · ${kind.text}`;
+    case "room_enter": return "进入直播间";
+  }
+}
+
 export function EventHistory({ events }: { events: AgentEventSnapshot[] }) {
   const items = events.slice().reverse();
   return (
@@ -18,7 +27,7 @@ export function EventHistory({ events }: { events: AgentEventSnapshot[] }) {
               <span className={`task-status task-${item.status}`}>{statusLabels[item.status]}</span>
               <span className="field-hint">{item.event.viewer} · {item.event.source}</span>
             </div>
-            <p className="speech-text">{item.event.kind.type === "chat" ? item.event.kind.text : `${item.event.kind.name} × ${item.event.kind.count}`}</p>
+            <p className="speech-text">{eventLabel(item.event.kind)}</p>
             {item.speech_id && <p className="field-hint">关联播报 {item.speech_id}</p>}
             {item.error && <p className="field-error">{item.error}</p>}
           </li>)}

@@ -7,14 +7,15 @@
 ```text
 config/  # 独立数据库部署配置与 Linux、Windows 配置示例
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-├── README.md  # 独立记忆数据库、主服务、启动管理和 Windows 执行端的配置边界与启用说明
+├── README.md  # 数据库、主服务、长语音、直播互动策略和 Windows 执行端配置说明
+├── agent-runtime.md  # Agent 原生协议、统一推理强度、缓存、搜索工具、实时交互及用量估算说明
 ├── databases.compose.yaml  # MeowLive2D 独立 PostgreSQL、pgvector 与 Neo4j 的容器、端口、数据挂载和资源上限
 ├── databases.env.example  # 独立数据库的私有凭据变量格式示例，不含实际密码
 ├── desktop.example.toml  # Windows 执行端连接、缓冲、VTS 插件与口型的默认关闭示例配置
 ├── launcher.example.json  # 网页启动器的主服务配置、TTS 环境与本地密钥文件路径模板
 ├── offline.example.toml  # 本地兼容量化 LLM 与 TTS 的受限离线运行配置样例
 ├── postgres-init.sql  # 首次初始化观众数据库的 vector 扩展、受限应用账号和独立 schema
-├── server.example.toml  # 主服务、GPT-SoVITS、默认暂停 Agent、LLM 和默认禁用直播接入的示例参数
+├── server.example.toml  # 主服务、长语音、默认暂停 Agent 互动策略、LLM 和直播接入示例参数
 └── viewer-recovery.md  # 观众数据库备份、删除资料同步及副本重建流程
 ```
 
@@ -22,4 +23,4 @@ config/  # 独立数据库部署配置与 Linux、Windows 配置示例
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: b3c0aa451ef3627c6cce7643e297cc7b4efbd10ae23e039ddd87dd6dff529dba -->
+<!-- directory-tree-sha256: 6d685aad4aed3c590e39407d2d03fd71e9570905f16a0b0590c16b545d43ebf4 -->

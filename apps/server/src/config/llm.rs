@@ -16,6 +16,7 @@ pub struct LlmConfig {
     pub max_response_bytes: usize,
     pub max_tokens: u32,
     pub json_mode: bool,
+    pub reasoning_effort: String,
     pub max_retries: u32,
 }
 impl Default for LlmConfig {
@@ -32,6 +33,7 @@ impl Default for LlmConfig {
             max_response_bytes: 65536,
             max_tokens: 1024,
             json_mode: true,
+            reasoning_effort: "default".into(),
             max_retries: 1,
         }
     }
@@ -120,12 +122,28 @@ impl LlmConfig {
         }
         if !(1..=120).contains(&self.timeout_seconds)
             || !(1024..=1048576).contains(&self.max_response_bytes)
-            || !(64..=4096).contains(&self.max_tokens)
+            || !(64..=65536).contains(&self.max_tokens)
             || self.max_retries > 1
         {
             return Err(
-                "LLM 超时须 1–120 秒、响应上限 1 KiB–1 MiB、token 上限 64–4096、重试 0–1 次".into(),
+                "LLM 超时须 1–120 秒、响应上限 1 KiB–1 MiB、token 上限 64–65536、重试 0–1 次"
+                    .into(),
             );
+        }
+        let requested = self.reasoning_effort.parse::<meowlive_application::ports::reasoning::ReasoningEffort>()
+            .map_err(|_| "llm.reasoning_effort 须为 default、minimal、low、medium、high、xhigh、max 或 ultra")?;
+        if self.is_configured() {
+            let format = self.api_format.parse().map_err(|_| "LLM API 格式无效")?;
+            let resolution = meowlive_adapters::llm::reasoning::resolve_reasoning(
+                &self.provider,
+                format,
+                &self.model,
+                requested,
+                self.max_tokens,
+            );
+            if let Some(error) = resolution.error {
+                return Err(error);
+            }
         }
         Ok(())
     }

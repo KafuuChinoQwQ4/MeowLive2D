@@ -6,7 +6,7 @@ use axum::{
         ws::{Message, WebSocket},
     },
     http::HeaderMap,
-    response::Response,
+    response::{IntoResponse, Response},
     routing::{get, post},
 };
 use futures_util::StreamExt;
@@ -452,25 +452,33 @@ async fn llm_completion(
     State(state): State<ExternalState>,
     headers: HeaderMap,
     Json(body): Json<Value>,
-) -> Json<Value> {
+) -> Response {
     assert_eq!(headers["authorization"], "Bearer integration-key");
     assert_eq!(body["model"], "controlled-model");
-    let prompt: Value =
-        serde_json::from_str(body["messages"][1]["content"].as_str().unwrap()).unwrap();
+    let dynamic_user = body["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .rev()
+        .find(|message| message["role"] == "user")
+        .unwrap();
+    let prompt: Value = serde_json::from_str(dynamic_user["content"].as_str().unwrap()).unwrap();
     let event_id = prompt["events"][0]["id"].as_str().unwrap().to_owned();
     state.observed.lock().await.llm_prompts.push(prompt);
-    Json(json!({
-        "choices": [{
-            "finish_reason": "stop",
-            "message": {
-                "content": json!({
-                    "reply_to": [event_id],
-                    "text": "谢谢 viewer 的两份 Cat",
-                    "topic": "礼物"
-                }).to_string()
-            }
-        }]
-    }))
+    let decision = json!({
+        "reply_to": [event_id], "text": "谢谢 viewer 的两份 Cat", "topic": "礼物"
+    });
+    if body["stream"] == true {
+        let content = json!({"choices":[{"index":0,"delta":{"role":"assistant","content":decision.to_string()},"finish_reason":null}]});
+        let stopped = json!({"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]});
+        (
+            [("content-type", "text/event-stream")],
+            format!("data: {content}\n\ndata: {stopped}\n\ndata: [DONE]\n\n"),
+        )
+            .into_response()
+    } else {
+        Json(json!({"choices":[{"index":0,"finish_reason":"stop","message":{"role":"assistant","content":decision.to_string()}}]})).into_response()
+    }
 }
 
 async fn tts(

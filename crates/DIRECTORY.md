@@ -16,6 +16,7 @@ crates/  # 按职责与单向依赖隔离的 Rust 库
 │   │   ├── 0006_memory_operations.sql  # 记忆任务恢复和向量重建审计迁移
 │   │   ├── 0007_viewer_merge.sql  # 身份合并墓碑和原始账本归属审计迁移
 │   │   ├── 0008_memory_graph_invalidation.sql  # 记忆失效同事务生成关系墓碑与图同步任务的触发器
+│   │   ├── 0009_superchat_room_enter_events.sql  # 扩展原始直播事件类型约束以支持醒目留言和进房事件
 │   │   └── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   ├── src/  # 按外部能力组织的适配器源码
 │   │   ├── live/  # 直播源连接、事件标准化与模拟输入
@@ -31,12 +32,27 @@ crates/  # 按职责与单向依赖隔离的 Rust 库
 │   │   │   ├── mod.rs  # 直播源接入和事件标准化；去重、话题筛选与礼物合并属于 application。
 │   │   │   └── simulator.rs  # 模拟弹幕、礼物和连接变化的事件来源，用于首个互动闭环与事件回放。
 │   │   ├── llm/  # 云端及本地 LLM 的协议适配
+│   │   │   ├── models/  # 模型目录配置及响应解析实现
+│   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   │   ├── config.rs  # 模型目录地址规范化与密钥校验
+│   │   │   │   └── response.rs  # 供应商模型条目及分页元数据解析
+│   │   │   ├── reasoning/  # 具体模型推理能力登记与原生参数映射
+│   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   │   └── capabilities.rs  # 经官方文档核对的模型推理档位和预算预设能力表
+│   │   │   ├── runtime/  # 四协议工具调用、流式响应、缓存和用量的统一适配
+│   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   │   ├── mod.rs  # 有界单轮模型调用与只读流式观测
+│   │   │   │   ├── output.rs  # 原生输出、工具签名与用量归一化
+│   │   │   │   ├── request.rs  # 原生工具、续接上下文与稳定缓存前缀请求
+│   │   │   │   └── stream.rs  # 四协议 SSE 拼包、结束验证与用量保留
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   ├── config.rs  # LLM 地址规范化、认证头及资源限制的统一校验
 │   │   │   ├── mod.rs  # 模型协议适配。兼容同一协议的云端与本地服务复用实现，其他协议独立添加。
-│   │   │   ├── multi_provider.rs  # OpenAI Responses、Anthropic Messages、Gemini 与兼容聊天的协议适配
+│   │   │   ├── models.rs  # 受限的供应商模型目录 HTTP 适配与分页汇总
+│   │   │   ├── multi_provider.rs  # 多提供商决策与原生工具、流式运行层适配
 │   │   │   ├── openai_compatible.rs  # 非流式 Chat Completions 传输、认证、响应大小与临时错误分类
 │   │   │   ├── prompt.rs  # 跨 LLM 协议共享的事件回复与主动发言提示隔离及输入校验
+│   │   │   ├── reasoning.rs  # 推理档位夹取、预算限制和各协议原生请求参数注入
 │   │   │   └── response.rs  # LLM 文本决策内容与 OpenAI 聊天响应的严格校验
 │   │   ├── speech/  # GPT-SoVITS 等语音引擎的请求和音频格式适配
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
@@ -87,7 +103,8 @@ crates/  # 按职责与单向依赖隔离的 Rust 库
 │   │   ├── graph.rs  # Neo4j Query API 参数化投影和有界邻居检索
 │   │   ├── lib.rs  # 外部能力实现：依赖业务层定义的 ports，不反向定义业务规则。
 │   │   ├── memory.rs  # 独立 HTTP 记忆提取和嵌入服务适配器
-│   │   └── runtime.rs  # GPU 采样、WSL 工具查找与有界错误诊断
+│   │   ├── runtime.rs  # GPU 采样、WSL 工具查找与有界错误诊断
+│   │   └── search.rs  # Brave 与 SearXNG 有界检索、来源过滤和错误脱敏
 │   ├── tests/  # GPT-SoVITS、WAV 与 LLM 适配器的集成和输入输出边界测试
 │   │   ├── bilibili_support/  # 受控官方直播 HTTP 和 WebSocket 协议测试服务
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
@@ -105,13 +122,18 @@ crates/  # 按职责与单向依赖隔离的 Rust 库
 │   │   ├── bilibili_messages.rs  # 直播消息包头、压缩边界、事件映射与无效输入测试
 │   │   ├── bilibili_resilience.rs  # 直播心跳互不阻塞、鉴权同包事件、失败清理、事件标识和总解压预算回归测试
 │   │   ├── bilibili_signing.rs  # 哔哩哔哩签名固定向量、请求体字节与输入验证测试
-│   │   ├── gpt_sovits_http.rs  # GPT-SoVITS 请求参数映射、音频响应和引擎失败测试
+│   │   ├── gpt_sovits_http.rs  # GPT-SoVITS 参数映射、完整长 SC 音频响应和引擎失败测试
 │   │   ├── gpt_sovits_limits.rs  # 引擎响应体上限、分块传输、总超时和重定向测试
 │   │   ├── gpt_sovits_validation.rs  # 引擎配置、默认音色和播报文本输入校验测试
 │   │   ├── llm_cancellation.rs  # 取消模型决策 future 后关闭在途 HTTP 连接测试
 │   │   ├── llm_limits.rs  # 配置请求响应上限、总超时、错误分类与敏感信息脱敏测试
+│   │   ├── llm_models.rs  # 模型目录认证、地址规范化和供应商分页集成测试
+│   │   ├── llm_models_bounds.rs  # 模型目录资源上限、畸形响应及密钥保护边界测试
 │   │   ├── llm_multi_provider.rs  # 多 LLM 协议的请求认证、输出校验和边界测试
 │   │   ├── llm_output_validation.rs  # 严格决策字段、事件子集、工具调用、截断及内容约束测试
+│   │   ├── llm_reasoning.rs  # 推理档位上下边界、缺档、默认与未知模型的解析回归测试
+│   │   ├── llm_reasoning_http.rs  # 推理参数在原生 HTTP、流式和工具续传中的适配与上限测试
+│   │   ├── llm_runtime.rs  # 四协议运行层、工具续接、缓存及流式取消回归测试
 │   │   ├── llm_transport.rs  # 路径认证、消息角色、主动发言历史隔离、礼物分组提示与重定向测试
 │   │   ├── memory_http.rs  # 提取嵌入 HTTP 格式限额与来源校验测试
 │   │   ├── model_runtime.rs  # 模型关闭拒绝合成、启停后恢复及不污染权重状态的 HTTP 测试
@@ -127,14 +149,16 @@ crates/  # 按职责与单向依赖隔离的 Rust 库
 │   │   ├── resource_store.rs  # 参考音频存储持久化、删除重启、路径及标识一致性测试
 │   │   ├── resource_synthesizer.rs  # 上传音色的引擎路径解析与默认音色回退测试
 │   │   ├── wav_decoding.rs  # 完整 WAV 的基础 PCM 解码与无效输入测试
-│   │   └── wav_validation.rs  # WAV 采样率、位深、帧完整性和容器畸形校验测试
+│   │   ├── wav_validation.rs  # WAV 采样率、位深、帧完整性和容器畸形校验测试
+│   │   └── web_search.rs  # 搜索请求格式、来源过滤及响应长度边界测试
 │   ├── Cargo.toml  # 该 Rust 包的名称、workspace 配置与模块依赖声明
 │   └── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 ├── application/  # 业务用例编排及外部能力接口定义
 │   ├── src/  # Agent、事件调度、语音与资源任务用例
 │   │   ├── agent/  # Agent 配置、输出校验、播放关联及状态类型
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   │   ├── decisions.rs  # 模型输出校验、工作编号隔离和语音准备
+│   │   │   ├── decisions.rs  # 模型输出校验、时效与繁忙复核、工作隔离和完整原文语音准备
+│   │   │   ├── interaction.rs  # 有界流量统计、弹幕朗读模式、进房欢迎冷却及原文播报前缀
 │   │   │   ├── playback.rs  # 播放状态同步和已完成对话记忆
 │   │   │   ├── settings.rs  # 人设配置和调度资源上限校验
 │   │   │   └── types.rs  # Agent 阶段、事件状态及应用调用结果
@@ -144,20 +168,23 @@ crates/  # 按职责与单向依赖隔离的 Rust 库
 │   │   │   ├── execution.rs  # Windows 执行指令下发、取消和执行回执接收的能力边界；实现不在业务层。
 │   │   │   ├── live_source.rs  # 平台无关直播源、连接生命周期和错误语义接口
 │   │   │   ├── llm.rs  # 模型决策、已完成对话与可取消异步模型接口
+│   │   │   ├── llm_runtime.rs  # 统一模型工具轮次、流式观测与 token 用量接口
 │   │   │   ├── memory.rs  # 记忆提取与向量嵌入能力接口
 │   │   │   ├── memory_store.rs  # 权威记忆、后台任务及管理恢复存储接口
 │   │   │   ├── mod.rs  # 由业务方定义的外部能力接口。实现位于 adapters 或应用入口的传输适配层。
+│   │   │   ├── reasoning.rs  # 厂商无关的八档推理强度顺序、默认值与严格解析
 │   │   │   ├── receipt_journal.rs  # 播放完成回执本地持久暂存与数据库提交确认接口
 │   │   │   ├── relationships.rs  # 关系事实、图投影和同步恢复能力接口
 │   │   │   ├── speech.rs  # 可动态注入的异步语音合成接口与 PCM 输出类型
 │   │   │   ├── storage.rs  # 资源快照、参考音频与引擎路径存储接口
 │   │   │   ├── training.rs  # 训练存储、同音色续训基底与受控进程接口
 │   │   │   ├── viewer_merge.rs  # 身份合并预览及版本条件应用接口
-│   │   │   └── viewers.rs  # 观众身份和直播事件的幂等持久接收及分页查询端口
+│   │   │   ├── viewers.rs  # 观众身份和直播事件的幂等持久接收及分页查询端口
+│   │   │   └── web_search.rs  # 只读网页搜索结果与异步查询业务接口
 │   │   ├── scheduler/  # 候选事件优先级与礼物分组策略
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   ├── fairness.rs  # 完成驱动的观众公平、有限重选和追问焦点
-│   │   │   └── selection.rs  # 礼物优先选择和有界原始事件分组
+│   │   │   └── selection.rs  # SC 独立优先选择、欢迎单轮隔离、朗读长度约束与礼物分组
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   ├── agent.rs  # Agent 生命周期、决策调度和状态快照
 │   │   ├── lib.rs  # 业务用例与外部能力接口。通过注入 ports 的实现调用外部能力。
@@ -180,6 +207,7 @@ crates/  # 按职责与单向依赖隔离的 Rust 库
 │   │   ├── agent_lifecycle.rs  # 配置、暂停、停止和播放生命周期测试
 │   │   ├── agent_memory.rs  # 已完成对话数量及内容长度边界测试
 │   │   ├── agent_settings.rs  # 人设配置与运行资源上限测试
+│   │   ├── interaction_policy.rs  # SC 优先和时效、弹幕流量策略、欢迎抑制冷却及长原文播报测试
 │   │   ├── resource_library.rs  # 资源事务失败保护、角色音色删除绑定及清理重试用例测试
 │   │   ├── scheduler_bounds.rs  # 历史裁剪、去重淘汰、批次容量和克隆隔离测试
 │   │   ├── scheduler_events.rs  # 事件去重、过期、容量及礼物分组测试
@@ -195,11 +223,12 @@ crates/  # 按职责与单向依赖隔离的 Rust 库
 │   │   │   └── model.rs  # 模型清单与路径校验、无覆盖安装、模型身份枚举及持久化删除重试
 │   │   ├── audio/  # 音频设备后端、采样转换与设备播放时钟
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   ├── buffer.rs  # 跨平台重采样输出缓冲，按需分配并限制实际排队 PCM 为 128 MiB，附长 SC 和溢出测试
 │   │   │   ├── conversion.rs  # 相位连续的 PCM 重采样与声道映射
 │   │   │   ├── meter.rs  # 固定容量的设备播放能量时间线与 RMS 累加器
 │   │   │   ├── simulated.rs  # 显式静音模拟后端，按模拟播放时间退役样本并观测能量
 │   │   │   ├── timing.rs  # 设备计划播放时间与完成回执时钟
-│   │   │   └── windows.rs  # Windows CPAL 默认设备、缓冲消费、播放时钟与 RMS 能量观测
+│   │   │   └── windows.rs  # Windows 默认输出设备、受限按需重采样缓冲及真实输出能量和时钟回执
 │   │   ├── avatar/  # VTube Studio 私有协议、配置校验、授权存储与口型连接状态机
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   ├── client.rs  # 有界 VTS WebSocket 请求响应、请求关联、API 错误和口型参数注入
@@ -272,6 +301,7 @@ crates/  # 按职责与单向依赖隔离的 Rust 库
 │   │   ├── lip_sync_failures.rs  # 设备启动、写入和结束失败时的停止与口型复位测试
 │   │   ├── lip_sync_levels.rs  # 口型能量阈值、增益、时间平滑及非法输入测试
 │   │   ├── lip_sync_lifecycle.rs  # 设备驱动口型、停止、完成、失败和析构复位测试
+│   │   ├── long_speech.rs  # 默认桌面缓冲完整接收四分钟 SC 音频分片及完成回执边界测试
 │   │   ├── model_assets.rs  # 模型引用、路径限制、安装与覆盖保护测试
 │   │   ├── model_management.rs  # 已安装 Live2D 模型列表、删除、路径边界及跨端协议测试
 │   │   ├── obs_configuration.rs  # OBS 地址校验、本机保存与重启读取、密码保留清除及文件权限测试
@@ -290,23 +320,23 @@ crates/  # 按职责与单向依赖隔离的 Rust 库
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   ├── affinity.rs  # 整数毫分、每日礼物收益及分值饱和纯规则
 │   │   ├── character.rs  # 角色能力映射、验证状态与口型参数规则
-│   │   ├── event.rs  # 平台无关直播事件、稳定观众身份和原始礼物字段及输入校验
+│   │   ├── event.rs  # 聊天、礼物、SC 和进房领域事件、稳定身份、输入校验与响应时效
 │   │   ├── lib.rs  # 业务领域：只表达业务对象、状态和不变量，不依赖通信、框架或外部服务。
 │   │   ├── memory.rs  # 有来源证据的记忆晋升、期限和时效纯规则
 │   │   ├── performance.rs  # 发言与角色动作的执行意图和状态；播放回执决定实际执行结果。
 │   │   ├── relationships.rs  # 关系实体、事实类型及确认等级领域类型
 │   │   ├── resources.rs  # 音色、参考素材、资源目录及纯业务不变量
 │   │   ├── session.rs  # 直播会话的状态与合法状态转换；与每条发言的生命周期分别建模。
-│   │   ├── speech.rs  # 播报文本校验、任务快照、生成代次与执行状态语义
+│   │   ├── speech.rs  # 人工与组合播报的文本边界、任务快照、生成代次与执行状态语义
 │   │   ├── training.rs  # 训练参数、性能边界、片段校验和任务状态领域规则
 │   │   └── voice.rs  # 配置音色标识校验
 │   ├── tests/  # 领域对象与输入不变量集成测试
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   ├── affinity.rs  # 礼物收益增量和分值饱和边界测试
-│   │   ├── event_validation.rs  # 直播事件输入边界测试
+│   │   ├── event_validation.rs  # 事件身份与内容、礼物数量、SC 金额时效及元数据归属校验测试
 │   │   ├── memory.rs  # 明确自述双日证据、敏感候选及记忆期限测试
 │   │   ├── resource_validation.rs  # 资源名称、语言、素材元数据与能力映射校验测试
-│   │   └── speech_validation.rs  # 播报文本长度、空白、控制字符与音色标识校验测试
+│   │   └── speech_validation.rs  # 人工与组合播报文本 Unicode 长度、字符和音色标识校验测试
 │   ├── Cargo.toml  # 该 Rust 包的名称、workspace 配置与模块依赖声明
 │   └── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 ├── protocol/  # 跨进程控制、事件、音频和执行消息的契约源
@@ -325,7 +355,8 @@ crates/  # 按职责与单向依赖隔离的 Rust 库
 │   │   ├── launcher.rs  # 本机主服务、TTS 和 Windows 执行端三开关的启动管理契约
 │   │   ├── lib.rs  # 跨进程通信契约的唯一来源。与业务领域对象分离，按协议版本演进。
 │   │   ├── live.rs  # 直播平台连接状态、面板凭据配置请求与脱敏快照契约
-│   │   ├── llm.rs  # LLM 接入设置、密钥输入与脱敏查询契约
+│   │   ├── llm.rs  # LLM 接入配置、模型目录与统一推理档位预览的跨端契约
+│   │   ├── llm_runtime.rs  # 运行配置、模型单价、调用用量与活动跨端契约
 │   │   ├── memory.rs  # 记忆证据管理和后台任务状态跨端契约
 │   │   ├── model_library.rs  # 本机环境、模型目录、安装结果及下载任务的跨进程契约
 │   │   ├── obs.rs  # OBS 场景录制操作、本机连接设置与脱敏状态契约
@@ -359,4 +390,4 @@ crates/  # 按职责与单向依赖隔离的 Rust 库
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: de0544dd7fb725cb1ed630c8e64ced0681e140584550ed5bacc5e1d672936faf -->
+<!-- directory-tree-sha256: f6bd0ab501c3d80169f7b03f051489ae32c257698984275dd8ab03d775c4b63d -->

@@ -39,8 +39,20 @@ pub struct GiftMetadata {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum EventKind {
-    Chat { text: String },
-    Gift { name: String, count: u32 },
+    Chat {
+        text: String,
+    },
+    Gift {
+        name: String,
+        count: u32,
+    },
+    SuperChat {
+        text: String,
+        amount_cny: u32,
+        start_at_ms: u64,
+        end_at_ms: u64,
+    },
+    RoomEnter,
 }
 
 impl LiveEvent {
@@ -51,13 +63,11 @@ impl LiveEvent {
         if let Some(viewer_identity) = &self.viewer_identity {
             viewer_identity.validate()?;
         }
+        if self.gift_metadata.is_some() && !matches!(self.kind, EventKind::Gift { .. }) {
+            return Err("gift metadata requires a gift event".into());
+        }
         match &self.kind {
-            EventKind::Chat { text } => {
-                if self.gift_metadata.is_some() {
-                    return Err("gift metadata requires a gift event".into());
-                }
-                content("chat text", text, 500, true)
-            }
+            EventKind::Chat { text } => content("chat text", text, 500, true),
             EventKind::Gift { name, count } => {
                 content("gift name", name, 100, false)?;
                 if !(1..=10_000).contains(count) {
@@ -65,6 +75,38 @@ impl LiveEvent {
                 }
                 Ok(())
             }
+            EventKind::SuperChat {
+                text,
+                amount_cny,
+                start_at_ms,
+                end_at_ms,
+            } => {
+                content("super chat text", text, 500, true)?;
+                if !(1..=1_000_000).contains(amount_cny) {
+                    return Err("super chat amount must be between 1 and 1000000 CNY".into());
+                }
+                if end_at_ms <= start_at_ms || *end_at_ms > 9_007_199_254_740_991 {
+                    return Err(
+                        "super chat display times must be ordered safe millisecond timestamps"
+                            .into(),
+                    );
+                }
+                Ok(())
+            }
+            EventKind::RoomEnter => Ok(()),
+        }
+    }
+
+    /// Source-relative lifetime; caller preserves elapsed source age when scheduling.
+    pub fn response_ttl_ms(&self, ordinary_ttl_ms: u64) -> u64 {
+        match self.kind {
+            EventKind::SuperChat {
+                start_at_ms,
+                end_at_ms,
+                ..
+            } => end_at_ms.saturating_sub(start_at_ms),
+            EventKind::RoomEnter => ordinary_ttl_ms.min(15_000),
+            _ => ordinary_ttl_ms,
         }
     }
 }

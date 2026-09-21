@@ -20,7 +20,8 @@ src/  # 与业务领域分离的通信 DTO 模块
 ├── launcher.rs  # 本机主服务、TTS 和 Windows 执行端三开关的启动管理契约
 ├── lib.rs  # 跨进程通信契约的唯一来源。与业务领域对象分离，按协议版本演进。
 ├── live.rs  # 直播平台连接状态、面板凭据配置请求与脱敏快照契约
-├── llm.rs  # LLM 接入设置、密钥输入与脱敏查询契约
+├── llm.rs  # LLM 接入配置、模型目录与统一推理档位预览的跨端契约
+├── llm_runtime.rs  # 运行配置、模型单价、调用用量与活动跨端契约
 ├── memory.rs  # 记忆证据管理和后台任务状态跨端契约
 ├── model_library.rs  # 本机环境、模型目录、安装结果及下载任务的跨进程契约
 ├── obs.rs  # OBS 场景录制操作、本机连接设置与脱敏状态契约
@@ -40,4 +41,4 @@ src/  # 与业务领域分离的通信 DTO 模块
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: a07dff57b9358cbc493fcfded3046a4321e595d27559657bea8d7cc2df7ca861 -->
+<!-- directory-tree-sha256: eb95514f69d1ddc2aa1c7924a2c62d0ceae75acb72d711b96479d0a36d55d7d3 -->

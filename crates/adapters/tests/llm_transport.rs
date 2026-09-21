@@ -72,6 +72,33 @@ async fn posts_auth_and_structured_untrusted_events_to_normalized_path() {
 }
 
 #[tokio::test]
+async fn superchat_and_long_completed_readback_reach_model_as_data() {
+    use meowlive_domain::event::EventKind;
+    let (url,task)=llm_support::server(Router::new().route("/chat/completions",post(|Json(body):Json<Value>|async move {
+        let user:Value=serde_json::from_str(body["messages"][1]["content"].as_str().unwrap()).unwrap();
+        assert_eq!(user["events"][0]["kind"],json!({"type":"super_chat","text":"你喜欢猫吗？","amount_cny":30,"start_at_ms":1000,"end_at_ms":301000}));
+        assert_eq!(user["history"][0]["assistant"].as_str().unwrap().chars().count(),1100);
+        Json(llm_support::completion(json!({"reply_to":["sc"],"text":"我很喜欢猫。","topic":null})))
+    }))).await;
+    let mut event = llm_support::chat("sc", "unused");
+    event.kind = EventKind::SuperChat {
+        text: "你喜欢猫吗？".into(),
+        amount_cny: 30,
+        start_at_ms: 1000,
+        end_at_ms: 301000,
+    };
+    let mut request = llm_support::request(vec![event]);
+    request.history[0].assistant = "读".repeat(1100);
+    let decision = OpenAiCompatible::new(llm_support::config(url))
+        .unwrap()
+        .decide(request)
+        .await
+        .unwrap();
+    assert_eq!(decision.text.as_deref(), Some("我很喜欢猫。"));
+    task.abort();
+}
+
+#[tokio::test]
 async fn omits_optional_auth_and_json_mode_fields() {
     let (url, task) = llm_support::server(Router::new().route(
         "/chat/completions",

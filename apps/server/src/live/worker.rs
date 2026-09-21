@@ -159,8 +159,8 @@ async fn admit(state: &AppState, cancel: &CancellationToken, session: &str, mut 
             }
             _ => {}
         }
-        let age = crate::viewers::utc_ms().saturating_sub(event.occurred_at_ms);
-        if cancel.is_cancelled() || age >= state.config.agent.event_ttl_ms {
+        let age = crate::viewers::event_age_ms(&event, crate::viewers::utc_ms());
+        if cancel.is_cancelled() || age >= event.response_ttl_ms(state.config.agent.event_ttl_ms) {
             inner.live.snapshot.last_error =
                 Some("事件已持久保存，因取消或时效未进入回应队列。".into());
             return;
@@ -171,8 +171,13 @@ async fn admit(state: &AppState, cancel: &CancellationToken, session: &str, mut 
         return;
     }
     let now = state.now_ms();
-    let age_ms = if persistent {
-        crate::viewers::utc_ms().saturating_sub(event.occurred_at_ms)
+    let age_ms = if persistent
+        || matches!(
+            event.kind,
+            meowlive_domain::event::EventKind::SuperChat { .. }
+                | meowlive_domain::event::EventKind::RoomEnter
+        ) {
+        crate::viewers::event_age_ms(&event, crate::viewers::utc_ms())
     } else {
         0
     };

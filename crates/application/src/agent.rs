@@ -1,8 +1,11 @@
 //! 纯应用状态机：调度事件、隔离在途决策、关联播放结果与已完成对话。
 mod decisions;
+mod interaction;
 mod playback;
 mod settings;
 mod types;
+pub(crate) use interaction::read_prefix as reading_prefix;
+pub use interaction::{ChatReadMode, InteractionSettings};
 pub use settings::{AgentLimits, AgentSettings};
 pub use types::{
     AgentPhase, AgentView, CompletedInteraction, DecisionWork, EventRecord, EventStatus,
@@ -13,7 +16,7 @@ use crate::{
     ports::llm::{ConversationTurn, DecisionRequest},
     scheduler::{EventBatch, EventScheduler},
 };
-use meowlive_domain::event::LiveEvent;
+use meowlive_domain::event::{EventKind, LiveEvent};
 use std::collections::VecDeque;
 
 #[derive(Clone)]
@@ -29,11 +32,13 @@ pub struct AgentSession {
     last_error: Option<String>,
     next_decision_ms: u64,
     proactive_after_ms: u64,
+    interaction: interaction::InteractionState,
 }
 #[derive(Clone)]
 struct Flight {
     id: u64,
     batch: EventBatch,
+    required_read: bool,
 }
 #[derive(Clone)]
 struct ActiveSpeech {
@@ -59,11 +64,21 @@ impl AgentSession {
             last_error: None,
             next_decision_ms: 0,
             proactive_after_ms: 0,
+            interaction: interaction::InteractionState::default(),
         })
     }
 
     pub fn submit(&mut self, event: LiveEvent, now_ms: u64) -> Result<SubmitOutcome, String> {
-        self.scheduler.submit(event, now_ms)
+        let outcome = self.scheduler.submit(event.clone(), now_ms)?;
+        if outcome == SubmitOutcome::Accepted
+            && now_ms
+                < event
+                    .occurred_at_ms
+                    .saturating_add(event.response_ttl_ms(self.scheduler.limits.event_ttl_ms))
+        {
+            self.interaction.observe(&event, now_ms);
+        }
+        Ok(outcome)
     }
 
     /// Preserve the source event's elapsed UTC age when crossing into the
@@ -74,7 +89,14 @@ impl AgentSession {
         now_ms: u64,
         age_ms: u64,
     ) -> Result<SubmitOutcome, String> {
-        self.scheduler.submit_with_age(event, now_ms, age_ms)
+        let lifetime = event.response_ttl_ms(self.scheduler.limits.event_ttl_ms);
+        let outcome = self
+            .scheduler
+            .submit_with_age(event.clone(), now_ms, age_ms)?;
+        if outcome == SubmitOutcome::Accepted && age_ms < lifetime {
+            self.interaction.observe(&event, now_ms);
+        }
+        Ok(outcome)
     }
 
     pub fn configure(&mut self, settings: AgentSettings, now_ms: u64) -> Result<(), String> {
@@ -109,7 +131,42 @@ impl AgentSession {
         {
             return None;
         }
-        let batch = self.scheduler.select(now_ms);
+        let pending = self
+            .scheduler
+            .records
+            .iter()
+            .filter(|r| r.status == EventStatus::Pending)
+            .count();
+        let busy = self
+            .interaction
+            .busy(&self.settings.interaction, pending, now_ms);
+        let more_important = self.scheduler.records.iter().any(|r| {
+            r.status == EventStatus::Pending && !matches!(r.event.kind, EventKind::RoomEnter)
+        });
+        let skipped_welcomes: Vec<_> = self
+            .scheduler
+            .records
+            .iter()
+            .filter(|r| {
+                r.status == EventStatus::Pending && matches!(r.event.kind, EventKind::RoomEnter)
+            })
+            .filter(|r| {
+                busy || more_important
+                    || !self
+                        .interaction
+                        .may_welcome(&r.event, &self.settings.interaction, now_ms)
+            })
+            .map(|r| r.event.id.clone())
+            .collect();
+        self.scheduler.update(
+            &skipped_welcomes,
+            EventStatus::Skipped,
+            None,
+            Some("欢迎已跳过：关闭、繁忙或冷却中"),
+        );
+        let read_all = self.settings.interaction.chat_read_mode == ChatReadMode::All
+            || (self.settings.interaction.chat_read_mode == ChatReadMode::Auto && !busy);
+        let batch = self.scheduler.select(now_ms, read_all);
         if batch.events.is_empty()
             && (!self.settings.proactive_enabled || now_ms < self.proactive_after_ms)
         {
@@ -126,7 +183,17 @@ impl AgentSession {
                 history: self.history.iter().cloned().collect(),
             },
         };
-        self.flight = Some(Flight { id: work.id, batch });
+        let required_read = batch.events.len() == 1
+            && match batch.events[0].kind {
+                EventKind::Chat { .. } => read_all,
+                EventKind::SuperChat { .. } | EventKind::RoomEnter => true,
+                _ => false,
+            };
+        self.flight = Some(Flight {
+            id: work.id,
+            batch,
+            required_read,
+        });
         self.last_error = None;
         Some(work)
     }

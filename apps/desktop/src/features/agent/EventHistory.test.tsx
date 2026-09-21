@@ -4,6 +4,14 @@ import { agentEvent } from "../../test/agent-fixtures";
 import { EventHistory } from "./EventHistory";
 
 describe("Agent 事件历史", () => {
+  it("区分 SC 金额与内容、进房事件", () => {
+    render(<EventHistory events={[
+      agentEvent({ event: { id: "sc", source: "bilibili", viewer: "小猫", kind: { type: "super_chat", amount_cny: 30, text: "继续加油", start_at_ms: 1000, end_at_ms: 2000 } } }),
+      agentEvent({ event: { id: "enter", source: "bilibili", viewer: "小鱼", kind: { type: "room_enter" } } }),
+    ]} />);
+    expect(screen.getByText("SC · 30 元 · 继续加油")).toBeVisible();
+    expect(screen.getByText("进入直播间")).toBeVisible();
+  });
   it("展示事件内容、状态、关联语音与失败原因", () => {
     render(<EventHistory events={[
       agentEvent({ status: "playing", speech_id: "speech-7" }),

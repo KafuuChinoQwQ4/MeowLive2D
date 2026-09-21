@@ -1,5 +1,9 @@
 mod process_support;
-use axum::{Json, Router, routing::post};
+use axum::{
+    Json, Router,
+    response::{IntoResponse, Response},
+    routing::post,
+};
 use meowlive_desktop_runtime::{
     audio::SimulatedBackend, config::ClientConfig, connection::run_once,
 };
@@ -117,8 +121,10 @@ async fn uploaded_voice_survives_restart_and_reaches_tts_device_and_agent() {
         seen.lock().await.push(body);
         ([("content-type","audio/wav")],process_support::wav())
     }})).route("/v1/chat/completions",post(|Json(body):Json<Value>|async move{
-        let events:Value=serde_json::from_str(body["messages"][1]["content"].as_str().unwrap()).unwrap();
-        Json(json!({"choices":[{"finish_reason":"stop","message":{"content":json!({"reply_to":[events["events"][0]["id"]],"text":"这是当前音色的自动回复","topic":"欢迎"}).to_string()}}]}))
+        let dynamic_user=body["messages"].as_array().unwrap().iter().rev()
+                .find(|message| message["role"]=="user").unwrap();
+            let events:Value=serde_json::from_str(dynamic_user["content"].as_str().unwrap()).unwrap();
+        completion_response(&body, json!({"reply_to":[events["events"][0]["id"]],"text":"这是当前音色的自动回复","topic":"欢迎"}))
     }));
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let base = format!("http://{}", listener.local_addr().unwrap());
@@ -246,4 +252,19 @@ async fn uploaded_voice_survives_restart_and_reaches_tts_device_and_agent() {
     let snapshot = get(&client, &reopened.base, "/api/resources").await;
     assert_eq!(snapshot["voices"], json!([]));
     assert_eq!(snapshot["active_voice_id"], "");
+}
+
+// These process fixtures exercise the production adapter's negotiated response mode.
+fn completion_response(request: &Value, decision: Value) -> Response {
+    if request["stream"] == true {
+        let content = json!({"choices":[{"index":0,"delta":{"role":"assistant","content":decision.to_string()},"finish_reason":null}]});
+        let stopped = json!({"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]});
+        (
+            [("content-type", "text/event-stream")],
+            format!("data: {content}\n\ndata: {stopped}\n\ndata: [DONE]\n\n"),
+        )
+            .into_response()
+    } else {
+        Json(json!({"choices":[{"index":0,"finish_reason":"stop","message":{"role":"assistant","content":decision.to_string()}}]})).into_response()
+    }
 }

@@ -12,15 +12,21 @@ impl SpeechText {
     pub const MAX_CHARS: usize = 500;
 
     pub fn new(text: impl Into<String>) -> Result<Self, SpeechValidationError> {
-        let text = text.into();
+        Self::with_limit(text.into(), Self::MAX_CHARS)
+    }
+
+    /// A bounded original viewer message followed by a separately validated model reply.
+    pub fn broadcast(text: impl Into<String>) -> Result<Self, SpeechValidationError> {
+        Self::with_limit(text.into(), 1200)
+    }
+
+    fn with_limit(text: String, maximum: usize) -> Result<Self, SpeechValidationError> {
         let text = text.trim();
         if text.is_empty() {
             return Err(SpeechValidationError::EmptyText);
         }
-        if text.chars().count() > Self::MAX_CHARS {
-            return Err(SpeechValidationError::TextTooLong {
-                max: Self::MAX_CHARS,
-            });
+        if text.chars().count() > maximum {
+            return Err(SpeechValidationError::TextTooLong { max: maximum });
         }
         if text
             .chars()

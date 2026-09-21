@@ -14,6 +14,12 @@ fn config_reads_explicit_toml_and_rejects_unsafe_resource_bounds() {
 }
 
 #[test]
+fn desktop_configuration_accepts_32_mib_pcm_and_rejects_larger_input_buffers() {
+    assert!(ClientConfig::from_toml("max_buffer_samples=16777216").is_ok());
+    assert!(ClientConfig::from_toml("max_buffer_samples=16777217").is_err());
+}
+
+#[test]
 fn audio_connection_uses_escaped_pairing_ids() {
     let url = audio_url("http://localhost:8080", "session a", "bridge&b").unwrap();
     assert_eq!(

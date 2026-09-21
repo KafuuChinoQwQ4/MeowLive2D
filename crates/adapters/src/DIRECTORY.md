@@ -19,12 +19,27 @@ src/  # 按外部能力组织的适配器源码
 │   ├── mod.rs  # 直播源接入和事件标准化；去重、话题筛选与礼物合并属于 application。
 │   └── simulator.rs  # 模拟弹幕、礼物和连接变化的事件来源，用于首个互动闭环与事件回放。
 ├── llm/  # 云端及本地 LLM 的协议适配
+│   ├── models/  # 模型目录配置及响应解析实现
+│   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   ├── config.rs  # 模型目录地址规范化与密钥校验
+│   │   └── response.rs  # 供应商模型条目及分页元数据解析
+│   ├── reasoning/  # 具体模型推理能力登记与原生参数映射
+│   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   └── capabilities.rs  # 经官方文档核对的模型推理档位和预算预设能力表
+│   ├── runtime/  # 四协议工具调用、流式响应、缓存和用量的统一适配
+│   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   ├── mod.rs  # 有界单轮模型调用与只读流式观测
+│   │   ├── output.rs  # 原生输出、工具签名与用量归一化
+│   │   ├── request.rs  # 原生工具、续接上下文与稳定缓存前缀请求
+│   │   └── stream.rs  # 四协议 SSE 拼包、结束验证与用量保留
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   ├── config.rs  # LLM 地址规范化、认证头及资源限制的统一校验
 │   ├── mod.rs  # 模型协议适配。兼容同一协议的云端与本地服务复用实现，其他协议独立添加。
-│   ├── multi_provider.rs  # OpenAI Responses、Anthropic Messages、Gemini 与兼容聊天的协议适配
+│   ├── models.rs  # 受限的供应商模型目录 HTTP 适配与分页汇总
+│   ├── multi_provider.rs  # 多提供商决策与原生工具、流式运行层适配
 │   ├── openai_compatible.rs  # 非流式 Chat Completions 传输、认证、响应大小与临时错误分类
 │   ├── prompt.rs  # 跨 LLM 协议共享的事件回复与主动发言提示隔离及输入校验
+│   ├── reasoning.rs  # 推理档位夹取、预算限制和各协议原生请求参数注入
 │   └── response.rs  # LLM 文本决策内容与 OpenAI 聊天响应的严格校验
 ├── speech/  # GPT-SoVITS 等语音引擎的请求和音频格式适配
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
@@ -75,7 +90,8 @@ src/  # 按外部能力组织的适配器源码
 ├── graph.rs  # Neo4j Query API 参数化投影和有界邻居检索
 ├── lib.rs  # 外部能力实现：依赖业务层定义的 ports，不反向定义业务规则。
 ├── memory.rs  # 独立 HTTP 记忆提取和嵌入服务适配器
-└── runtime.rs  # GPU 采样、WSL 工具查找与有界错误诊断
+├── runtime.rs  # GPU 采样、WSL 工具查找与有界错误诊断
+└── search.rs  # Brave 与 SearXNG 有界检索、来源过滤和错误脱敏
 ```
 
 可继续查看各子目录的索引：
@@ -90,4 +106,4 @@ src/  # 按外部能力组织的适配器源码
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 0f414a773218bdeb270c0eeba1dfd5988538ddf5524bdcf5a92681f76fec1f14 -->
+<!-- directory-tree-sha256: 0789251b6caad225d9635a7b832a21623734e1c5c17acc325ca2715793b96f7b -->

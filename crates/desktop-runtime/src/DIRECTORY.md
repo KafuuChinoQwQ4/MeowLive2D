@@ -11,11 +11,12 @@ src/  # 播放、连接、口型、VTS、OBS 与模型导入的执行源码
 │   └── model.rs  # 模型清单与路径校验、无覆盖安装、模型身份枚举及持久化删除重试
 ├── audio/  # 音频设备后端、采样转换与设备播放时钟
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   ├── buffer.rs  # 跨平台重采样输出缓冲，按需分配并限制实际排队 PCM 为 128 MiB，附长 SC 和溢出测试
 │   ├── conversion.rs  # 相位连续的 PCM 重采样与声道映射
 │   ├── meter.rs  # 固定容量的设备播放能量时间线与 RMS 累加器
 │   ├── simulated.rs  # 显式静音模拟后端，按模拟播放时间退役样本并观测能量
 │   ├── timing.rs  # 设备计划播放时间与完成回执时钟
-│   └── windows.rs  # Windows CPAL 默认设备、缓冲消费、播放时钟与 RMS 能量观测
+│   └── windows.rs  # Windows 默认输出设备、受限按需重采样缓冲及真实输出能量和时钟回执
 ├── avatar/  # VTube Studio 私有协议、配置校验、授权存储与口型连接状态机
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   ├── client.rs  # 有界 VTS WebSocket 请求响应、请求关联、API 错误和口型参数注入
@@ -66,4 +67,4 @@ src/  # 播放、连接、口型、VTS、OBS 与模型导入的执行源码
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 55d3139ce073cea394b7cb1893673f23aa07bc011e8001c80c91428ab872942d -->
+<!-- directory-tree-sha256: 787ef80797e8161bc0c9c2a1da8b21ce9d1bdaa281413ff9d335807b715adbb4 -->

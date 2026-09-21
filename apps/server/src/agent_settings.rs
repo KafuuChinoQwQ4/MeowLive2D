@@ -55,6 +55,7 @@ pub fn load_override(config_path: &Path) -> Result<Option<AgentSettings>, String
         topic: saved.settings.topic,
         proactive_enabled: saved.settings.proactive_enabled,
         cooldown_ms: u64::from(saved.settings.cooldown_ms),
+        interaction: crate::agent::mapping::interaction(saved.settings.interaction),
     };
     settings.validate().map_err(|_| "本机 Agent 配置内容无效")?;
     Ok(Some(settings))
@@ -84,6 +85,7 @@ impl AgentSettingsStore {
                 topic: settings.topic.clone(),
                 proactive_enabled: settings.proactive_enabled,
                 cooldown_ms: settings.cooldown_ms as u32,
+                interaction: crate::agent::mapping::interaction_dto(settings.interaction.clone()),
             },
         };
         let bytes = serde_json::to_vec_pretty(&saved).map_err(|_| "无法保存 Agent 配置")?;

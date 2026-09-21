@@ -112,6 +112,14 @@ test('empty launcher settings resolve the engine and interpreter inside the chec
   assert.equal(config.modelSettings.python, join(root, 'data/environments/gpt-sovits/bin/python'));
 });
 
+test('ASR model environment overrides are also reflected by the model library', async t => {
+  const root = await fixture(t);
+  const env = { PATH: process.env.PATH, MEOWLIVE_ASR_MODEL: '/local/asr', MEOWLIVE_ASR_SELECTION: '/local/selection.json' };
+  const config = await loadConfiguration(root, { env });
+  assert.equal(config.modelSettings.asrModel, env.MEOWLIVE_ASR_MODEL);
+  assert.equal(config.modelSettings.asrSelection, env.MEOWLIVE_ASR_SELECTION);
+});
+
 test('home-relative settings resolve against the launch user home, including public setup', async t => {
   const root = await fixture(t, { ttsEngineRoot: '~/voice/engine', ttsPython: '~/voice/bin/python' });
   const config = await loadConfiguration(root, { env: { PATH: process.env.PATH, HOME: '/home/alice' } });

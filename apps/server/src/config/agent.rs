@@ -9,6 +9,7 @@ pub struct AgentConfig {
     pub topic: String,
     pub proactive_enabled: bool,
     pub cooldown_ms: u64,
+    pub interaction: meowlive_protocol::agent::InteractionSettings,
     pub pending_capacity: usize,
     pub history_limit: usize,
     pub dedup_capacity: usize,
@@ -27,6 +28,7 @@ impl Default for AgentConfig {
             topic: settings.topic,
             proactive_enabled: settings.proactive_enabled,
             cooldown_ms: settings.cooldown_ms,
+            interaction: meowlive_protocol::agent::InteractionSettings::default(),
             pending_capacity: limits.pending_capacity,
             history_limit: limits.history_limit,
             dedup_capacity: limits.dedup_capacity,
@@ -45,6 +47,7 @@ impl AgentConfig {
             topic: self.topic.clone(),
             proactive_enabled: self.proactive_enabled,
             cooldown_ms: self.cooldown_ms,
+            interaction: crate::agent::mapping::interaction(self.interaction.clone()),
         }
     }
     pub fn limits(&self) -> AgentLimits {

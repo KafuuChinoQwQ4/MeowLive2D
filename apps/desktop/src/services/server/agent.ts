@@ -6,11 +6,11 @@ import type {
   AgentSnapshot,
   EventBatchRequest,
   EventBatchResult,
-  EventPayload,
   LiveEventInput,
 } from "@meowlive/contracts";
 import { readServerError, ServerRequestError } from "./responses";
 import { createAuthenticatedFetch } from "./auth";
+import { isEventPayload } from "./eventPayload";
 
 export interface AgentClient {
   readonly baseUrl: string;
@@ -51,13 +51,18 @@ function isSettings(value: unknown): value is AgentSettings {
     && boundedText(value.persona, 1, 2000)
     && boundedText(value.topic, 0, 200)
     && typeof value.proactive_enabled === "boolean"
-    && isUint32(value.cooldown_ms) && value.cooldown_ms >= 1000 && value.cooldown_ms <= 3600000;
+    && isUint32(value.cooldown_ms) && value.cooldown_ms >= 1000 && value.cooldown_ms <= 3600000
+    && isInteraction(value.interaction);
 }
 
-function isPayload(value: unknown): value is EventPayload {
-  if (!isRecord(value) || typeof value.type !== "string") return false;
-  if (value.type === "chat") return boundedText(value.text, 1, 500);
-  return value.type === "gift" && boundedText(value.name, 1, 100) && isUint32(value.count) && value.count >= 1 && value.count <= 10000;
+function isInteraction(value: unknown): boolean {
+  if (!isRecord(value) || !["auto", "all", "selective"].includes(value.chat_read_mode as string)
+    || typeof value.welcome_enabled !== "boolean") return false;
+  return ([
+    [value.busy_chat_count, 1, 1000], [value.busy_enter_count, 1, 1000],
+    [value.busy_pending_count, 1, 512], [value.welcome_cooldown_ms, 1000, 3_600_000],
+    [value.welcome_viewer_cooldown_ms, 1000, 86_400_000],
+  ] as const).every(([count, min, max]) => isUint32(count) && count >= min && count <= max);
 }
 
 function isEvent(value: unknown): value is LiveEventInput {
@@ -65,7 +70,8 @@ function isEvent(value: unknown): value is LiveEventInput {
     && boundedText(value.id, 1, 128)
     && boundedText(value.source, 1, 32)
     && boundedText(value.viewer, 1, 64)
-    && isPayload(value.kind);
+    && isEventPayload(value.kind)
+    && (value.gift_metadata === undefined || value.gift_metadata === null || value.kind.type === "gift");
 }
 
 function isEventSnapshot(value: unknown): value is AgentEventSnapshot {

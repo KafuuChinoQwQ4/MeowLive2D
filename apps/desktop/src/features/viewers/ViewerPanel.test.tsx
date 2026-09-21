@@ -14,6 +14,19 @@ const client: ViewerClient = {
   listEvents: vi.fn().mockResolvedValue({ scope_id: "default", offset: 0, unconfirmed_events: 2, events }),
 };
 
+it("事件列表展示 SC 的金额、留言及进房行为", async () => {
+  const eventClient: ViewerClient = {
+    ...client,
+    listEvents: vi.fn().mockResolvedValue({ scope_id: "default", offset: 0, unconfirmed_events: 0, events: [
+      { ...events[0], gift_metadata: null, event_id: "sc", kind: { type: "super_chat", text: "继续加油", amount_cny: 50, start_at_ms: 1000, end_at_ms: 2000 } },
+      { ...events[0], gift_metadata: null, event_id: "enter", kind: { type: "room_enter" } },
+    ] }),
+  };
+  render(<ViewerPanel client={eventClient} />);
+  expect(await screen.findByText("SC · 50 元 · 继续加油")).toBeVisible();
+  expect(screen.getByText("进入直播间")).toBeVisible();
+});
+
 it("shows aliases, persisted events, and unconfirmed event count", async () => {
   render(<ViewerPanel client={client} />);
 

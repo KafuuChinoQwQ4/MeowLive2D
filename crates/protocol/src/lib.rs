@@ -12,6 +12,7 @@ pub mod execution;
 pub mod launcher;
 pub mod live;
 pub mod llm;
+pub mod llm_runtime;
 pub mod model_library;
 pub mod obs;
 pub mod resources;

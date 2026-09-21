@@ -23,7 +23,7 @@ desktop/  # React 控制面板及 Windows 桌面外壳
 │   │   │   ├── ResourcesPanel.lifecycle.test.tsx  # 资源读取与操作的卸载取消测试
 │   │   │   ├── ResourcesPanel.preview.test.tsx  # 音色试听状态跟踪、执行端断线、失败与重试的前端回归测试
 │   │   │   ├── ResourcesPanel.regressions.test.tsx  # 当前角色重新加载与安装成功后刷新失败回归
-│   │   │   ├── ResourcesPanel.tsx  # 组装角色与音色面板并显示资源操作状态
+│   │   │   ├── ResourcesPanel.tsx  # 组装角色音色面板与同服务本地转写客户端并显示资源操作状态
 │   │   │   ├── index.ts  # 资源管理页面公共入口
 │   │   │   └── useResourcesController.ts  # 角色音色快照、资源删除及桌面模型管理共享控制器
 │   │   ├── AdminGate.test.tsx  # 认证启停、登录退出、错误重试与过期响应竞态回归测试
@@ -47,13 +47,14 @@ desktop/  # React 控制面板及 Windows 桌面外壳
 │   │   │   ├── AgentPanel.test.tsx  # Agent 状态控制、错误呈现、轮询竞态与取消清理测试
 │   │   │   ├── AgentPanel.tsx  # Agent 运行条件、暂停恢复、设置、事件输入与历史的组合面板
 │   │   │   ├── AgentSettingsForm.bounds.test.tsx  # 默认空话题及人设话题长度与后端一致性的回归测试
+│   │   │   ├── AgentSettingsForm.interaction.test.tsx  # 互动策略表单持久化、草稿保留与阈值边界测试
 │   │   │   ├── AgentSettingsForm.test.tsx  # Agent 设置草稿、输入校验与毫秒请求映射测试
-│   │   │   ├── AgentSettingsForm.tsx  # 保留草稿并以秒编辑冷却时间的 Agent 设置表单
+│   │   │   ├── AgentSettingsForm.tsx  # 保留草稿并编辑人设、冷却和弹幕欢迎互动策略的 Agent 设置表单
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   ├── EventHistory.test.tsx  # Agent 事件内容、状态、播报关联与错误展示测试
 │   │   │   ├── EventHistory.tsx  # Agent 事件状态、关联播报及错误历史列表
 │   │   │   ├── EventSimulator.test.tsx  # 模拟事件校验、成功清空、失败保留与重复反馈测试
-│   │   │   ├── EventSimulator.tsx  # 聊天礼物模拟及 JSON 批量回放表单
+│   │   │   ├── EventSimulator.tsx  # 聊天、礼物、SC 与进房模拟及 JSON 批量回放表单
 │   │   │   ├── index.ts  # Agent 自动互动面板的功能出口
 │   │   │   └── useAgentController.ts  # 修订号防回滚及卸载取消的串行 Agent 轮询与动作控制器
 │   │   ├── characters/  # 角色模型选择、导入与动作映射界面
@@ -88,13 +89,29 @@ desktop/  # React 控制面板及 Windows 桌面外壳
 │   │   │   └── useSpeechController.ts  # 可取消的串行状态刷新与播报操作状态
 │   │   ├── llm/  # LLM 接入配置功能
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   ├── LlmPanel.models.test.tsx  # LLM 模型发现、自动识别、选择与连接切换交互测试
+│   │   │   ├── LlmPanel.reasoning.test.tsx  # 推理档位选择、映射展示、预算阻断与请求竞态回归测试
 │   │   │   ├── LlmPanel.test.tsx  # LLM 面板草稿、密钥与生命周期测试
-│   │   │   ├── LlmPanel.tsx  # LLM 服务商、协议、模型、密钥与连接测试面板
-│   │   │   └── index.ts  # LLM 功能公共入口
+│   │   │   ├── LlmPanel.tsx  # LLM 连接配置、模型获取与选择、推理档位预览和测试保存面板
+│   │   │   ├── index.ts  # LLM 功能公共入口
+│   │   │   └── useReasoningPreview.ts  # 推理能力预览的防抖、取消、重试与迟到响应隔离
+│   │   ├── llm-runtime/  # 模型运行能力、用量费用与 Agent 实时活动界面
+│   │   │   ├── AgentActivityPanel.test.tsx  # 活动更新和隐藏卸载取消轮询测试
+│   │   │   ├── AgentActivityPanel.tsx  # Agent 阶段、工具进度与网页来源展示
+│   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   ├── LlmRuntimePanel.test.tsx  # 运行设置、密钥绑定、费用和取消交互测试
+│   │   │   ├── LlmRuntimePanel.tsx  # 运行配置与用量折叠区入口
+│   │   │   ├── RuntimeIntegration.test.tsx  # LLM 与 Agent 原页面运行能力接入测试
+│   │   │   ├── RuntimeSettingsPanel.tsx  # 运行开关、搜索密钥及模型单价编辑与保存
+│   │   │   ├── UsagePanel.tsx  # 按日期和模型查询已报告用量与估算费用
+│   │   │   ├── llm-runtime.css  # 运行能力与用量界面的粉色响应式样式
+│   │   │   ├── runtime-fixtures.ts  # 运行配置、用量及活动测试样例
+│   │   │   └── useRuntimeVisibility.ts  # 按工作区和文档可见性暂停运行请求
 │   │   ├── model-library/  # 环境检查、本地语音模型选择与官方模型下载管理界面
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   ├── InstalledModels.tsx  # 同页分组展示声音生成与语音识别模型、独立选择及下载引导
 │   │   │   ├── ModelLibraryPanel.test.tsx  # 环境门控、模型选择、分页检索、会话失效和下载取消交互测试
-│   │   │   ├── ModelLibraryPanel.tsx  # 独立环境检测、分页模型库、下载进度与手动启动入口
+│   │   │   ├── ModelLibraryPanel.tsx  # 环境检测、音色训练与转文本分类模型库、用途与接入状态筛选及独立分页下载
 │   │   │   └── useModelLibrary.ts  # 模型状态轮询与串行操作控制，防止过期响应覆盖和重复提交
 │   │   ├── obs/  # OBS 场景与录制控制面板
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
@@ -132,9 +149,11 @@ desktop/  # React 控制面板及 Windows 桌面外壳
 │   │   ├── voices/  # 参考素材、音色试听和训练任务界面
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   ├── VoicePanel.test.tsx  # 多格式音色上传选择试听、删除确认失败及空状态交互测试
-│   │   │   ├── VoicePanel.tsx  # 音色导入校验、选择试听和删除管理及训练音色入口
+│   │   │   ├── VoicePanel.transcription.test.tsx  # 参考音频自动回填、同源音频文本上传及转写竞态回归测试
+│   │   │   ├── VoicePanel.tsx  # 音色导入校验、参考文本自动转写、选择试听和删除管理及训练入口
 │   │   │   ├── index.ts  # 音色管理：参考素材、试听与训练任务展示；不在浏览器执行模型推理。
-│   │   │   └── types.ts  # 音色列表选择试听、上传删除及文件清理重试能力契约
+│   │   │   ├── types.ts  # 音色列表选择试听、上传删除及文件清理重试能力契约
+│   │   │   └── useReferenceTranscription.ts  # 参考音频本地自动转写、手工文本保护及过期请求取消
 │   │   └── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   ├── services/  # 前端访问主服务、Linux 启动管理与 Windows 桌面能力的统一边界
 │   │   ├── audio/  # 参考音频与训练片段的浏览器解码、格式转换和音频校验
@@ -159,19 +178,24 @@ desktop/  # React 控制面板及 Windows 桌面外壳
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   ├── agent.bounds.test.ts  # Agent 合法最大快照、冷却与礼物数量边界回归测试
 │   │   │   ├── agent.failures.test.ts  # Agent 畸形响应、HTTP 错误、超时与取消测试
+│   │   │   ├── agent.interaction.test.ts  # Agent 互动配置及 SC、进房事件响应校验测试
 │   │   │   ├── agent.requests.test.ts  # Agent 查询、设置、暂停恢复与事件批量请求契约测试
 │   │   │   ├── agent.ts  # 独立 Agent HTTP 客户端、超时取消与运行时响应校验
 │   │   │   ├── auth.test.ts  # 会话登录撤销、来源隔离及并发请求回归测试
 │   │   │   ├── auth.ts  # 按主服务来源保存在内存的管理员会话与认证请求封装
 │   │   │   ├── companionship.test.ts  # 陪伴管理服务契约与无效响应测试
 │   │   │   ├── companionship.ts  # 陪伴详情、积分调整撤销和礼物确认请求
+│   │   │   ├── eventPayload.ts  # 聊天、礼物、SC 与进房事件载荷共用校验
 │   │   │   ├── failures.test.ts  # HTTP 错误、协议校验、取消和超时测试
 │   │   │   ├── index.ts  # 带超时和取消的主服务 HTTP 客户端
 │   │   │   ├── live.failures.test.ts  # 直播请求异常、超时、取消及脱敏配置快照校验测试
 │   │   │   ├── live.requests.test.ts  # 直播控制和凭据配置请求、方法与载荷测试
 │   │   │   ├── live.ts  # 直播状态与控制、面板凭据设置读写及响应校验客户端
-│   │   │   ├── llm.test.ts  # LLM 客户端路由、校验、错误与超时测试
-│   │   │   ├── llm.ts  # LLM 设置与连接测试 HTTP 客户端及响应校验
+│   │   │   ├── llm-runtime.test.ts  # 运行服务路由、契约、错误脱敏和超时取消测试
+│   │   │   ├── llm-runtime.ts  # 运行设置、用量和活动 HTTP 客户端及严格响应验证
+│   │   │   ├── llm.reasoning.test.ts  # 推理预览 HTTP 契约、档位和预算响应校验测试
+│   │   │   ├── llm.test.ts  # LLM 配置、模型目录及连接测试客户端的契约与异常测试
+│   │   │   ├── llm.ts  # LLM 配置、模型列表与推理预览的认证请求、契约校验及取消处理
 │   │   │   ├── memory.test.ts  # 记忆管理请求、版本和响应边界测试
 │   │   │   ├── memory.ts  # 记忆查询及有条件管理操作服务
 │   │   │   ├── obs.test.ts  # OBS 控制和设置请求、地址响应校验、失败超时及不重放请求测试
@@ -250,4 +274,4 @@ desktop/  # React 控制面板及 Windows 桌面外壳
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: a24752bca6bc908b0bf4583090f98e9d4bc2dded71463908722ef43faa6b9e43 -->
+<!-- directory-tree-sha256: 971841c302e587b919d0149a642b9f06107f99edc23924316fa9f1b891f81498 -->

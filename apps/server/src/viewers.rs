@@ -14,6 +14,15 @@ pub fn utc_ms() -> u64 {
         .min(i64::MAX as u128) as u64
 }
 
+/// SC lifetime starts at the platform's display start, including time spent in persistence.
+pub(crate) fn event_age_ms(event: &LiveEvent, utc_now: u64) -> u64 {
+    let start = match event.kind {
+        meowlive_domain::event::EventKind::SuperChat { start_at_ms, .. } => start_at_ms,
+        _ => event.occurred_at_ms,
+    };
+    utc_now.saturating_sub(start)
+}
+
 impl AppState {
     pub(crate) async fn persist_events(
         &self,
@@ -68,8 +77,8 @@ impl AppState {
                 continue;
             }
             *result.persisted.as_mut().unwrap() += 1;
-            let age_ms = utc_ms().saturating_sub(event.occurred_at_ms);
-            if age_ms >= self.config.agent.event_ttl_ms {
+            let age_ms = event_age_ms(&event, utc_ms());
+            if age_ms >= event.response_ttl_ms(self.config.agent.event_ttl_ms) {
                 *result.unscheduled.as_mut().unwrap() += 1;
                 continue;
             }

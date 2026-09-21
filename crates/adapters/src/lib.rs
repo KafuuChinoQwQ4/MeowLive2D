@@ -4,6 +4,7 @@
 pub mod live;
 pub mod llm;
 pub mod runtime;
+pub mod search;
 pub mod speech;
 pub mod storage;
 pub mod training;

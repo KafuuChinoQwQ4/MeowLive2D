@@ -1,8 +1,9 @@
+import { interactionSettings } from "../../test/agent-fixtures";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AgentSettingsForm } from "./AgentSettingsForm";
 
-const settings = { persona: "温柔的猫娘主播", topic: "轻松聊天", proactive_enabled: false, cooldown_ms: 30_000 };
+const settings = { persona: "温柔的猫娘主播", topic: "轻松聊天", proactive_enabled: false, cooldown_ms: 30_000, interaction: { ...interactionSettings } };
 
 describe("Agent 设置表单", () => {
   it("轮询状态更新时保留用户尚未保存的草稿", () => {
@@ -37,7 +38,7 @@ describe("Agent 设置表单", () => {
     fireEvent.click(screen.getByRole("button", { name: "保存设置并暂停" }));
 
     await waitFor(() => expect(onSave).toHaveBeenCalledWith({
-      persona: "冷静主持人", topic: "动作游戏", proactive_enabled: true, cooldown_ms: 45_000,
+      persona: "冷静主持人", topic: "动作游戏", proactive_enabled: true, cooldown_ms: 45_000, interaction: { ...interactionSettings },
     }));
     expect(screen.getByText(/保存设置会暂停 Agent/)).toBeVisible();
   });

@@ -31,6 +31,10 @@ pub fn session() -> AgentSession {
     AgentSession::new(
         AgentSettings {
             cooldown_ms: 1000,
+            interaction: meowlive_application::agent::InteractionSettings {
+                chat_read_mode: meowlive_application::agent::ChatReadMode::Selective,
+                ..Default::default()
+            },
             ..AgentSettings::default()
         },
         AgentLimits::default(),

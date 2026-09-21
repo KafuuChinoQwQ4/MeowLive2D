@@ -1,6 +1,6 @@
 use meowlive_protocol::{
     agent::*, audio::*, auth::*, control::*, execution::*, launcher::*, live::*, llm::*,
-    model_library::*, obs::*, resources::*, training::*, training_runtime::*,
+    llm_runtime::*, model_library::*, obs::*, resources::*, training::*, training_runtime::*,
 };
 use meowlive_protocol::{companionship, memory, relationships, viewer_merge, viewers};
 use std::{env, fs, path::PathBuf, process::ExitCode};
@@ -10,6 +10,8 @@ fn main() -> ExitCode {
     let path =
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../packages/contracts/src/index.ts");
     let types = [
+        ChatReadMode::decl(),
+        InteractionSettings::decl(),
         viewer_merge::MergeViewerSummary::decl(),
         viewer_merge::ViewerMergePreview::decl(),
         viewer_merge::ViewerMergePreviewRequest::decl(),
@@ -46,10 +48,26 @@ fn main() -> ExitCode {
         viewers::PersistedViewerEvent::decl(),
         viewers::ViewerPage::decl(),
         viewers::ViewerEventPage::decl(),
+        LlmPrice::decl(),
+        AgentRuntimeSettings::decl(),
+        AgentRuntimeSettingsSnapshot::decl(),
+        AgentRuntimeSettingsRequest::decl(),
+        LlmTokenUsage::decl(),
+        LlmUsageRecord::decl(),
+        LlmUsageTotals::decl(),
+        LlmUsageGroup::decl(),
+        LlmUsageSnapshot::decl(),
+        AgentToolActivity::decl(),
+        AgentActivitySnapshot::decl(),
         LlmSettings::decl(),
         LlmSettingsSnapshot::decl(),
         LlmSettingsRequest::decl(),
+        LlmReasoningRequest::decl(),
+        LlmReasoningResult::decl(),
         LlmTestResult::decl(),
+        LlmModelsRequest::decl(),
+        LlmModelOption::decl(),
+        LlmModelsResult::decl(),
         ModelEnvironment::decl(),
         ModelRuntime::decl(),
         CatalogModel::decl(),
