@@ -66,3 +66,23 @@ it("accepts a hash change between the initial render and event subscription", ()
   render(<NavigationDuringMount />);
   expect(screen.getByRole("status")).toHaveTextContent("overview: speech, overview");
 });
+
+it("opens the Agent observation workspace from the main navigation", async () => {
+  const fetcher = vi.fn<typeof fetch>(async url => {
+    const path = new URL(String(url)).pathname;
+    if (path === "/api/admin/session") return jsonResponse({ enabled: false, authenticated: false });
+    if (path === "/api/agent/scheduler") return jsonResponse({
+      ready: false, phase: "waiting", block_reason: "no_eligible_events", message: "当前没有符合调度条件的事件。",
+      remaining_ms: null, pending_events: 0, deciding_events: 0, active_speeches: 0, updated_at_ms: 1,
+    });
+    if (path === "/api/agent/traces") return jsonResponse({ traces: [], storage_available: true, truncated: false });
+    return jsonResponse(serverStatus());
+  });
+  vi.stubGlobal("fetch", fetcher);
+  render(<App />);
+  await userEvent.click(await screen.findByRole("link", { name: "Agent 观察" }));
+  expect(await screen.findByRole("heading", { name: "Agent 调度观察" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "调度状态" })).toBeInTheDocument();
+  expect(await screen.findByText("当前没有符合调度条件的事件。")).toBeVisible();
+  expect(fetcher).toHaveBeenCalledWith(expect.stringContaining("/api/agent/scheduler"), expect.anything());
+});

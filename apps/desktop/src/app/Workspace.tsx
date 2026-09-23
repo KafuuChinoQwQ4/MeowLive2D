@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { createContext, useEffect, useRef, type ReactNode } from "react";
 import { workspacePages, type WorkspacePage } from "./navigation";
 import { WorkspaceIcon } from "./WorkspaceIcon";
 import { useWorkspaceNavigation } from "./useWorkspaceNavigation";
@@ -17,6 +17,8 @@ export interface WorkspaceProps {
   adminClient?: AdminSessionClient;
 }
 
+export const WorkspaceActiveContext = createContext<WorkspacePage | null>(null);
+
 export function Workspace({ overview, pages, setup, ready, status, notice, adminClient }: WorkspaceProps) {
   const { active, visited, navigate } = useWorkspaceNavigation();
   const page = workspacePages.find(item => item.id === active)!;
@@ -28,7 +30,7 @@ export function Workspace({ overview, pages, setup, ready, status, notice, admin
     });
     return () => cancelAnimationFrame(frame);
   }, [active, ready]);
-  return <div className="studio-shell">
+  return <WorkspaceActiveContext.Provider value={active}><div className="studio-shell">
     <a className="skip-navigation" href="#studio-main" onClick={event => { event.preventDefault(); content.current?.focus(); }}>跳到功能内容</a>
     <aside className="studio-sidebar">
       <a className="studio-brand" href="#overview" onClick={event => { event.preventDefault(); navigate("overview"); }} aria-label="MeowLive2D 首页">
@@ -54,7 +56,7 @@ export function Workspace({ overview, pages, setup, ready, status, notice, admin
         <section className="studio-page" aria-label="运行总览" hidden={active !== "overview"}>
           {overview}
           <div className="studio-shortcuts" aria-label="常用功能">
-            {(["setup", "speech", "resources"] as const).map(id => <button className="studio-shortcut" key={id} onClick={() => navigate(id)}><WorkspaceIcon name={id} /><span>{id === "setup" ? "环境与模型" : id === "speech" ? "试播一句话" : "角色与音色"}</span><WorkspaceIcon name="arrow" /></button>)}
+            {(["setup", "resources", "speech"] as const).map(id => <button className="studio-shortcut" key={id} onClick={() => navigate(id)}><WorkspaceIcon name={id} /><span>{id === "setup" ? "环境与模型" : id === "speech" ? "试播一句话" : "角色与人物卡"}</span><WorkspaceIcon name="arrow" /></button>)}
           </div>
         </section>
         <section className="studio-page studio-page-setup" aria-label="环境与模型" hidden={active !== "setup"}>{visited.has("setup") && <FeedbackScope name="setup">{setup}</FeedbackScope>}</section>
@@ -70,5 +72,5 @@ export function Workspace({ overview, pages, setup, ready, status, notice, admin
         })}
       </main>
     </div>
-  </div>;
+  </div></WorkspaceActiveContext.Provider>;
 }

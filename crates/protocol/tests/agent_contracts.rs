@@ -3,6 +3,13 @@ use meowlive_protocol::agent::{
     EventBatchRequest, EventBatchResult, EventPayload, GiftMetadataInput, LiveEventInput,
     ViewerIdentityInput, ViewerIdentityKind,
 };
+use meowlive_protocol::{
+    agent_observability::{
+        AgentTrace, AgentTraceEvent, AgentTraceStatus, AgentTraceStep, AgentTraceStepKind,
+        AgentTraceStepStatus, AgentTraceSummary, AgentTurn,
+    },
+    llm_runtime::LlmTokenUsage,
+};
 use serde_json::json;
 
 fn chat_event() -> LiveEventInput {
@@ -186,4 +193,83 @@ fn agent_snapshot_serializes_only_public_state() {
         .unwrap(),
         json!({ "accepted": 2, "duplicates": 1 })
     );
+}
+
+#[test]
+fn agent_trace_serializes_turns_steps_and_safe_sources() {
+    let trace = AgentTrace {
+        summary: AgentTraceSummary {
+            id: "trace-1".into(),
+            status: AgentTraceStatus::Running,
+            trigger: "live_events".into(),
+            started_at_ms: 9_007_199_254_740_000,
+            updated_at_ms: 9_007_199_254_740_001,
+            finished_at_ms: None,
+            event_count: 1,
+            turn_count: 1,
+            tool_count: 1,
+            speech_id: Some("speech-1".into()),
+            result: "等待播放".into(),
+            truncated: false,
+        },
+        events: vec![AgentTraceEvent {
+            id: "event-1".into(),
+            kind: "chat".into(),
+            viewer: "小猫".into(),
+            summary: "晚上好".into(),
+        }],
+        turns: vec![AgentTurn {
+            id: "turn-1".into(),
+            index: 1,
+            tool_round: 0,
+            retry_attempt: 0,
+            provider: "custom".into(),
+            api_format: "openai_chat".into(),
+            model: "test-model".into(),
+            status: AgentTraceStatus::Completed,
+            started_at_ms: 1_000,
+            first_token_ms: Some(40),
+            finished_at_ms: Some(1_120),
+            latency_ms: 120,
+            usage: LlmTokenUsage {
+                input_tokens: Some(20),
+                output_tokens: Some(8),
+                ..Default::default()
+            },
+        }],
+        steps: vec![AgentTraceStep {
+            sequence: 1,
+            occurred_at_ms: 1_050,
+            kind: AgentTraceStepKind::ToolFinished,
+            status: AgentTraceStepStatus::Completed,
+            message: "网页搜索完成".into(),
+            turn_id: Some("turn-1".into()),
+            tool_name: Some("web_search".into()),
+            speech_id: Some("speech-1".into()),
+            elapsed_ms: Some(50),
+            sources: vec!["https://example.com/article".into()],
+        }],
+    };
+    let value = serde_json::to_value(&trace).unwrap();
+    assert_eq!(value["summary"]["status"], "running");
+    assert_eq!(value["steps"][0]["kind"], "tool_finished");
+    assert_eq!(value["steps"][0]["status"], "completed");
+    assert_eq!(value["turns"][0]["first_token_ms"], 40);
+    assert_eq!(value["summary"]["started_at_ms"], 9_007_199_254_740_000_u64);
+    assert_eq!(
+        value["steps"][0]["sources"][0],
+        "https://example.com/article"
+    );
+}
+
+#[test]
+fn agent_trace_rejects_unknown_fields() {
+    let result = serde_json::from_value::<AgentTraceEvent>(json!({
+        "id": "event-1",
+        "kind": "chat",
+        "viewer": "小猫",
+        "summary": "晚上好",
+        "private_prompt": "must-not-cross-this-boundary"
+    }));
+    assert!(result.is_err());
 }

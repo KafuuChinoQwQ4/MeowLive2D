@@ -17,5 +17,5 @@ export function ManagedWorkspace({ pages, adminClient }: Pick<WorkspaceProps, "p
   const titles = { server: "主服务", tts: "TTS", windows: "Windows 执行端" };
   return <Workspace pages={pages} adminClient={adminClient} setup={<ModelLibraryPanel client={modelClient} token={controller.stale ? null : controller.snapshot?.session_token ?? null} onSelected={controller.refreshQuietly} />} overview={<LauncherControls controller={controller} />} ready={available("server")}
     status={(["server", "tts", "windows"] as const).map(id => ({ label: `${titles[id]} · ${label(id)}`, available: controller.stale ? null : available(id) }))}
-    notice={!available("tts") && <p className="availability-note">播报前请启动 TTS，并在“训练与离线”启用语音模型。</p>} />;
+    notice={!available("tts") && <p className="availability-note">播报前请启动 TTS，并在“声音训练”启用语音模型。</p>} />;
 }

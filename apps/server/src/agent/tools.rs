@@ -87,6 +87,13 @@ impl ToolSet {
         }
     }
 
+    pub fn observed_name(&self, name: &str) -> String {
+        self.definitions
+            .iter()
+            .find(|tool| tool.name == name)
+            .map_or_else(|| "unknown_tool".into(), |tool| tool.name.clone())
+    }
+
     async fn execute_inner(
         &self,
         state: &AppState,

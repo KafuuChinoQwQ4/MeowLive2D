@@ -9,7 +9,7 @@ packages/  # TypeScript 共享工作区包
 ├── contracts/  # 供前端使用的跨端协议类型出口
 │   ├── src/  # 从 Rust 生成的 TypeScript 协议类型和版本常量
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   └── index.ts  # 自动生成的前端跨端协议类型与版本常量
+│   │   └── index.ts  # 自动生成的前端跨端协议类型、Agent 观察模型与版本常量
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   ├── README.md  # 协议类型来源、生成命令和消费方式
 │   ├── package.json  # 前端协议类型包的导出边界与类型检查命令
@@ -25,4 +25,4 @@ packages/  # TypeScript 共享工作区包
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 9329a53d11ce8e703b1b73960447d83f2e168072dceace91e6e641a919654249 -->
+<!-- directory-tree-sha256: 48eff744e443154e6bfcc6c121246d44ab9caf5823262a41ef9d71024c43fbb9 -->

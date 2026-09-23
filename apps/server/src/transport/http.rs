@@ -96,6 +96,15 @@ pub fn router(state: AppState) -> Router {
         )
         .route("/api/llm/usage", get(super::llm_runtime::usage))
         .route("/api/agent/activity", get(super::llm_runtime::activity))
+        .route(
+            "/api/agent/scheduler",
+            get(super::agent_observability::scheduler),
+        )
+        .route("/api/agent/traces", get(super::agent_observability::list))
+        .route(
+            "/api/agent/traces/{id}",
+            get(super::agent_observability::detail),
+        )
         .route("/api/llm/test", post(super::llm::test))
         .route("/api/llm/reasoning", post(super::llm::reasoning))
         .route("/api/llm/models", post(super::llm::models))

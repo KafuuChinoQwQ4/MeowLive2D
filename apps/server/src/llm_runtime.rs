@@ -9,7 +9,7 @@ use meowlive_protocol::llm_runtime::{
     AgentActivitySnapshot, AgentRuntimeSettings, AgentRuntimeSettingsRequest,
     AgentRuntimeSettingsSnapshot, LlmUsageRecord, LlmUsageSnapshot,
 };
-pub use metering::measured_turn;
+pub use metering::{TurnObservation, measured_observed_turn, measured_turn};
 use persistence::DiskLedger;
 use std::{collections::BTreeMap, path::Path, sync::Mutex};
 

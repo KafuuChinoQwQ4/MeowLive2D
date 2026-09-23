@@ -16,46 +16,57 @@ src/  # 按应用组装、业务功能、外部服务和公共能力组织的前
 │   ├── guide/  # 控制面板集中使用指南与各功能操作步骤
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   ├── GuidePanel.tsx  # 独立新手指南、可展开的功能用法与工作区跳转入口
-│   │   └── content.ts  # 启动、语音、角色、互动、观众、直播和训练的中文使用步骤
-│   ├── resources/  # 角色与音色功能的页面组装和共享状态
+│   │   └── content.ts  # 启动、语音、角色、互动、Agent 观察、观众、直播和训练的中文使用步骤
+│   ├── resources/  # 角色人物卡与音色页面组装、共享资源控制器
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   ├── ResourcesPanel.lifecycle.test.tsx  # 资源读取与操作的卸载取消测试
+│   │   ├── ResourcesPanel.lifecycle.test.tsx  # 资源读取与操作取消及训练选用后的音色刷新测试
 │   │   ├── ResourcesPanel.preview.test.tsx  # 音色试听状态跟踪、执行端断线、失败与重试的前端回归测试
 │   │   ├── ResourcesPanel.regressions.test.tsx  # 当前角色重新加载与安装成功后刷新失败回归
-│   │   ├── ResourcesPanel.tsx  # 组装角色音色面板与同服务本地转写客户端并显示资源操作状态
+│   │   ├── ResourcesPanel.tsx  # 按角色或音色模式组装人物卡、资源面板及切页和训练操作后的刷新
 │   │   ├── index.ts  # 资源管理页面公共入口
-│   │   └── useResourcesController.ts  # 角色音色快照、资源删除及桌面模型管理共享控制器
+│   │   └── useResourcesController.ts  # 角色音色快照、切页刷新竞态、资源删除及桌面模型管理控制器
 │   ├── AdminGate.test.tsx  # 认证启停、登录退出、错误重试与过期响应竞态回归测试
 │   ├── AdminGate.tsx  # 默认直接访问控制面板及显式认证部署的会话检查、登录退出与访问门禁
 │   ├── App.desktop.test.tsx  # 原生桌面地址初始化、导航功能请求地址与失败回归
 │   ├── App.launcher.test.tsx  # 服务启停后的业务门控、环境页面常驻访问与模型检索草稿保留测试
-│   ├── App.navigation.test.tsx  # 切页保留在途播报、历史深链接与未知页面回退的集成测试
+│   ├── App.navigation.test.tsx  # 切页保留在途播报、历史深链接、观察页导航与未知页面回退的集成测试
+│   ├── App.organization.test.tsx  # 导航分组、同页编辑保存、切页音色刷新及迟到响应集成测试
 │   ├── App.test.tsx  # 导航功能显隐、草稿保留与当前页标识的集成测试
-│   ├── App.tsx  # 组装客户端与原生配置，选择受管或手动模式的导航控制台
+│   ├── App.tsx  # 组装业务与观察客户端、角色音色训练同步及受管或手动导航控制台
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   ├── ManagedWorkspace.tsx  # 受管服务状态、模型启用提示与功能工作区集成
 │   ├── Workspace.guide.test.tsx  # 服务未就绪时访问指南、指南跳转与草稿保留的回归测试
-│   ├── Workspace.tsx  # 简洁侧栏、独立环境与指南页面、快捷入口及稳定挂载的导航布局
+│   ├── Workspace.tsx  # 分组侧栏、快捷入口、稳定挂载及当前页面上下文的导航布局
 │   ├── WorkspaceIcon.tsx  # 控制台导航、品牌猫形与快捷操作的代码内 SVG 图标
 │   ├── navigation.ts  # 控制台功能导航、分组、页面说明与 URL fragment 映射
 │   ├── styles.css  # 控制台公共样式、响应式布局与服务滑动开关样式
 │   ├── useWorkspaceNavigation.ts  # 页面选择、访问记录与浏览器前进后退同步
-│   └── workspace.css  # 柔和工作区主题、统一控件、响应式布局与训练、使用指南和连接配置样式
+│   └── workspace.css  # 柔和工作区主题、统一下拉控件、人物卡、响应式布局与训练、使用指南和连接配置样式
 ├── features/  # 面向用户的功能模块，各自封装组件与状态
 │   ├── agent/  # Agent 人设、话题和互动策略设置
-│   │   ├── AgentPanel.test.tsx  # Agent 状态控制、错误呈现、轮询竞态与取消清理测试
-│   │   ├── AgentPanel.tsx  # Agent 运行条件、暂停恢复、设置、事件输入与历史的组合面板
-│   │   ├── AgentSettingsForm.bounds.test.tsx  # 默认空话题及人设话题长度与后端一致性的回归测试
+│   │   ├── AgentPanel.test.tsx  # Agent 状态控制、最新人物卡合并、轮询竞态与取消清理测试
+│   │   ├── AgentPanel.tsx  # Agent 运行条件、暂停恢复、互动设置、事件输入与历史的组合面板
 │   │   ├── AgentSettingsForm.interaction.test.tsx  # 互动策略表单持久化、草稿保留与阈值边界测试
-│   │   ├── AgentSettingsForm.test.tsx  # Agent 设置草稿、输入校验与毫秒请求映射测试
-│   │   ├── AgentSettingsForm.tsx  # 保留草稿并编辑人设、冷却和弹幕欢迎互动策略的 Agent 设置表单
+│   │   ├── AgentSettingsForm.test.tsx  # 互动设置保存、草稿保留、输入校验及读取失败反馈测试
+│   │   ├── AgentSettingsForm.tsx  # 编辑话题、冷却及弹幕欢迎策略并保留人物卡的 Agent 互动表单
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   ├── EventHistory.test.tsx  # Agent 事件内容、状态、播报关联与错误展示测试
 │   │   ├── EventHistory.tsx  # Agent 事件状态、关联播报及错误历史列表
 │   │   ├── EventSimulator.test.tsx  # 模拟事件校验、成功清空、失败保留与重复反馈测试
 │   │   ├── EventSimulator.tsx  # 聊天、礼物、SC 与进房模拟及 JSON 批量回放表单
+│   │   ├── PersonaCardPanel.bounds.test.tsx  # 人物卡必填身份、完整提示词 Unicode 长度及旧人设兼容测试
+│   │   ├── PersonaCardPanel.test.tsx  # 人物卡结构化提示词、字段还原、最新互动设置合并及保存确认测试
+│   │   ├── PersonaCardPanel.tsx  # 角色页人物卡编辑、Unicode 校验与合并最新互动设置后保存
 │   │   ├── index.ts  # Agent 自动互动面板的功能出口
+│   │   ├── personaCard.test.ts  # 人物卡标签转义、粘贴内容无损还原及非标准旧人设兼容测试
+│   │   ├── personaCard.ts  # 人物卡字段模型及兼容旧纯文本人设的提示词序列化与还原
 │   │   └── useAgentController.ts  # 修订号防回滚及卸载取消的串行 Agent 轮询与动作控制器
+│   ├── agent-observability/  # Agent 调度原因、Trace 历史、模型 Turn 和执行时间线观察页面
+│   │   ├── AgentObservabilityPanel.test.tsx  # 调度时间线、历史选择、隐私边界、可见性轮询与请求取消测试
+│   │   ├── AgentObservabilityPanel.tsx  # Agent 调度快照、Trace 列表、模型 Turn 与执行步骤观察面板
+│   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   ├── agent-observability.css  # Agent 观察页的双栏历史时间线、状态徽章与窄屏布局样式
+│   │   └── index.ts  # Agent 观察功能组件导出入口
 │   ├── characters/  # 角色模型选择、导入与动作映射界面
 │   │   ├── CharacterPanel.test.tsx  # 角色与安装模型删除确认、导入保存加载及能力预览交互测试
 │   │   ├── CharacterPanel.tsx  # 角色配置及安装模型增删、音色绑定、口型和热键管理界面
@@ -122,17 +133,17 @@ src/  # 按应用组装、业务功能、外部服务和公共能力组织的前
 │   │   ├── TrainingPanel.audio.test.tsx  # 训练片段多格式转换上传、异步重选、容量与导入失败回归测试
 │   │   ├── TrainingPanel.feedback.test.tsx  # 验证训练测量行内结果、异常弹窗、模型中断提示与终态竞态去重
 │   │   ├── TrainingPanel.preferences.test.tsx  # 验证训练偏好恢复、服务隔离和存储异常回退
-│   │   ├── TrainingPanel.saved.test.tsx  # 音色保存重开切换、删除确认及清理失败重试交互测试
+│   │   ├── TrainingPanel.saved.test.tsx  # 音色确认后资源同步、保存重开切换、删除与失败重试测试
 │   │   ├── TrainingPanel.test.tsx  # 训练配置独立选择、服务忙碌时编辑、提交审核与试听取消交互测试
 │   │   ├── TrainingPanel.transcription.test.tsx  # 训练声音与文本模式、空白转写行内结果及错误弹窗、审核与过期请求回归测试
-│   │   ├── TrainingPanel.tsx  # 本地训练偏好、性能设置、记录分页、音色版本、模型开关及结果弹窗工作区
+│   │   ├── TrainingPanel.tsx  # 本地训练偏好、任务、音色版本、模型开关与资源变更通知工作区
 │   │   ├── TrainingPanel.workspace.test.tsx  # 训练页签与素材分页、音色归组、性能参数及独立模型启停测试
 │   │   ├── TrainingResultDialog.tsx  # 训练成功行内提示、错误弹窗、建议提示及键盘焦点恢复
-│   │   ├── TrainingVoiceLibrary.tsx  # 按参考音色归组的训练音色库、版本选择与单版本操作
+│   │   ├── TrainingVoiceLibrary.tsx  # 按参考音色归组并经用户确认后切换的训练音色库、版本选择与单版本操作
 │   │   ├── index.ts  # 训练面板公开组件导出
 │   │   ├── trainingFeedback.ts  # 训练操作结果、任务终态通知及失败原因对应的改正建议
 │   │   ├── useTraining.test.tsx  # 训练轮询独立更新、故障恢复与取消迟到结果测试
-│   │   └── useTraining.ts  # 训练资源与模型状态轮询、操作反馈、终态通知及异步取消保护
+│   │   └── useTraining.ts  # 训练状态和资源轮询、版本选用通知、结果反馈与异步取消保护
 │   ├── viewers/  # 管理员只读观众档案与持久事件查询页面
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   ├── MemoryCard.tsx  # 记忆证据、版本及纠正删除冻结操作卡片
@@ -175,6 +186,8 @@ src/  # 按应用组装、业务功能、外部服务和公共能力组织的前
 │   │   └── index.ts  # 模型库契约校验、官方链接校验和带会话令牌的限时请求
 │   ├── server/  # Rust 主服务 HTTP / WebSocket 客户端入口
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   ├── agent-observability.test.ts  # Agent 观察查询 URL、严格响应、安全来源、错误和取消测试
+│   │   ├── agent-observability.ts  # 带认证和严格运行时校验的 Agent 调度及 Trace 查询客户端
 │   │   ├── agent.bounds.test.ts  # Agent 合法最大快照、冷却与礼物数量边界回归测试
 │   │   ├── agent.failures.test.ts  # Agent 畸形响应、HTTP 错误、超时与取消测试
 │   │   ├── agent.interaction.test.ts  # Agent 互动配置及 SC、进房事件响应校验测试
@@ -191,7 +204,7 @@ src/  # 按应用组装、业务功能、外部服务和公共能力组织的前
 │   │   ├── live.requests.test.ts  # 直播控制和凭据配置请求、方法与载荷测试
 │   │   ├── live.ts  # 直播状态与控制、面板凭据设置读写及响应校验客户端
 │   │   ├── llm-runtime.test.ts  # 运行服务路由、契约、错误脱敏和超时取消测试
-│   │   ├── llm-runtime.ts  # 运行设置、用量和活动 HTTP 客户端及严格响应验证
+│   │   ├── llm-runtime.ts  # 运行设置、可关联 Trace 的用量和活动 HTTP 客户端及严格响应验证
 │   │   ├── llm.reasoning.test.ts  # 推理预览 HTTP 契约、档位和预算响应校验测试
 │   │   ├── llm.test.ts  # LLM 配置、模型目录及连接测试客户端的契约与异常测试
 │   │   ├── llm.ts  # LLM 配置、模型列表与推理预览的认证请求、契约校验及取消处理
@@ -247,4 +260,4 @@ src/  # 按应用组装、业务功能、外部服务和公共能力组织的前
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 72854d4511fc032a98338de39b4163df74afd8e4a3688770945c9f43562fea23 -->
+<!-- directory-tree-sha256: bbb9e679e1ec2926c4a878d2c5697cb57d519d6d6724caf4f00ae7f4dedecdb0 -->

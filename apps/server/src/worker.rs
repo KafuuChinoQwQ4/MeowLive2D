@@ -13,10 +13,12 @@ pub async fn run_worker(state: AppState) {
         let notified = state.wake.notified();
         let work = {
             let mut inner = state.inner.lock().await;
-            inner
+            let work = inner
                 .queue
                 .next_for_synthesis()
-                .map(|task| (task, inner.generation_cancel.clone()))
+                .map(|task| (task, inner.generation_cancel.clone()));
+            state.sync_agent(&mut inner);
+            work
         };
         let Some((task, cancel)) = work else {
             notified.await;
@@ -86,6 +88,7 @@ pub async fn run_worker(state: AppState) {
             if !inner.queue.mark_ready(&task.id, task.generation) {
                 continue;
             }
+            state.sync_agent(&mut inner);
             let Some(bridge) = &inner.bridge else {
                 continue;
             };

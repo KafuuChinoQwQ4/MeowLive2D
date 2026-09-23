@@ -8,8 +8,8 @@
 llm_runtime/  # 运行配置、计量与持久化实现
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 ├── ledger.rs  # 历史用量筛选聚合与缓存子集费用估算
-├── metering.rs  # 单次模型调用观测计量及取消收束
-├── persistence.rs  # 私有运行设置原子保存与调用账本分段恢复
+├── metering.rs  # 单次模型调用计量、Trace Turn 关联及取消收束
+├── persistence.rs  # 私有运行设置原子保存、Trace 关联字段校验与调用账本分段恢复
 └── settings.rs  # 运行配置验证与搜索密钥目标绑定
 ```
 
@@ -17,4 +17,4 @@ llm_runtime/  # 运行配置、计量与持久化实现
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: d8b79d3b87ca1b5ab26c3bd8473e449aa706d11fa70c19c91b6a002586475809 -->
+<!-- directory-tree-sha256: 7b75034578ff928841fb4d4a2bd4535eaefd12a846ccea27b55b53f50e1c7ca3 -->

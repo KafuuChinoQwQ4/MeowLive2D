@@ -10,7 +10,7 @@ type Query = "training" | "resources" | "preset" | "models";
 const queries: Query[] = ["training", "resources", "preset", "models"];
 const emptyErrors = { training: "", resources: "", preset: "", models: "" };
 
-export function useTraining(client: TrainingClient, resources: ResourcesClient) {
+export function useTraining(client: TrainingClient, resources: ResourcesClient, onResourcesChanged?: () => void) {
   const sharedFeedback = useFeedback();
   const [snapshot, setSnapshot] = useState<TrainingSnapshot | null>(null);
   const [assets, setAssets] = useState<ResourceSnapshot | null>(null);
@@ -187,6 +187,7 @@ export function useTraining(client: TrainingClient, resources: ResourcesClient) 
       setFailedDelete(null);
       context.current!.revisions.training++;
       acceptSnapshot(value);
+      onResourcesChanged?.();
       if (audio?.version === id) {
         if (blob.current) URL.revokeObjectURL(blob.current);
         blob.current = null;
@@ -204,6 +205,7 @@ export function useTraining(client: TrainingClient, resources: ResourcesClient) 
       if (signal.aborted) return;
       context.current!.revisions.resources++;
       setAssets(selected);
+      onResourcesChanged?.();
     }, { operation: "选用音色", success: "已选用此音色；语音模型启用后，后续播报将使用该版本。" });
   }
   async function measure(voice: string, text: string) {

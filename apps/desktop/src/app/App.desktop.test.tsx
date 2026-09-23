@@ -21,6 +21,8 @@ it("waits for desktop configuration and uses its address in every panel", async 
     const path = new URL(String(url)).pathname;
     if (path === "/api/admin/session") return jsonResponse({ enabled: false, authenticated: false });
     if (path === "/api/agent") return jsonResponse(agentStatus());
+    if (path === "/api/agent/scheduler") return jsonResponse({ ready: false, phase: "waiting", block_reason: "no_eligible_events", message: "正在等待新的可回应事件", remaining_ms: null, pending_events: 0, deciding_events: 0, active_speeches: 0, updated_at_ms: 1 });
+    if (path === "/api/agent/traces") return jsonResponse({ traces: [], storage_available: true, truncated: false });
     if (path === "/api/live/settings") return jsonResponse(liveSettingsSnapshot());
     if (path === "/api/obs/settings") return jsonResponse({ enabled: false, websocket_url: "ws://127.0.0.1:4455", password_configured: false, storage_available: true });
     if (path === "/api/live") return jsonResponse(liveSnapshot());
@@ -36,7 +38,7 @@ it("waits for desktop configuration and uses its address in every panel", async 
   finish({ config_path: "desktop.toml", server_url: "http://127.0.0.1:19777", runtime: { running: true, simulation: true, last_error: null } });
   await userEvent.click(await screen.findByRole("link", { name: "语音播报" }));
   await screen.findByRole("heading", { name: "文字播报" });
-  for (const name of ["角色与音色", "Agent 互动", "LLM 接入", "直播连接", "OBS 控制", "训练与离线"]) {
+  for (const name of ["角色与人物卡", "Agent 互动", "Agent 观察", "LLM 接入", "直播连接", "OBS 控制", "声音训练"]) {
     await userEvent.click(screen.getByRole("link", { name }));
   }
   await waitFor(() => expect(fetcher.mock.calls.length).toBeGreaterThanOrEqual(6));

@@ -12,6 +12,7 @@ use meowlive_desktop_runtime::{
 };
 use meowlive_protocol::{
     agent::{AgentEventStatus, EventBatchRequest},
+    agent_observability::{AgentTraceStatus, AgentTraceStepKind},
     llm_runtime::{AgentRuntimeSettingsRequest, LlmPrice},
 };
 use meowlive_server::{config::AppConfig, llm_runtime::UsageQuery};
@@ -169,6 +170,36 @@ async fn native_stream_search_followup_playback_receipt_and_usage_form_one_flow(
             .iter()
             .all(|record| record.first_token_ms.is_some() && record.status == "completed")
     );
+    let traces = harness.state.agent_observability.list(10, None);
+    assert_eq!(traces.traces.len(), 1);
+    let trace = harness
+        .state
+        .agent_observability
+        .get(&traces.traces[0].id)
+        .unwrap();
+    assert_eq!(trace.summary.status, AgentTraceStatus::Completed);
+    for kind in [
+        AgentTraceStepKind::SpeechSynthesizing,
+        AgentTraceStepKind::SpeechReady,
+    ] {
+        assert!(trace.steps.iter().any(|step| step.kind == kind));
+    }
+    assert_eq!(trace.turns.len(), 2);
+    assert_eq!(trace.summary.tool_count, 1);
+    assert!(trace.steps.iter().any(|step| {
+        step.kind == AgentTraceStepKind::ToolFinished
+            && step.turn_id.as_deref() == Some(trace.turns[0].id.as_str())
+            && step.sources == vec!["https://example.com/entry"]
+    }));
+    assert!(
+        trace
+            .steps
+            .iter()
+            .any(|step| step.kind == AgentTraceStepKind::SpeechPlaying)
+    );
+    assert!(ledger.records.iter().all(|record| {
+        record.trace_id.as_deref() == Some(trace.summary.id.as_str()) && record.turn_id.is_some()
+    }));
     harness.state.shutdown().await;
     assert!(desktop.await.unwrap().is_err());
     upstream.abort();

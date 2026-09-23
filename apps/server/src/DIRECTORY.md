@@ -8,12 +8,18 @@
 src/  # 主服务启动、配置解析及 HTTP / WebSocket 适配源码
 ├── agent/  # Agent 服务状态、跨端映射和异步模型调度
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   ├── mapping.rs  # 统一事件及 Agent 业务状态到公开 HTTP DTO 的映射
-│   ├── runtime.rs  # 有界工具循环、实时阶段与取消所有权
-│   ├── runtime_tests.rs  # Agent 工具循环、推理设置透传、活动状态、取消和超时回归测试
-│   ├── state.rs  # Agent 查询控制、本机设置保存、原子事件接收及语音状态同步
+│   ├── admission.rs  # worker 与观察接口共用的 Agent 准入判断和中文阻塞原因
+│   ├── mapping.rs  # 统一事件、Agent 业务状态和安全 Trace 事件摘要到公开 DTO 的映射
+│   ├── observation_tests.rs  # 上下文加载、资料版本查询、回应关联与语音阶段失效的观察链路回归测试
+│   ├── runtime.rs  # 有界工具循环、模型 Turn 观察、实时阶段与取消所有权
+│   ├── runtime_tests.rs  # Agent 准入、工具循环、未知工具脱敏、活动状态、取消和超时回归测试
+│   ├── state.rs  # Agent 查询控制、本机设置保存、原子事件接收及语音 Trace 状态同步
 │   ├── tools.rs  # 时间、直播播放、OBS 与网页搜索只读工具白名单
-│   └── worker.rs  # 实时 Agent 调度、资料期限版本栅栏及持久回应关联
+│   └── worker.rs  # 实时 Agent 调度、Trace 生命周期、资料版本栅栏及持久回应关联
+├── agent_observability/  # Agent Trace 内存状态机、持久恢复与有界保留实现
+│   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   ├── mod.rs  # Agent 调度快照、Trace Turn 状态机、语音关联和降级历史
+│   └── persistence.rs  # Agent 活动 Trace 原子保存、完成分段、恢复与保留策略
 ├── config/  # 按 Agent 与模型能力拆分的配置校验
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   ├── agent.rs  # Agent 人设、弹幕欢迎互动策略和有界调度参数的 TOML 配置
@@ -32,17 +38,18 @@ src/  # 主服务启动、配置解析及 HTTP / WebSocket 适配源码
 ├── llm_runtime/  # 运行配置、计量与持久化实现
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   ├── ledger.rs  # 历史用量筛选聚合与缓存子集费用估算
-│   ├── metering.rs  # 单次模型调用观测计量及取消收束
-│   ├── persistence.rs  # 私有运行设置原子保存与调用账本分段恢复
+│   ├── metering.rs  # 单次模型调用计量、Trace Turn 关联及取消收束
+│   ├── persistence.rs  # 私有运行设置原子保存、Trace 关联字段校验与调用账本分段恢复
 │   └── settings.rs  # 运行配置验证与搜索密钥目标绑定
 ├── transport/  # 控制接口、跨端连接与协议到领域对象的转换
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   ├── agent.rs  # Agent 状态控制与批量事件输入的 HTTP 边界
+│   ├── agent_observability.rs  # Agent 调度、Trace 列表和详情的只读无缓存管理接口
 │   ├── auth.rs  # 默认软件管理者访问与可选管理员会话、HTTP 和 WebSocket 角色认证
 │   ├── bridge.rs  # 执行端双通道桥接、上下文版本校验及完成回执持久认可
 │   ├── companionship.rs  # 受认证保护的陪伴账本和礼物管理接口
 │   ├── error.rs  # 稳定的结构化 HTTP 错误映射
-│   ├── http.rs  # HTTP 路由、最小健康接口及管理员与来源边界组装
+│   ├── http.rs  # HTTP 路由、Agent 观察查询、最小健康接口及管理员与来源边界组装
 │   ├── live.rs  # 直播连接控制及脱敏设置查询和本机保存 HTTP 入口
 │   ├── llm.rs  # LLM 配置、模型目录、推理能力预览和显式连接测试的 HTTP 接口
 │   ├── llm_runtime.rs  # 运行配置、实时活动和用量 HTTP 接口
@@ -60,10 +67,10 @@ src/  # 主服务启动、配置解析及 HTTP / WebSocket 适配源码
 │   ├── viewers.rs  # 控制面板的有界观众和持久事件摘要查询
 │   └── websocket.rs  # 唯一执行端连接准入及音频配对校验
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-├── agent.rs  # Agent 异步驱动与服务状态组装入口
+├── agent.rs  # Agent 异步驱动、共享准入判断与服务状态组装入口
 ├── agent_settings.rs  # 本机 Agent 人设话题与互动偏好的校验加载及原子保存
 ├── auth.rs  # 管理员短期会话、凭据摘要、撤销及独立设备授权
-├── bootstrap.rs  # 配置与持久能力组装、模型适配器及后台任务生命周期
+├── bootstrap.rs  # 配置、Trace 与用量持久能力组装、模型适配器及后台任务生命周期
 ├── companionship.rs  # 设备完成回执的有界异步账本提交与失败诊断
 ├── config.rs  # TOML 配置、本机 LLM 与 Agent 覆盖加载及启动前全局校验
 ├── gpu.rs  # 训练试听测量独占租约、保留直播及 Agent 状态的音色切换准入与互斥测试
@@ -71,20 +78,21 @@ src/  # 主服务启动、配置解析及 HTTP / WebSocket 适配源码
 ├── lib.rs  # 可注入适配器的服务模块导出与集成测试入口
 ├── live.rs  # 直播连接单会话状态所有权、非阻塞控制与面板配置即时应用
 ├── live_settings.rs  # 直播凭据的本机原子保存、重启加载和脱敏配置快照
-├── llm_runtime.rs  # Agent 运行设置、活动与调用账本存储入口
+├── llm_runtime.rs  # Agent 运行设置、活动、调用账本与可观察 Turn 存储入口
 ├── llm_settings.rs  # 本机 LLM 配置原子持久化、目录连接草稿与同目标密钥复用校验
 ├── main.rs  # Linux / WSL 主服务入口。业务编排位于 meowlive-application。
-├── memory.rs  # 记忆后台任务、上下文检索及资料失效控制
+├── memory.rs  # 记忆后台任务、上下文检索及资料失效时的播报和观察记录收束
 ├── memory_worker_tests.rs  # 真实 HTTP 模型与 PostgreSQL 工作队列及过期观察器联调测试
 ├── resources.rs  # 桌面资源请求关联、单操作准入与取消生命周期
-├── state.rs  # 语音、Agent、唯一执行桥接和直播连接的共享状态及取消生命周期
+├── state.rs  # 语音、Agent、观察记录、唯一执行桥接和直播连接的共享状态及取消生命周期
 ├── viewers.rs  # 持久事件接收与模拟来源隔离、回应调度和缺口诊断
-└── worker.rs  # 语音任务 I/O 驱动、PCM 分片传输与设备回执等待
+└── worker.rs  # 语音任务 I/O 驱动、实时观察步骤、PCM 分片传输与设备回执等待
 ```
 
 可继续查看各子目录的索引：
 
 - [agent/](agent/DIRECTORY.md)：Agent 服务状态、跨端映射和异步模型调度
+- [agent_observability/](agent_observability/DIRECTORY.md)：Agent Trace 内存状态机、持久恢复与有界保留实现
 - [config/](config/DIRECTORY.md)：按 Agent 与模型能力拆分的配置校验
 - [live/](live/DIRECTORY.md)：官方直播源组装及异步连接、接收、清理与重连驱动
 - [llm_runtime/](llm_runtime/DIRECTORY.md)：运行配置、计量与持久化实现
@@ -94,4 +102,4 @@ src/  # 主服务启动、配置解析及 HTTP / WebSocket 适配源码
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 3ed48b9ed5ff90aad9ed25a843c82872763d56b0fa68a215051d22436dad0a88 -->
+<!-- directory-tree-sha256: 430cad7e2f985c7cbc689f7a9119de3f04d5062efd6083b2eb65c365edf51745 -->

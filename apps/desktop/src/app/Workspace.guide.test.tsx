@@ -8,6 +8,7 @@ afterEach(() => window.history.replaceState(null, "", "/"));
 const pages: WorkspaceProps["pages"] = {
   speech: <label>播报草稿<input /></label>, resources: <p>角色工作区</p>,
   agent: <p>互动工作区</p>, viewers: <p>观众工作区</p>, llm: <p>模型连接工作区</p>,
+  "agent-observability": <p>Agent 观察工作区</p>,
   live: <p>直播工作区</p>, obs: <p>录制工作区</p>, training: <p>训练工作区</p>,
 };
 

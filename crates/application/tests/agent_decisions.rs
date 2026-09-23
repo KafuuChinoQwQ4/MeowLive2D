@@ -1,6 +1,6 @@
 mod agent_support;
 use agent_support::{answer, chat, ignore, session};
-use meowlive_application::agent::{AgentPhase, EventStatus};
+use meowlive_application::agent::{AgentPhase, DecisionResolution, EventStatus};
 
 #[test]
 fn default_pause_blocks_decisions_until_explicit_resume() {
@@ -122,5 +122,50 @@ fn applies_validated_topic_but_late_failures_cannot_affect_new_work() {
             .resolve(next.id, answer(&["two"]), "speech".into(), 1000)
             .unwrap()
             .is_some()
+    );
+}
+
+#[test]
+fn detailed_resolution_distinguishes_silence_expiry_and_policy_skip() {
+    let mut agent = session();
+    agent.submit(chat("silent", 0), 0).unwrap();
+    agent.set_paused(false, 0);
+    let work = agent.begin(0).unwrap();
+    assert_eq!(
+        agent
+            .resolve_detailed(work.id, ignore(), "unused".into(), 0)
+            .unwrap(),
+        DecisionResolution::Silent
+    );
+
+    let mut agent = session();
+    agent.submit(chat("expired", 0), 0).unwrap();
+    agent.set_paused(false, 0);
+    let work = agent.begin(0).unwrap();
+    assert_eq!(
+        agent
+            .resolve_detailed(work.id, answer(&["expired"]), "unused".into(), 120_001)
+            .unwrap(),
+        DecisionResolution::Expired
+    );
+
+    let mut agent = session();
+    agent
+        .submit(
+            meowlive_domain::event::LiveEvent {
+                kind: meowlive_domain::event::EventKind::RoomEnter,
+                ..chat("welcome", 0)
+            },
+            0,
+        )
+        .unwrap();
+    agent.set_paused(false, 0);
+    let work = agent.begin(0).unwrap();
+    agent.submit(chat("important", 1), 1).unwrap();
+    assert_eq!(
+        agent
+            .resolve_detailed(work.id, answer(&["welcome"]), "unused".into(), 1)
+            .unwrap(),
+        DecisionResolution::PolicySkipped
     );
 }

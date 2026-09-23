@@ -4,6 +4,7 @@
 pub const PROTOCOL_VERSION: u16 = 3;
 
 pub mod agent;
+pub mod agent_observability;
 pub mod audio;
 pub mod auth;
 pub mod control;

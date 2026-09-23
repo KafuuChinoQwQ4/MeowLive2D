@@ -43,8 +43,8 @@ export function TrainingVoiceLibrary({ controller: c, disabled, canSynthesize, t
   return <>
     <section className="panel" aria-labelledby="saved-voices-heading">
       <h3 id="saved-voices-heading">已保存的训练音色</h3>
-      <p className="muted">按音色管理版本，试听后保存并选用。</p>
-      <p role="status">当前选用：{current ? `${c.voices.find(voice => voice.id === current.voice_id)?.name ?? "参考音色缺失"} · ${current.name}` : c.activeVoiceId === undefined || !c.snapshot ? "正在读取…" : "尚未选用训练音色"}</p>
+      <p className="muted">先选择音色和版本，再点击确认；下拉选择本身不会切换播报音色。</p>
+      <p role="status" className="voice-selection-current">当前使用：{current ? `${c.voices.find(voice => voice.id === current.voice_id)?.name ?? "参考音色缺失"} · ${current.name}` : c.activeVoiceId === undefined || !c.snapshot ? "正在读取…" : "尚未选用训练音色"}</p>
       {savedGroups.length === 0 && <p className="field-hint">完成训练并试听后，即可保存音色。</p>}
       <label>选择已保存音色<select value={selectedGroup?.id ?? ""} disabled={disabled || savedGroups.length === 0}
         onChange={event => { setSelectedVoice(event.target.value); setSelectedId(""); }}>
@@ -52,11 +52,12 @@ export function TrainingVoiceLibrary({ controller: c, disabled, canSynthesize, t
         {savedGroups.map(group => <option key={group.id} value={group.id} disabled={!hasReference(group.id) || !group.versions.some(version => version.available)}>{group.name}{!hasReference(group.id) ? "（参考音频不可用）" : !group.versions.some(version => version.available) ? "（模型不可用）" : ""}</option>)}
       </select></label>
       {selectedGroup && <label>选择已保存版本<select value={selected?.id ?? ""} disabled={disabled} onChange={event => setSelectedId(event.target.value)}>
-        {selectedGroup.versions.map(version => <option key={version.id} value={version.id} disabled={!version.available}>{version.name}{version.active ? "（已选用）" : ""}{!version.available ? "（模型不可用）" : ""}</option>)}
+        {selectedGroup.versions.map(version => <option key={version.id} value={version.id} disabled={!version.available}>{version.name}{version.id === current?.id ? "（当前使用）" : ""}{!version.available ? "（模型不可用）" : ""}</option>)}
       </select></label>}
+      {selected && selected.id !== current?.id && <p className="voice-selection-pending">待确认：{selectedGroup?.name} · {selected.name}</p>}
       <div className="form-actions"><button type="button" className="primary-button"
         disabled={disabled || !selected?.available || !hasReference(selected.voice_id) || current?.id === selected.id}
-        onClick={() => { if (selected) void c.activateVersion(selected); }}>使用所选音色</button>
+        onClick={() => { if (selected) void c.activateVersion(selected); }}>确认所选音色</button>
         <button type="button" disabled={disabled || !selected} onClick={() => { if (selected) deleteVersion(selected.id, selected.name); }}>删除所选版本</button></div>
       <p className="field-hint">删除仅影响所选版本；播报前需启用语音模型。</p>
     </section>

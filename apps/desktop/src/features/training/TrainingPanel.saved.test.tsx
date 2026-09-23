@@ -46,6 +46,27 @@ function setup(versions = [version()]) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("保存的训练音色", () => {
+  it("下拉框只暂存选择，点击确认后才切换当前音色", async () => {
+    const deps = setup([version(), version({ id: "version-2", job_id: "version-2", name: "温柔第二版" })]);
+    const user = userEvent.setup();
+    const onResourcesChanged = vi.fn();
+    render(<TrainingPanel {...deps} onResourcesChanged={onResourcesChanged} />);
+    fireEvent.click(screen.getByRole("tab", { name: /已训练音色/ }));
+
+    await user.selectOptions(await screen.findByLabelText("选择已保存音色"), "voice-1");
+    await user.selectOptions(screen.getByLabelText("选择已保存版本"), "version-2");
+
+    expect(deps.client.activate).not.toHaveBeenCalled();
+    expect(deps.resources.selectVoice).not.toHaveBeenCalled();
+    expect(screen.getByText("待确认：温柔旁白 · 温柔第二版")).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "确认所选音色" }));
+    await screen.findByText("当前使用：温柔旁白 · 温柔第二版");
+    expect(deps.client.activate).toHaveBeenCalledWith("version-2", expect.any(AbortSignal));
+    expect(deps.resources.selectVoice).toHaveBeenCalledWith({ id: "voice-1" }, expect.any(AbortSignal));
+    expect(onResourcesChanged).toHaveBeenCalledOnce();
+  });
+
   it("试听确认后保存，重开页面可以直接选用而不必再次试听", async () => {
     const deps = setup([version({ auditioned: false, saved: false })]);
     vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: vi.fn(() => "blob:preview"), revokeObjectURL: vi.fn() }));
@@ -68,8 +89,8 @@ describe("保存的训练音色", () => {
     const select = await screen.findByLabelText("选择已保存音色");
     await user.selectOptions(select, "voice-1");
     await user.selectOptions(screen.getByLabelText("选择已保存版本"), "version-1");
-    await user.click(screen.getByRole("button", { name: "使用所选音色" }));
-    await screen.findByText("当前选用：温柔旁白 · 温柔训练音色");
+    await user.click(screen.getByRole("button", { name: "确认所选音色" }));
+    await screen.findByText("当前使用：温柔旁白 · 温柔训练音色");
     expect(deps.client.audition).toHaveBeenCalledTimes(1);
     expect(deps.client.activate).toHaveBeenCalledWith("version-1", expect.any(AbortSignal));
     expect(deps.resources.selectVoice).toHaveBeenCalledWith({ id: "voice-1" }, expect.any(AbortSignal));
@@ -85,8 +106,8 @@ describe("保存的训练音色", () => {
     for (const [id, name, voiceId] of [["version-1", "温柔训练音色", "voice-1"], ["version-2", "活泼训练音色", "voice-2"], ["version-3", "温柔第二版", "voice-1"], ["version-1", "温柔训练音色", "voice-1"]]) {
       await user.selectOptions(select, voiceId);
       await user.selectOptions(screen.getByLabelText("选择已保存版本"), id);
-      await user.click(screen.getByRole("button", { name: "使用所选音色" }));
-      await screen.findByText(`当前选用：${voiceId === "voice-1" ? "温柔旁白" : "活泼声音"} · ${name}`);
+      await user.click(screen.getByRole("button", { name: "确认所选音色" }));
+      await screen.findByText(`当前使用：${voiceId === "voice-1" ? "温柔旁白" : "活泼声音"} · ${name}`);
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
       expect(deps.resources.selectVoice).toHaveBeenLastCalledWith({ id: voiceId }, expect.any(AbortSignal));
     }
@@ -114,15 +135,17 @@ describe("保存的训练音色", () => {
   it("模型启用失败时不切参考音色，也不显示切换成功", async () => {
     const deps = setup();
     vi.mocked(deps.client.activate).mockRejectedValueOnce(new Error("模型文件缺失"));
-    const user = userEvent.setup(); render(<TrainingPanel {...deps} />);
+    const onResourcesChanged = vi.fn();
+    const user = userEvent.setup(); render(<TrainingPanel {...deps} onResourcesChanged={onResourcesChanged} />);
     fireEvent.click(screen.getByRole("tab", { name: /已训练音色/ }));
     await user.selectOptions(await screen.findByLabelText("选择已保存音色"), "voice-1");
     await user.selectOptions(screen.getByLabelText("选择已保存版本"), "version-1");
-    await user.click(screen.getByRole("button", { name: "使用所选音色" }));
+    await user.click(screen.getByRole("button", { name: "确认所选音色" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("模型文件缺失");
     expect(deps.resources.selectVoice).not.toHaveBeenCalled();
-    expect(screen.queryByText("当前选用：温柔旁白 · 温柔训练音色")).not.toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole("button", { name: "使用所选音色" })).toBeEnabled());
+    expect(onResourcesChanged).not.toHaveBeenCalled();
+    expect(screen.queryByText("当前使用：温柔旁白 · 温柔训练音色")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "确认所选音色" })).toBeEnabled());
   });
 
   it("缺失的模型和参考音频不能从保存列表中选用", async () => {
@@ -132,22 +155,25 @@ describe("保存的训练音色", () => {
     const select = await screen.findByLabelText("选择已保存音色");
     expect(within(select).getByRole("option", { name: /温柔旁白/ })).toBeDisabled();
     expect(within(select).getByRole("option", { name: /参考音色缺失/ })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "使用所选音色" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "确认所选音色" })).toBeDisabled();
   });
 
   it("参考音色选择失败时显示错误，仍可重试完成切换", async () => {
     const deps = setup();
     vi.mocked(deps.resources.selectVoice).mockRejectedValueOnce(new Error("参考音色选择失败"));
-    const user = userEvent.setup(); render(<TrainingPanel {...deps} />);
+    const onResourcesChanged = vi.fn();
+    const user = userEvent.setup(); render(<TrainingPanel {...deps} onResourcesChanged={onResourcesChanged} />);
     fireEvent.click(screen.getByRole("tab", { name: /已训练音色/ }));
     await user.selectOptions(await screen.findByLabelText("选择已保存音色"), "voice-1");
     await user.selectOptions(screen.getByLabelText("选择已保存版本"), "version-1");
-    await user.click(screen.getByRole("button", { name: "使用所选音色" }));
+    await user.click(screen.getByRole("button", { name: "确认所选音色" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("参考音色选择失败");
-    expect(screen.getByText("当前选用：尚未选用训练音色")).toBeVisible();
+    expect(onResourcesChanged).not.toHaveBeenCalled();
+    expect(screen.getByText("当前使用：尚未选用训练音色")).toBeVisible();
     await user.click(screen.getByRole("button", { name: "知道了" }));
-    await user.click(screen.getByRole("button", { name: "使用所选音色" }));
-    await screen.findByText("当前选用：温柔旁白 · 温柔训练音色");
+    await user.click(screen.getByRole("button", { name: "确认所选音色" }));
+    await screen.findByText("当前使用：温柔旁白 · 温柔训练音色");
+    expect(onResourcesChanged).toHaveBeenCalledOnce();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
@@ -166,7 +192,7 @@ describe("删除训练音色", () => {
     expect(confirm).toHaveBeenCalledWith(expect.stringContaining("温柔训练音色"));
     expect(deps.client.delete).not.toHaveBeenCalled();
     expect(screen.getByLabelText("选择已保存音色")).toHaveValue("voice-1");
-    expect(screen.getByRole("button", { name: "使用所选音色" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "确认所选音色" })).toBeEnabled();
   });
 
   it("删除一个版本后音色分组与其他版本保留，试听地址释放", async () => {

@@ -8,8 +8,8 @@ pub(crate) use interaction::read_prefix as reading_prefix;
 pub use interaction::{ChatReadMode, InteractionSettings};
 pub use settings::{AgentLimits, AgentSettings};
 pub use types::{
-    AgentPhase, AgentView, CompletedInteraction, DecisionWork, EventRecord, EventStatus,
-    PreparedSpeech, SubmitOutcome,
+    AgentPhase, AgentView, AgentWaitReason, BeginDecision, CompletedInteraction,
+    DecisionResolution, DecisionWork, EventRecord, EventStatus, PreparedSpeech, SubmitOutcome,
 };
 
 use crate::{
@@ -122,44 +122,64 @@ impl AgentSession {
     }
 
     pub fn begin(&mut self, now_ms: u64) -> Option<DecisionWork> {
-        self.scheduler.expire(now_ms);
-        if self.paused
-            || self.completed.len() >= self.scheduler.limits.history_limit
-            || self.flight.is_some()
-            || self.current.is_some()
-            || now_ms < self.next_decision_ms
-        {
-            return None;
+        match self.begin_decision(now_ms) {
+            BeginDecision::Work(work) => Some(work),
+            BeginDecision::Waiting(_) => None,
         }
-        let pending = self
-            .scheduler
-            .records
-            .iter()
-            .filter(|r| r.status == EventStatus::Pending)
-            .count();
-        let busy = self
-            .interaction
-            .busy(&self.settings.interaction, pending, now_ms);
-        let more_important = self.scheduler.records.iter().any(|r| {
-            r.status == EventStatus::Pending && !matches!(r.event.kind, EventKind::RoomEnter)
-        });
-        let skipped_welcomes: Vec<_> = self
-            .scheduler
-            .records
-            .iter()
-            .filter(|r| {
-                r.status == EventStatus::Pending && matches!(r.event.kind, EventKind::RoomEnter)
+    }
+
+    /// Report the same gates and welcome eligibility used when claiming work.
+    pub fn waiting_reason(&mut self, now_ms: u64) -> Option<AgentWaitReason> {
+        self.scheduler.expire(now_ms);
+        if self.paused {
+            Some(AgentWaitReason::Paused)
+        } else if self.completed.len() >= self.scheduler.limits.history_limit {
+            Some(AgentWaitReason::CompletionBufferFull)
+        } else if self.flight.is_some() {
+            Some(AgentWaitReason::DecisionInFlight)
+        } else if self.current.is_some() {
+            Some(AgentWaitReason::SpeechInFlight)
+        } else if now_ms < self.next_decision_ms {
+            Some(AgentWaitReason::Cooldown {
+                remaining_ms: self.next_decision_ms - now_ms,
             })
-            .filter(|r| {
-                busy || more_important
-                    || !self
-                        .interaction
-                        .may_welcome(&r.event, &self.settings.interaction, now_ms)
-            })
-            .map(|r| r.event.id.clone())
-            .collect();
+        } else if self.next_work_id == u64::MAX {
+            Some(AgentWaitReason::WorkIdExhausted)
+        } else {
+            let (_, skipped) = self.welcome_selection(now_ms);
+            if !self.scheduler.records.iter().any(|record| {
+                record.status == EventStatus::Pending && !skipped.contains(&record.event.id)
+            }) && (!self.settings.proactive_enabled || now_ms < self.proactive_after_ms)
+            {
+                Some(AgentWaitReason::NoEligibleEvents)
+            } else {
+                None
+            }
+        }
+    }
+
+    pub fn begin_decision(&mut self, now_ms: u64) -> BeginDecision {
+        self.scheduler.expire(now_ms);
+        if self.paused {
+            return BeginDecision::Waiting(AgentWaitReason::Paused);
+        }
+        if self.completed.len() >= self.scheduler.limits.history_limit {
+            return BeginDecision::Waiting(AgentWaitReason::CompletionBufferFull);
+        }
+        if self.flight.is_some() {
+            return BeginDecision::Waiting(AgentWaitReason::DecisionInFlight);
+        }
+        if self.current.is_some() {
+            return BeginDecision::Waiting(AgentWaitReason::SpeechInFlight);
+        }
+        if now_ms < self.next_decision_ms {
+            return BeginDecision::Waiting(AgentWaitReason::Cooldown {
+                remaining_ms: self.next_decision_ms - now_ms,
+            });
+        }
+        let (busy, skipped) = self.welcome_selection(now_ms);
         self.scheduler.update(
-            &skipped_welcomes,
+            &skipped,
             EventStatus::Skipped,
             None,
             Some("欢迎已跳过：关闭、繁忙或冷却中"),
@@ -170,9 +190,12 @@ impl AgentSession {
         if batch.events.is_empty()
             && (!self.settings.proactive_enabled || now_ms < self.proactive_after_ms)
         {
-            return None;
+            return BeginDecision::Waiting(AgentWaitReason::NoEligibleEvents);
         }
-        self.next_work_id = self.next_work_id.checked_add(1)?;
+        let Some(next_work_id) = self.next_work_id.checked_add(1) else {
+            return BeginDecision::Waiting(AgentWaitReason::WorkIdExhausted);
+        };
+        self.next_work_id = next_work_id;
         let work = DecisionWork {
             id: self.next_work_id,
             request: DecisionRequest {
@@ -195,7 +218,40 @@ impl AgentSession {
             required_read,
         });
         self.last_error = None;
-        Some(work)
+        BeginDecision::Work(work)
+    }
+
+    fn welcome_selection(&mut self, now_ms: u64) -> (bool, Vec<String>) {
+        let pending = self
+            .scheduler
+            .records
+            .iter()
+            .filter(|r| r.status == EventStatus::Pending)
+            .count();
+        let busy = self
+            .interaction
+            .busy(&self.settings.interaction, pending, now_ms);
+        let more_important = self.scheduler.records.iter().any(|r| {
+            r.status == EventStatus::Pending && !matches!(r.event.kind, EventKind::RoomEnter)
+        });
+        let skipped: Vec<_> = self
+            .scheduler
+            .records
+            .iter()
+            .filter(|r| {
+                r.status == EventStatus::Pending
+                    && matches!(r.event.kind, EventKind::RoomEnter)
+                    && (busy
+                        || more_important
+                        || !self.interaction.may_welcome(
+                            &r.event,
+                            &self.settings.interaction,
+                            now_ms,
+                        ))
+            })
+            .map(|r| r.event.id.clone())
+            .collect();
+        (busy, skipped)
     }
 
     /// Events selected by reply_to, bounded by batch_size, available before queue submission.

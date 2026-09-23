@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { AgentClient } from "../../services/server/agent";
 import { agentStatus } from "../../test/agent-fixtures";
@@ -18,6 +18,19 @@ function client(overrides: Partial<AgentClient> = {}): AgentClient {
 }
 
 describe("Agent 面板状态与控制", () => {
+  it("保存互动设置时读取最新人物卡，避免覆盖角色页的修改", async () => {
+    const initial = agentStatus();
+    const latest = agentStatus({ settings: { ...initial.settings, persona: "角色页新人物卡" } });
+    const api = client({ getStatus: vi.fn().mockResolvedValueOnce(initial).mockResolvedValue(latest) });
+    render(<AgentPanel client={api} />);
+    await screen.findByText("Agent 已暂停");
+    fireEvent.change(screen.getByLabelText("直播话题"), { target: { value: "新的互动话题" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存设置并暂停" }));
+    await waitFor(() => expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({
+      persona: "角色页新人物卡", topic: "新的互动话题",
+    }), expect.any(AbortSignal)));
+  });
+
   it("默认暂停且未配置模型时给出本地配置指引并禁止恢复", async () => {
     render(<AgentPanel client={client()} />);
 

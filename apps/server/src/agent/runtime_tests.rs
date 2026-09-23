@@ -5,6 +5,9 @@ use meowlive_application::ports::{
     speech::{SpeechSynthesizer, SynthesisFuture, SynthesisRequest},
     web_search::{SearchFuture, SearchResult, WebSearch},
 };
+use meowlive_protocol::agent_observability::{
+    AgentSchedulerBlockReason, AgentTraceStepKind, AgentTraceStepStatus,
+};
 use std::sync::{
     Mutex,
     atomic::{AtomicUsize, Ordering},
@@ -254,6 +257,8 @@ async fn tool_timeout_returns_a_failure_result_for_the_model_to_clarify() {
 async fn aborting_a_tool_round_drops_io_and_never_starts_the_followup_turn() {
     let state = state();
     let view = state.clone();
+    let trace_id = state.agent_observability.start_trace("proactive", vec![]);
+    let task_trace_id = trace_id.clone();
     let mut settings = state.llm_runtime.settings();
     settings.web_search_enabled = true;
     let dropped = Arc::new(AtomicUsize::new(0));
@@ -266,7 +271,7 @@ async fn aborting_a_tool_round_drops_io_and_never_starts_the_followup_turn() {
     let task_model = model.clone();
     let task = tokio::spawn(async move {
         let activity = ActivityGuard::new(&state);
-        run(
+        run_observed(
             &state,
             task_model.as_ref(),
             request(),
@@ -274,6 +279,7 @@ async fn aborting_a_tool_round_drops_io_and_never_starts_the_followup_turn() {
             &settings,
             ToolSet::with_search(&settings, Some(Arc::new(WaitingSearch(dropped_search)))),
             &activity,
+            Some(&task_trace_id),
         )
         .await
     });
@@ -289,6 +295,76 @@ async fn aborting_a_tool_round_drops_io_and_never_starts_the_followup_turn() {
     assert_eq!(model.calls.load(Ordering::SeqCst), 1);
     assert_eq!(dropped.load(Ordering::SeqCst), 1);
     assert_eq!(view.llm_runtime.activity().phase, "cancelled");
+    let trace = view.agent_observability.get(&trace_id).unwrap();
+    assert!(trace.steps.iter().any(|step| {
+        step.kind == AgentTraceStepKind::ToolFinished
+            && step.status == AgentTraceStepStatus::Cancelled
+    }));
+}
+
+struct UnknownToolModel(AtomicUsize);
+impl LanguageModel for UnknownToolModel {
+    fn decide(&self, _: DecisionRequest) -> DecisionFuture<'_> {
+        Box::pin(async { panic!("must use native turn") })
+    }
+    fn turn(&self, _: DecisionRequest, _: ModelOptions) -> ModelTurnFuture<'_> {
+        let call = self.0.fetch_add(1, Ordering::SeqCst);
+        Box::pin(async move {
+            Ok(if call == 0 {
+                ModelTurn {
+                    decision: None,
+                    tool_calls: vec![ToolCall {
+                        id: "unknown-1".into(),
+                        name: "PRIVATE_PROMPT_FRAGMENT".into(),
+                        arguments_json: "{}".into(),
+                    }],
+                    continuation: Some("opaque".into()),
+                    usage: TokenUsage::default(),
+                    finish_reason: "tool_calls".into(),
+                }
+            } else {
+                ModelTurn {
+                    decision: Some(AgentDecision {
+                        reply_to: vec![],
+                        text: Some("完成".into()),
+                        topic: None,
+                    }),
+                    tool_calls: vec![],
+                    continuation: None,
+                    usage: TokenUsage::default(),
+                    finish_reason: "stop".into(),
+                }
+            })
+        })
+    }
+}
+
+#[tokio::test]
+async fn unknown_model_tool_names_are_redacted_from_observation() {
+    let state = state();
+    let settings = state.llm_runtime.settings();
+    let tools = ToolSet::new(&settings, None);
+    let trace_id = state.agent_observability.start_trace("proactive", vec![]);
+    let activity = ActivityGuard::new(&state);
+    run_observed(
+        &state,
+        &UnknownToolModel(AtomicUsize::new(0)),
+        request(),
+        0,
+        &settings,
+        tools,
+        &activity,
+        Some(&trace_id),
+    )
+    .await
+    .unwrap();
+    let trace = state.agent_observability.get(&trace_id).unwrap();
+    let encoded = serde_json::to_string(&trace).unwrap();
+    assert!(!encoded.contains("PRIVATE_PROMPT_FRAGMENT"));
+    assert!(trace.steps.iter().any(|step| {
+        step.kind == AgentTraceStepKind::ToolStarted
+            && step.tool_name.as_deref() == Some("unknown_tool")
+    }));
 }
 
 #[tokio::test(start_paused = true)]
@@ -316,4 +392,45 @@ async fn total_deadline_ends_running_tools_and_marks_the_round_failed() {
     assert_eq!(state.llm_runtime.activity().tools[0].status, "failed");
     assert_eq!(model.calls.load(Ordering::SeqCst), 1);
     assert_eq!(dropped.load(Ordering::SeqCst), 1);
+}
+
+#[tokio::test]
+async fn admission_reports_the_first_real_scheduler_blocker() {
+    let mut state = state();
+    assert_eq!(
+        crate::agent::admission::assess(&state).await.block_reason,
+        AgentSchedulerBlockReason::Paused
+    );
+    {
+        let mut inner = state.inner.lock().await;
+        inner.agent.set_paused(false, state.now_ms());
+    }
+    assert_eq!(
+        crate::agent::admission::assess(&state).await.block_reason,
+        AgentSchedulerBlockReason::ModelUnavailable
+    );
+    state.model = Some(Arc::new(ToolModel {
+        calls: AtomicUsize::new(0),
+        options: Mutex::new(vec![]),
+        always_tool: false,
+    }));
+    assert_eq!(
+        crate::agent::admission::assess(&state).await.block_reason,
+        AgentSchedulerBlockReason::BridgeDisconnected
+    );
+    {
+        let mut inner = state.inner.lock().await;
+        inner.queue.set_connected(true);
+    }
+    assert_eq!(
+        crate::agent::admission::assess(&state).await.block_reason,
+        AgentSchedulerBlockReason::NoEligibleEvents
+    );
+    state
+        .resource_changing
+        .store(true, std::sync::atomic::Ordering::Release);
+    assert_eq!(
+        crate::agent::admission::assess(&state).await.block_reason,
+        AgentSchedulerBlockReason::ResourceChanging
+    );
 }

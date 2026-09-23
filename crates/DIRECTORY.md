@@ -157,11 +157,11 @@ crates/  # 按职责与单向依赖隔离的 Rust 库
 │   ├── src/  # Agent、事件调度、语音与资源任务用例
 │   │   ├── agent/  # Agent 配置、输出校验、播放关联及状态类型
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   │   ├── decisions.rs  # 模型输出校验、时效与繁忙复核、工作隔离和完整原文语音准备
+│   │   │   ├── decisions.rs  # 模型输出校验、结构化静默与作废结果、工作隔离和完整原文语音准备
 │   │   │   ├── interaction.rs  # 有界流量统计、弹幕朗读模式、进房欢迎冷却及原文播报前缀
-│   │   │   ├── playback.rs  # 播放状态同步和已完成对话记忆
+│   │   │   ├── playback.rs  # 播放状态同步、入队前取消和已完成对话记忆
 │   │   │   ├── settings.rs  # 人设配置和调度资源上限校验
-│   │   │   └── types.rs  # Agent 阶段、事件状态及应用调用结果
+│   │   │   └── types.rs  # Agent 阶段、事件状态、结构化等待原因及应用调用结果
 │   │   ├── ports/  # 业务方定义的模型、语音、存储和执行能力边界
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   ├── companionship.rs  # 陪伴账本礼物确认与完成回执存储接口
@@ -186,7 +186,7 @@ crates/  # 按职责与单向依赖隔离的 Rust 库
 │   │   │   ├── fairness.rs  # 完成驱动的观众公平、有限重选和追问焦点
 │   │   │   └── selection.rs  # SC 独立优先选择、欢迎单轮隔离、朗读长度约束与礼物分组
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   ├── agent.rs  # Agent 生命周期、决策调度和状态快照
+│   │   ├── agent.rs  # Agent 生命周期、结构化等待原因、决策调度和状态快照
 │   │   ├── lib.rs  # 业务用例与外部能力接口。通过注入 ports 的实现调用外部能力。
 │   │   ├── performance.rs  # 协调发言、动作、下发与执行回执；处理代次、取消及重连后未知状态。
 │   │   ├── resources.rs  # 角色与音色档案用例、删除和选择清理、持久化事务及映射一致性
@@ -202,9 +202,9 @@ crates/  # 按职责与单向依赖隔离的 Rust 库
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   └── mod.rs  # 已连接队列、下发和完成流程测试夹具
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   ├── agent_decisions.rs  # 输出校验、暂停隔离及决策冷却测试
+│   │   ├── agent_decisions.rs  # 输出校验、静默和作废结果区分、暂停隔离及决策冷却测试
 │   │   ├── agent_fairness.rs  # 稳定身份公平调度与完成反馈边界测试
-│   │   ├── agent_lifecycle.rs  # 配置、暂停、停止和播放生命周期测试
+│   │   ├── agent_lifecycle.rs  # 配置、结构化等待、暂停、入队前取消和播放生命周期测试
 │   │   ├── agent_memory.rs  # 已完成对话数量及内容长度边界测试
 │   │   ├── agent_settings.rs  # 人设配置与运行资源上限测试
 │   │   ├── interaction_policy.rs  # SC 优先和时效、弹幕流量策略、欢迎抑制冷却及长原文播报测试
@@ -343,9 +343,10 @@ crates/  # 按职责与单向依赖隔离的 Rust 库
 │   ├── src/  # 与业务领域分离的通信 DTO 模块
 │   │   ├── bin/  # 协议开发命令入口
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   │   └── export-types.rs  # 从 Rust DTO 生成并检查 TypeScript 契约
+│   │   │   └── export-types.rs  # 从 Rust DTO 生成并检查含 Agent 观察模型的 TypeScript 契约
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   ├── agent.rs  # Agent 设置、直播事件、阶段、处理状态与公开快照 DTO
+│   │   ├── agent_observability.rs  # Agent 调度快照、Trace、Turn、步骤及列表跨端契约
 │   │   ├── audio.rs  # PCM 格式约定及有界二进制音频帧编解码
 │   │   ├── auth.rs  # 管理员认证状态、登录请求和短期会话响应契约
 │   │   ├── companionship.rs  # 仅供管理端的陪伴账本与礼物确认契约
@@ -356,7 +357,7 @@ crates/  # 按职责与单向依赖隔离的 Rust 库
 │   │   ├── lib.rs  # 跨进程通信契约的唯一来源。与业务领域对象分离，按协议版本演进。
 │   │   ├── live.rs  # 直播平台连接状态、面板凭据配置请求与脱敏快照契约
 │   │   ├── llm.rs  # LLM 接入配置、模型目录与统一推理档位预览的跨端契约
-│   │   ├── llm_runtime.rs  # 运行配置、模型单价、调用用量与活动跨端契约
+│   │   ├── llm_runtime.rs  # 运行配置、模型单价、Trace Turn 关联用量与活动跨端契约
 │   │   ├── memory.rs  # 记忆证据管理和后台任务状态跨端契约
 │   │   ├── model_library.rs  # 本机环境、模型目录、安装结果及下载任务的跨进程契约
 │   │   ├── obs.rs  # OBS 场景录制操作、本机连接设置与脱敏状态契约
@@ -368,7 +369,7 @@ crates/  # 按职责与单向依赖隔离的 Rust 库
 │   │   └── viewers.rs  # 管理员观众身份、昵称历史和持久事件分页契约
 │   ├── tests/  # 通信协议独立集成测试
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   ├── agent_contracts.rs  # Agent 输入严格反序列化及公开 JSON 形状测试
+│   │   ├── agent_contracts.rs  # Agent 输入与观察契约的严格反序列化及公开 JSON 形状测试
 │   │   ├── audio_frames.rs  # PCM 二进制帧编码、边界与损坏输入测试
 │   │   ├── compatibility.rs  # 协议必填字段、训练模式缺省兼容、未知标签与音频格式测试
 │   │   ├── control_serialization.rs  # 控制消息与执行回执序列化测试
@@ -390,4 +391,4 @@ crates/  # 按职责与单向依赖隔离的 Rust 库
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: f6bd0ab501c3d80169f7b03f051489ae32c257698984275dd8ab03d775c4b63d -->
+<!-- directory-tree-sha256: db1e2f2a07ef995c4a362902f248aaf656d5086342a145ce7f94686068b3e9a4 -->

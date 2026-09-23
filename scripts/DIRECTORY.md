@@ -72,4 +72,4 @@ scripts/  # 开发工具、目录用途登记与索引同步检查
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: fb346b8fd3150f97ede3d2eb13a7b8bcf356a8aae5c9faa40a688ac0d42a2887 -->
+<!-- directory-tree-sha256: fa3ef0a82e2e48ad03bf1b390584acfdecec579de92e02832d597931c0c0b3e2 -->

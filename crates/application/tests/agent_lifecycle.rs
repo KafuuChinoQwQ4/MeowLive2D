@@ -1,6 +1,8 @@
 mod agent_support;
 use agent_support::{answer, chat, session, speech};
-use meowlive_application::agent::{AgentPhase, AgentSettings, EventStatus};
+use meowlive_application::agent::{
+    AgentPhase, AgentSettings, AgentWaitReason, BeginDecision, EventStatus,
+};
 use meowlive_domain::speech::SpeechStatus;
 
 #[test]
@@ -151,4 +153,83 @@ fn enqueue_failure_releases_current_speech_and_marks_event_failed() {
     assert!(view.current_speech_id.is_none());
     assert_eq!(view.events[0].status, EventStatus::Failed);
     assert_eq!(view.last_error.as_deref(), Some("queue unavailable"));
+}
+
+#[test]
+fn cancellation_before_enqueue_releases_current_speech_without_creating_history() {
+    let mut agent = session();
+    agent.submit(chat("one", 0), 0).unwrap();
+    agent.set_paused(false, 0);
+    let work = agent.begin(0).unwrap();
+    agent
+        .resolve(work.id, answer(&["one"]), "speech".into(), 0)
+        .unwrap();
+    agent.speech_cancelled("speech", 10);
+    let view = agent.view(10);
+    assert!(view.current_speech_id.is_none());
+    assert_eq!(view.events[0].status, EventStatus::Cancelled);
+    agent.submit(chat("two", 10), 10).unwrap();
+    assert!(agent.begin(1010).unwrap().request.history.is_empty());
+}
+
+#[test]
+fn begin_decision_explains_why_agent_is_waiting() {
+    let mut agent = session();
+    assert_eq!(
+        agent.begin_decision(0),
+        BeginDecision::Waiting(AgentWaitReason::Paused)
+    );
+    agent.set_paused(false, 0);
+    assert_eq!(
+        agent.begin_decision(0),
+        BeginDecision::Waiting(AgentWaitReason::NoEligibleEvents)
+    );
+    agent.submit(chat("one", 0), 0).unwrap();
+    let work = match agent.begin_decision(0) {
+        BeginDecision::Work(work) => work,
+        other => panic!("expected work, got {other:?}"),
+    };
+    assert_eq!(
+        agent.begin_decision(0),
+        BeginDecision::Waiting(AgentWaitReason::DecisionInFlight)
+    );
+    agent
+        .resolve(work.id, answer(&["one"]), "speech".into(), 0)
+        .unwrap();
+    assert_eq!(
+        agent.begin_decision(1),
+        BeginDecision::Waiting(AgentWaitReason::SpeechInFlight)
+    );
+    agent.sync_speech(&speech("speech", SpeechStatus::Completed), 100);
+    assert_eq!(
+        agent.begin_decision(999),
+        BeginDecision::Waiting(AgentWaitReason::Cooldown { remaining_ms: 101 })
+    );
+}
+
+#[test]
+fn waiting_reason_and_claim_both_reject_ineligible_welcomes() {
+    let mut agent = session();
+    let mut settings = agent.view(0).settings;
+    settings.interaction.welcome_enabled = false;
+    agent.configure(settings, 0).unwrap();
+    agent
+        .submit(
+            meowlive_domain::event::LiveEvent {
+                kind: meowlive_domain::event::EventKind::RoomEnter,
+                ..chat("welcome", 0)
+            },
+            0,
+        )
+        .unwrap();
+    agent.set_paused(false, 0);
+    assert_eq!(
+        agent.waiting_reason(0),
+        Some(AgentWaitReason::NoEligibleEvents)
+    );
+    assert_eq!(
+        agent.begin_decision(0),
+        BeginDecision::Waiting(AgentWaitReason::NoEligibleEvents)
+    );
+    assert_eq!(agent.view(0).events[0].status, EventStatus::Skipped);
 }

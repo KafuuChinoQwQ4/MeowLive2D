@@ -8,9 +8,10 @@
 src/  # 与业务领域分离的通信 DTO 模块
 ├── bin/  # 协议开发命令入口
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   └── export-types.rs  # 从 Rust DTO 生成并检查 TypeScript 契约
+│   └── export-types.rs  # 从 Rust DTO 生成并检查含 Agent 观察模型的 TypeScript 契约
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 ├── agent.rs  # Agent 设置、直播事件、阶段、处理状态与公开快照 DTO
+├── agent_observability.rs  # Agent 调度快照、Trace、Turn、步骤及列表跨端契约
 ├── audio.rs  # PCM 格式约定及有界二进制音频帧编解码
 ├── auth.rs  # 管理员认证状态、登录请求和短期会话响应契约
 ├── companionship.rs  # 仅供管理端的陪伴账本与礼物确认契约
@@ -21,7 +22,7 @@ src/  # 与业务领域分离的通信 DTO 模块
 ├── lib.rs  # 跨进程通信契约的唯一来源。与业务领域对象分离，按协议版本演进。
 ├── live.rs  # 直播平台连接状态、面板凭据配置请求与脱敏快照契约
 ├── llm.rs  # LLM 接入配置、模型目录与统一推理档位预览的跨端契约
-├── llm_runtime.rs  # 运行配置、模型单价、调用用量与活动跨端契约
+├── llm_runtime.rs  # 运行配置、模型单价、Trace Turn 关联用量与活动跨端契约
 ├── memory.rs  # 记忆证据管理和后台任务状态跨端契约
 ├── model_library.rs  # 本机环境、模型目录、安装结果及下载任务的跨进程契约
 ├── obs.rs  # OBS 场景录制操作、本机连接设置与脱敏状态契约
@@ -41,4 +42,4 @@ src/  # 与业务领域分离的通信 DTO 模块
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: eb95514f69d1ddc2aa1c7924a2c62d0ceae75acb72d711b96479d0a36d55d7d3 -->
+<!-- directory-tree-sha256: 20d2f23a184b23b704fdb520ddef3a71465794d2625b4daa6b0b634b58109b4c -->

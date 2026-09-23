@@ -271,7 +271,13 @@ impl AppState {
         self.knowledge_deadline.store(i64::MAX, Ordering::Release);
         let mut inner = self.inner.lock().await;
         self.sync_agent(&mut inner);
-        inner.agent.invalidate_context(self.now_ms());
+        if let Some(speech_id) = inner.agent.invalidate_context(self.now_ms()) {
+            self.agent_observability.finish_speech(
+                &speech_id,
+                meowlive_protocol::agent_observability::AgentTraceStatus::Failed,
+                "观众资料已更新，本次播报作废",
+            );
+        }
         inner.knowledge.clear();
         let generation = inner.queue.stop();
         inner.agent_cancel.cancel();

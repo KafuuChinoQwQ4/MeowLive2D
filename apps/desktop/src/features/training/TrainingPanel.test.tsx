@@ -19,12 +19,12 @@ describe("训练面板", () => {
     render(<TrainingPanel {...deps} />);
 
     await screen.findByText("训练就绪");
-    expect(screen.getByRole("link", { name: "上传参考声音" })).toHaveAttribute("href", "#resources");
+    expect(screen.getByText("请先在上方「音色管理」上传参考声音。")).toBeVisible();
     expect(screen.getByLabelText("训练音色")).toHaveValue("");
     expect(screen.getByRole("button", { name: "开始训练" })).toBeDisabled();
     fireEvent.click(screen.getByRole("tab", { name: /已训练音色/ }));
-    expect(await screen.findByText("当前选用：尚未选用训练音色")).toBeVisible();
-    expect(screen.getByRole("button", { name: "使用所选音色" })).toBeDisabled();
+    expect(await screen.findByText("当前使用：尚未选用训练音色")).toBeVisible();
+    expect(screen.getByRole("button", { name: "确认所选音色" })).toBeDisabled();
   });
 
   it("手动选择训练音色和轮次，只有两个片段文本已核对后才提交训练", async () => {

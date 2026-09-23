@@ -4,7 +4,10 @@ use agent_support::*;
 use meowlive_application::ports::llm::{
     AgentDecision, DecisionFuture, DecisionRequest, LanguageModel, LlmError,
 };
-use meowlive_protocol::agent::{AgentEventStatus, EventBatchRequest};
+use meowlive_protocol::{
+    agent::{AgentEventStatus, EventBatchRequest},
+    agent_observability::AgentTraceStatus,
+};
 use std::{
     sync::{
         Arc,
@@ -72,6 +75,21 @@ async fn only_transient_errors_retry_and_total_attempts_are_bounded() {
         .await
         .unwrap();
         assert_eq!(calls.load(Ordering::SeqCst), expected_calls);
+        let summary = harness.state.agent_observability.list(1, None).traces[0].clone();
+        let trace = harness.state.agent_observability.get(&summary.id).unwrap();
+        assert_eq!(trace.turns.len(), expected_calls);
+        assert_eq!(trace.turns[0].retry_attempt, 0);
+        if expected_calls == 2 {
+            assert_eq!(trace.turns[1].retry_attempt, 1);
+        }
+        assert_eq!(
+            summary.status,
+            if expected_status == AgentEventStatus::Failed {
+                AgentTraceStatus::Failed
+            } else {
+                AgentTraceStatus::Running
+            }
+        );
         drop(control);
         drop(audio);
     }

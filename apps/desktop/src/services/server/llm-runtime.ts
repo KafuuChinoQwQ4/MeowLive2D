@@ -24,6 +24,14 @@ const shape = (fields: Record<string, Check>): Check => value => {
   const record = value as Record<string, unknown>;
   return Object.keys(record).length === Object.keys(fields).length && Object.entries(fields).every(([key, check]) => Object.hasOwn(record, key) && check(record[key]));
 };
+const shapeWithOptional = (fields: Record<string, Check>, optional: Record<string, Check>): Check => value => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  const allowed = new Set([...Object.keys(fields), ...Object.keys(optional)]);
+  return Object.keys(record).every(key => allowed.has(key))
+    && Object.entries(fields).every(([key, check]) => Object.hasOwn(record, key) && check(record[key]))
+    && Object.entries(optional).every(([key, check]) => !Object.hasOwn(record, key) || check(record[key]));
+};
 const url = (empty = false, source = false): Check => value => {
   if (!text(4096, empty)(value) || /[\\\s]/u.test(String(value))) return false;
   if (value === "" && empty) return true;
@@ -55,9 +63,9 @@ const settingsSnapshot: Check = value => {
   return validRuntimeSearchEndpoint(settings.search_provider, settings.search_endpoint);
 };
 const usageSnapshot = shape({ totals, storage_available: bool, truncated: bool, groups: list(shape({ ...identity, totals }), Infinity),
-  records: list(shape({ ...identity, id: text(128), started_at_ms: integer(), api_format: text(64), operation: text(128),
+  records: list(shapeWithOptional({ ...identity, id: text(128), started_at_ms: integer(), api_format: text(64), operation: text(128),
     status: choice("running", "completed", "failed", "cancelled", "interrupted"), latency_ms: integer(), first_token_ms: nullable(integer()),
-    usage, estimated_cost_microusd: nullable(integer()), }), 200) });
+    usage, estimated_cost_microusd: nullable(integer()), }, { trace_id: text(128), turn_id: text(128), tool_round: integer(3), retry_attempt: integer(1) }), 200) });
 const activitySnapshot = shape({ run_id: nullable(text(128)), phase: choice("idle", "thinking", "receiving", "tool", "completed", "failed", "cancelled"),
   started_at_ms: nullable(integer()), updated_at_ms: integer(), output_characters: integer(), tool_round: integer(3), message: text(4096, true),
   tools: list(shape({ name: text(128), status: choice("running", "completed", "failed"), elapsed_ms: integer(), sources: list(url(false, true), 32) }), 32) });

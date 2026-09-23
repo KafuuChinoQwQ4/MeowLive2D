@@ -57,7 +57,10 @@ export function AgentPanel({ client = defaultClient, runtimeClient, pollInterval
 
       {status ? <>
         <div className="workspace-columns agent-config-grid">
-          <AgentSettingsForm settings={status.settings} disabled={pendingAction !== null} onSave={controller.saveSettings} />
+          <AgentSettingsForm settings={status.settings} disabled={pendingAction !== null} onSave={async settings => {
+            const current = await client.getStatus();
+            return controller.saveSettings({ ...settings, persona: current.settings.persona });
+          }} />
           <EventSimulator disabled={pendingAction !== null || Boolean(connectionError)} onSubmit={controller.submitEvents} />
         </div>
         <EventHistory events={status.events} />

@@ -3,6 +3,27 @@ use super::{AgentSession, EventStatus};
 use meowlive_domain::speech::{SpeechStatus, SpeechTask};
 
 impl AgentSession {
+    pub fn speech_cancelled(&mut self, speech_id: &str, now_ms: u64) {
+        if self
+            .current
+            .as_ref()
+            .is_none_or(|speech| speech.id != speech_id)
+        {
+            return;
+        }
+        let speech = self
+            .current
+            .take()
+            .expect("matched active speech remains present");
+        self.scheduler.update(
+            &speech.event_ids,
+            EventStatus::Cancelled,
+            Some(speech_id),
+            None,
+        );
+        self.cooldown(now_ms);
+    }
+
     pub fn speech_failed(&mut self, speech_id: &str, message: String, now_ms: u64) {
         if self
             .current

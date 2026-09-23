@@ -10,7 +10,7 @@ function setup(fetcher: typeof fetch) {
   const resourceClient = {
     getSnapshot: vi.fn().mockResolvedValue(resourceSnapshot()),
   } as unknown as ResourcesClient;
-  return render(<ResourcesPanel resourceClient={resourceClient} speechClient={createServerClient({ fetcher })} />);
+  return render(<ResourcesPanel mode="voices" resourceClient={resourceClient} speechClient={createServerClient({ fetcher })} />);
 }
 
 async function preview() {

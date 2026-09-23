@@ -62,6 +62,18 @@ pub struct LlmTokenUsage {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
 pub struct LlmUsageRecord {
     pub id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub trace_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub turn_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub tool_round: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub retry_attempt: Option<u32>,
     #[ts(type = "number")]
     pub started_at_ms: u64,
     pub provider: String,

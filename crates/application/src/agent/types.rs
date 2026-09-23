@@ -57,14 +57,38 @@ pub struct AgentView {
     pub last_error: Option<String>,
     pub current_speech_id: Option<String>,
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DecisionWork {
     pub id: u64,
     pub request: DecisionRequest,
 }
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum AgentWaitReason {
+    Paused,
+    DecisionInFlight,
+    SpeechInFlight,
+    Cooldown { remaining_ms: u64 },
+    CompletionBufferFull,
+    WorkIdExhausted,
+    NoEligibleEvents,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum BeginDecision {
+    Work(DecisionWork),
+    Waiting(AgentWaitReason),
+}
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PreparedSpeech {
     pub text: String,
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum DecisionResolution {
+    Speech(PreparedSpeech),
+    Silent,
+    Expired,
+    PolicySkipped,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SubmitOutcome {

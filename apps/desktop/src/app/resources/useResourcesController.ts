@@ -184,6 +184,22 @@ export function useResourcesController(client: ResourcesClient, speechClient: Se
 
   return {
     snapshot,
+    refreshSnapshot: async () => {
+      if (pendingRef.current) return null;
+      // A prior page visit may still be loading; its response must not replace this refresh.
+      loadGeneration.current += 1;
+      activeAbort.current?.abort();
+      const value = await run("resources-refresh", signal => client.getSnapshot(signal), false);
+      if (mounted.current) {
+        setLoading(false);
+        if (value) {
+          setSnapshot(value);
+          setLoadError(null);
+          feedback.clearIssue("resources:load");
+        }
+      }
+      return value;
+    },
     loading,
     loadError,
     actionError: [actionError, previewError].filter(Boolean).join("；") || null,

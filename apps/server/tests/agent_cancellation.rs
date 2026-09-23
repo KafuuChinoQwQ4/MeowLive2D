@@ -2,7 +2,10 @@ mod agent_support;
 mod support;
 use agent_support::*;
 use meowlive_application::ports::llm::{DecisionFuture, DecisionRequest, LanguageModel};
-use meowlive_protocol::agent::{AgentEventStatus, EventBatchRequest};
+use meowlive_protocol::{
+    agent::{AgentEventStatus, EventBatchRequest},
+    agent_observability::AgentTraceStatus,
+};
 use std::{sync::Arc, time::Duration};
 use tokio::sync::Notify;
 
@@ -74,6 +77,10 @@ async fn pause_stop_settings_and_disconnect_drop_inflight_model_without_queued_s
         let snapshot = harness.state.agent_snapshot().await;
         assert!(snapshot.paused);
         assert_eq!(snapshot.events[0].status, AgentEventStatus::Cancelled);
+        assert_eq!(
+            harness.state.agent_observability.list(1, None).traces[0].status,
+            AgentTraceStatus::Cancelled
+        );
         drop(control);
         drop(audio);
     }

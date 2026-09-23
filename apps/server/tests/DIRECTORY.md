@@ -22,15 +22,17 @@ tests/  # 主服务配置、HTTP、桥接与完整播报集成测试
 ├── admin_auth.rs  # 管理员登录撤销、会话过期、设备权限隔离和来源边界测试
 ├── agent_api.rs  # Agent 默认暂停、设置、事件校验、去重与停止接口测试
 ├── agent_bootstrap.rs  # LLM 启动配置、缺失环境变量及无认证本地模型测试
-├── agent_cancellation.rs  # 暂停停止配置修改和断线取消在途 LLM 的集成测试
+├── agent_cancellation.rs  # 暂停停止配置修改和断线取消在途 LLM、Turn 与 Trace 的集成测试
 ├── agent_capacity.rs  # 事件批量请求大小和容量拒绝的原子性测试
 ├── agent_configuration.rs  # Agent 和 LLM 的默认配置、字段边界及解析错误脱敏测试
+├── agent_observability_http.rs  # Agent 观察接口参数、详情、认证、错误码与无缓存响应测试
+├── agent_observability_store.rs  # Trace 边界、语音去重、持久恢复、损坏拒绝和写盘降级测试
 ├── agent_process.rs  # 真实主服务重启恢复 Agent 设置及受控模型静音播报闭环测试
 ├── agent_receipt_retention.rs  # 语音历史裁剪时保留 Agent 已完成播放结果的回归测试
-├── agent_retries.rs  # 模型临时错误分类和有限重试次数的集成测试
+├── agent_retries.rs  # 模型临时错误分类、有限重试及独立观察 Turn 的集成测试
 ├── agent_runtime.rs  # 模拟事件单次回复到设备播放完成、冷却后不重播及断线未知状态集成测试
 ├── agent_settings.rs  # Agent 设置持久保存、配置隔离、并发一致性与失败保留测试
-├── agent_tools_e2e.rs  # 原生流式模型、网页检索、后续决策、播放回执和用量集成测试
+├── agent_tools_e2e.rs  # 原生流式模型、网页检索、Trace Turn、播放回执和用量关联集成测试
 ├── bridge_handshake.rs  # 协议版本、唯一执行端与双连接配对测试
 ├── configuration.rs  # 示例配置兼容及无效参数拒绝测试
 ├── http_api.rs  # 状态、播报输入与停止接口测试
@@ -81,4 +83,4 @@ tests/  # 主服务配置、HTTP、桥接与完整播报集成测试
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 2beac8df614b6cb341debff6fae2968cd98de960ce7bab00e90ebafce9bb4119 -->
+<!-- directory-tree-sha256: 1a3e19cc79941dc09afc984ab008025de5eff53b78a83a4b7bc51d4b871c8848 -->

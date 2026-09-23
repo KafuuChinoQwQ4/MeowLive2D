@@ -67,7 +67,7 @@ describe("角色管理", () => {
     await user.click(screen.getByRole("button", { name: "删除角色 小猫主播" }));
     expect(pair.resourceClient.deleteCharacter).toHaveBeenCalledWith({ id: "character-1" }, expect.any(AbortSignal));
     await waitFor(() => expect(screen.getByLabelText("角色名称")).toHaveValue(""));
-    expect(screen.getByText("温柔旁白", { selector: "strong" })).toBeVisible();
+    expect(screen.getByRole("option", { name: "温柔旁白" })).toBeInTheDocument();
     confirm.mockRestore();
   });
   it("新角色先等待用户选择音色，不预选配置默认音色", async () => {

@@ -30,14 +30,14 @@ describe("桌面控制台", () => {
     const input = await screen.findByRole("textbox", { name: "播报文本" });
     await userEvent.type(input, "保留这句话");
     await userEvent.click(screen.getByRole("link", { name: "Agent 互动" }));
-    const persona = await screen.findByRole("textbox", { name: "主播人设" });
-    await userEvent.clear(persona); await userEvent.type(persona, "保留这个人设");
+    const topic = await screen.findByRole("textbox", { name: "直播话题" });
+    await userEvent.clear(topic); await userEvent.type(topic, "保留这个话题");
     expect(screen.queryByRole("heading", { name: "文字播报" })).not.toBeInTheDocument();
     await userEvent.click(speechLink);
     expect(await screen.findByRole("textbox", { name: "播报文本" })).toHaveValue("保留这句话");
     expect(screen.queryByRole("heading", { name: "Agent 已暂停" })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("link", { name: "Agent 互动" }));
-    expect(await screen.findByRole("textbox", { name: "主播人设" })).toHaveValue("保留这个人设");
+    expect(await screen.findByRole("textbox", { name: "直播话题" })).toHaveValue("保留这个话题");
     expect(screen.getByRole("link", { name: "Agent 互动" })).toHaveAttribute("aria-current", "page");
     await waitFor(() => expect(window.location.hash).toBe("#agent"));
   });

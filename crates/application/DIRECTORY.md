@@ -9,11 +9,11 @@ application/  # 业务用例编排及外部能力接口定义
 ├── src/  # Agent、事件调度、语音与资源任务用例
 │   ├── agent/  # Agent 配置、输出校验、播放关联及状态类型
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   ├── decisions.rs  # 模型输出校验、时效与繁忙复核、工作隔离和完整原文语音准备
+│   │   ├── decisions.rs  # 模型输出校验、结构化静默与作废结果、工作隔离和完整原文语音准备
 │   │   ├── interaction.rs  # 有界流量统计、弹幕朗读模式、进房欢迎冷却及原文播报前缀
-│   │   ├── playback.rs  # 播放状态同步和已完成对话记忆
+│   │   ├── playback.rs  # 播放状态同步、入队前取消和已完成对话记忆
 │   │   ├── settings.rs  # 人设配置和调度资源上限校验
-│   │   └── types.rs  # Agent 阶段、事件状态及应用调用结果
+│   │   └── types.rs  # Agent 阶段、事件状态、结构化等待原因及应用调用结果
 │   ├── ports/  # 业务方定义的模型、语音、存储和执行能力边界
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   ├── companionship.rs  # 陪伴账本礼物确认与完成回执存储接口
@@ -38,7 +38,7 @@ application/  # 业务用例编排及外部能力接口定义
 │   │   ├── fairness.rs  # 完成驱动的观众公平、有限重选和追问焦点
 │   │   └── selection.rs  # SC 独立优先选择、欢迎单轮隔离、朗读长度约束与礼物分组
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   ├── agent.rs  # Agent 生命周期、决策调度和状态快照
+│   ├── agent.rs  # Agent 生命周期、结构化等待原因、决策调度和状态快照
 │   ├── lib.rs  # 业务用例与外部能力接口。通过注入 ports 的实现调用外部能力。
 │   ├── performance.rs  # 协调发言、动作、下发与执行回执；处理代次、取消及重连后未知状态。
 │   ├── resources.rs  # 角色与音色档案用例、删除和选择清理、持久化事务及映射一致性
@@ -54,9 +54,9 @@ application/  # 业务用例编排及外部能力接口定义
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   └── mod.rs  # 已连接队列、下发和完成流程测试夹具
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   ├── agent_decisions.rs  # 输出校验、暂停隔离及决策冷却测试
+│   ├── agent_decisions.rs  # 输出校验、静默和作废结果区分、暂停隔离及决策冷却测试
 │   ├── agent_fairness.rs  # 稳定身份公平调度与完成反馈边界测试
-│   ├── agent_lifecycle.rs  # 配置、暂停、停止和播放生命周期测试
+│   ├── agent_lifecycle.rs  # 配置、结构化等待、暂停、入队前取消和播放生命周期测试
 │   ├── agent_memory.rs  # 已完成对话数量及内容长度边界测试
 │   ├── agent_settings.rs  # 人设配置与运行资源上限测试
 │   ├── interaction_policy.rs  # SC 优先和时效、弹幕流量策略、欢迎抑制冷却及长原文播报测试
@@ -79,4 +79,4 @@ application/  # 业务用例编排及外部能力接口定义
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 9bd57394aacde56a75e35960097b114629f48441a2f19772facc14262dd7dfdf -->
+<!-- directory-tree-sha256: 8e9c2879de6404c635dc7f4812b4031d28de3c7e016d3b7766fa6cc7194a14ca -->

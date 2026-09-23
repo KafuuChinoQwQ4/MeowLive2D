@@ -8,11 +8,29 @@ use meowlive_application::ports::{
 use meowlive_protocol::llm_runtime::{LlmTokenUsage, LlmUsageRecord};
 use std::{sync::Arc, time::Instant};
 
+#[derive(Clone, Debug)]
+pub struct TurnObservation {
+    pub trace_id: String,
+    pub turn_id: String,
+    pub tool_round: u32,
+    pub retry_attempt: u32,
+}
+
 pub async fn measured_turn(
     state: &AppState,
     model: &dyn LanguageModel,
     request: DecisionRequest,
+    options: ModelOptions,
+) -> Result<ModelTurn, LlmError> {
+    measured_observed_turn(state, model, request, options, None).await
+}
+
+pub async fn measured_observed_turn(
+    state: &AppState,
+    model: &dyn LanguageModel,
+    request: DecisionRequest,
     mut options: ModelOptions,
+    observation: Option<TurnObservation>,
 ) -> Result<ModelTurn, LlmError> {
     let started = Instant::now();
     let id = uuid::Uuid::new_v4().to_string();
@@ -26,6 +44,10 @@ pub async fn measured_turn(
             id.clone(),
             LlmUsageRecord {
                 id: id.clone(),
+                trace_id: observation.as_ref().map(|value| value.trace_id.clone()),
+                turn_id: observation.as_ref().map(|value| value.turn_id.clone()),
+                tool_round: observation.as_ref().map(|value| value.tool_round),
+                retry_attempt: observation.as_ref().map(|value| value.retry_attempt),
                 started_at_ms: now_ms(),
                 provider: config.provider.clone(),
                 api_format: config.api_format.clone(),
@@ -46,14 +68,18 @@ pub async fn measured_turn(
         persist_pending(&mut inner);
     }
     let mut guard = CallGuard {
+        state: state.clone(),
         store: state.llm_runtime.clone(),
         id: id.clone(),
+        observation: observation.clone(),
         started,
         finished: false,
     };
     options.observer = Some(Arc::new(Observer {
+        state: state.clone(),
         store: state.llm_runtime.clone(),
         id,
+        observation,
         started,
         upstream: options.observer.take(),
     }));
@@ -69,8 +95,10 @@ pub async fn measured_turn(
     result
 }
 struct Observer {
+    state: AppState,
     store: Arc<RuntimeStore>,
     id: String,
+    observation: Option<TurnObservation>,
     started: Instant,
     upstream: Option<Arc<dyn ModelObserver>>,
 }
@@ -83,6 +111,13 @@ impl ModelObserver for Observer {
                 match &event {
                     ModelEvent::FirstToken => {
                         record.first_token_ms.get_or_insert(record.latency_ms);
+                        if let Some(observation) = &self.observation {
+                            self.state.agent_observability.first_token(
+                                &observation.trace_id,
+                                &observation.turn_id,
+                                record.latency_ms,
+                            );
+                        }
                     }
                     ModelEvent::Usage(usage) => merge(&mut record.usage, usage),
                     ModelEvent::OutputProgress { .. } => {}
@@ -96,8 +131,10 @@ impl ModelObserver for Observer {
     }
 }
 struct CallGuard {
+    state: AppState,
     store: Arc<RuntimeStore>,
     id: String,
+    observation: Option<TurnObservation>,
     started: Instant,
     finished: bool,
 }
@@ -124,6 +161,11 @@ impl CallGuard {
         } else {
             false
         };
+        let trace_snapshot = (
+            record.first_token_ms,
+            record.latency_ms,
+            record.usage.clone(),
+        );
         if !persisted {
             if inner.disk.is_some() {
                 inner.healthy = false;
@@ -132,6 +174,22 @@ impl CallGuard {
             if inner.disk.is_some() && inner.memory_records.len() > 200 {
                 inner.memory_records.remove(0);
             }
+        }
+        if let Some(observation) = &self.observation {
+            self.state.agent_observability.finish_turn(
+                &observation.trace_id,
+                &observation.turn_id,
+                match status {
+                    "completed" => {
+                        meowlive_protocol::agent_observability::AgentTraceStatus::Completed
+                    }
+                    "failed" => meowlive_protocol::agent_observability::AgentTraceStatus::Failed,
+                    _ => meowlive_protocol::agent_observability::AgentTraceStatus::Cancelled,
+                },
+                trace_snapshot.0,
+                trace_snapshot.1,
+                trace_snapshot.2,
+            );
         }
         persist_pending(&mut inner);
     }

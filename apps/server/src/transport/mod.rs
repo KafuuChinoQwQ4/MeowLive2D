@@ -2,6 +2,7 @@
 //! 跨端执行适配在此实现 application::ports::execution，避免业务层依赖协议。
 
 pub mod agent;
+pub mod agent_observability;
 pub mod auth;
 pub mod bridge;
 pub mod error;

@@ -43,7 +43,7 @@ describe("音色管理", () => {
     pair.resourceClient.deleteVoice = vi.fn().mockResolvedValue(resourceSnapshot({
       voices: [], characters: [], active_voice_id: "", active_character_id: null, default_voice_available: false,
     }));
-    render(<ResourcesPanel {...pair} />);
+    render(<ResourcesPanel mode="voices" {...pair} />);
     const button = await screen.findByRole("button", { name: "删除音色 温柔旁白" });
     await user.click(button);
     expect(pair.resourceClient.deleteVoice).not.toHaveBeenCalled();
@@ -58,7 +58,7 @@ describe("音色管理", () => {
     vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     const pair = clients();
     pair.resourceClient.deleteVoice = vi.fn().mockRejectedValue(new Error("请先删除关联训练版本"));
-    render(<ResourcesPanel {...pair} />);
+    render(<ResourcesPanel mode="voices" {...pair} />);
     await userEvent.setup().click(await screen.findByRole("button", { name: "删除音色 温柔旁白" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("请先删除关联训练版本");
     expect(screen.getByText("温柔旁白", { selector: "strong" })).toBeVisible();
@@ -71,7 +71,7 @@ describe("音色管理", () => {
     pair.resourceClient.getSnapshot = vi.fn().mockResolvedValueOnce(resourceSnapshot()).mockResolvedValue(empty);
     pair.resourceClient.deleteVoice = vi.fn().mockRejectedValueOnce(new Error("音色配置已删除，但参考音频清理失败，请重试"))
       .mockResolvedValueOnce(empty);
-    render(<ResourcesPanel {...pair} />);
+    render(<ResourcesPanel mode="voices" {...pair} />);
     await user.click(await screen.findByRole("button", { name: "删除音色 温柔旁白" }));
     await user.click(await screen.findByRole("button", { name: "重试清理参考音频" }));
     await waitFor(() => expect(screen.queryByRole("button", { name: "重试清理参考音频" })).not.toBeInTheDocument());
@@ -86,7 +86,7 @@ describe("音色管理", () => {
     });
     const user = userEvent.setup();
     const pair = clients();
-    render(<ResourcesPanel {...pair} />);
+    render(<ResourcesPanel mode="voices" {...pair} />);
     await screen.findByRole("heading", { name: "音色管理" });
     await user.type(screen.getByLabelText("音色名称"), "MP3 音色");
     await user.type(screen.getByLabelText("参考文本"), "大家好");
@@ -106,7 +106,7 @@ describe("音色管理", () => {
     vi.stubGlobal("OfflineAudioContext", class { decodeAudioData = decode; });
     const user = userEvent.setup();
     const pair = clients();
-    render(<ResourcesPanel {...pair} />);
+    render(<ResourcesPanel mode="voices" {...pair} />);
     await screen.findByRole("heading", { name: "音色管理" });
     await user.type(screen.getByLabelText("音色名称"), "新音色");
     await user.type(screen.getByLabelText("参考文本"), "大家好");
@@ -131,12 +131,12 @@ describe("音色管理", () => {
     const user = userEvent.setup();
     const pair = clients(resourceSnapshot({ voices: [], characters: [], active_voice_id: "", active_character_id: null, default_voice_available: false }));
     pair.resourceClient.createVoice = vi.fn().mockResolvedValue(resourceSnapshot({ characters: [], active_voice_id: "", active_character_id: null, default_voice_available: false }));
-    render(<ResourcesPanel {...pair} />);
+    render(<ResourcesPanel mode="voices" {...pair} />);
     await screen.findByRole("heading", { name: "音色管理" });
 
     expect(within(screen.getByRole("list", { name: "可用音色" })).queryAllByRole("listitem")).toHaveLength(0);
     expect(screen.queryByText("当前音色")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "训练初始音色" })).toHaveAttribute("href", "#training");
+    expect(screen.getByText(/先上传参考录音，再按需在下方训练/)).toBeVisible();
     await user.type(screen.getByLabelText("音色名称"), "我的音色");
     await user.type(screen.getByLabelText("参考文本"), "这是我的参考声音");
     await user.upload(screen.getByLabelText("参考音频"), pcm16Wav());
@@ -152,7 +152,7 @@ describe("音色管理", () => {
     const user = userEvent.setup();
     const pair = clients();
     pair.resourceClient.selectVoice = vi.fn().mockResolvedValue(resourceSnapshot({ active_voice_id: "default" }));
-    render(<ResourcesPanel {...pair} />);
+    render(<ResourcesPanel mode="voices" {...pair} />);
     await screen.findByRole("heading", { name: "音色管理" });
     const row = within(screen.getByRole("list", { name: "可用音色" })).getByText("配置的默认音色").closest("li")!;
 
@@ -167,7 +167,7 @@ describe("音色管理", () => {
     const initial = resourceSnapshot({ active_voice_id: "default" });
     const pair = clients(initial);
     pair.resourceClient.selectVoice = vi.fn().mockResolvedValue(resourceSnapshot({ active_voice_id: "voice-1" }));
-    render(<ResourcesPanel {...pair} />);
+    render(<ResourcesPanel mode="voices" {...pair} />);
     await screen.findByRole("heading", { name: "音色管理" });
 
     const choose = screen.getAllByRole("button", { name: "设为当前音色" }).find((button) => !button.hasAttribute("disabled"));
@@ -183,7 +183,7 @@ describe("音色管理", () => {
   it("在浏览器内拒绝静音文件，并上传有效 WAV 及对应元数据", async () => {
     const user = userEvent.setup();
     const pair = clients();
-    render(<ResourcesPanel {...pair} />);
+    render(<ResourcesPanel mode="voices" {...pair} />);
     await screen.findByRole("heading", { name: "音色管理" });
 
     await user.upload(screen.getByLabelText("参考音频"), pcm16Wav({ amplitude: 0 }));
@@ -208,7 +208,7 @@ describe("音色管理", () => {
       active_voice_id: "default",
       voices: [voice({ available: false, error: "参考文件缺失，请重新上传" })],
     }));
-    render(<ResourcesPanel {...pair} />);
+    render(<ResourcesPanel mode="voices" {...pair} />);
 
     expect(await screen.findByText("参考文件缺失，请重新上传")).toBeVisible();
     const row = screen.getByText("温柔旁白", { selector: "strong" }).closest("li");
@@ -220,7 +220,7 @@ describe("音色管理", () => {
   it("试听只报告真实队列状态并链接播报记录", async () => {
     const user = userEvent.setup();
     const pair = clients();
-    render(<ResourcesPanel {...pair} />);
+    render(<ResourcesPanel mode="voices" {...pair} />);
     await screen.findByRole("heading", { name: "音色管理" });
 
     await user.click(screen.getByRole("button", { name: "试听" }));

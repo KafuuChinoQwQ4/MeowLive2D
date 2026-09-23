@@ -32,12 +32,12 @@ function Pagination({ label, count, page, onPage }: { label: string; count: numb
   </nav>;
 }
 
-export function TrainingPanel({ client = defaultClient, resources = defaultResources }: { client?: TrainingClient; resources?: ResourcesClient }) {
-  return <TrainingPanelContent key={resources.baseUrl} client={client} resources={resources} />;
+export function TrainingPanel({ client = defaultClient, resources = defaultResources, onResourcesChanged }: { client?: TrainingClient; resources?: ResourcesClient; onResourcesChanged?: () => void }) {
+  return <TrainingPanelContent key={resources.baseUrl} client={client} resources={resources} onResourcesChanged={onResourcesChanged} />;
 }
 
-function TrainingPanelContent({ client, resources }: { client: TrainingClient; resources: ResourcesClient }) {
-  const c = useTraining(client, resources);
+function TrainingPanelContent({ client, resources, onResourcesChanged }: { client: TrainingClient; resources: ResourcesClient; onResourcesChanged?: () => void }) {
+  const c = useTraining(client, resources, onResourcesChanged);
   const feedback = useFeedback();
   const [initialPreferences] = useState(() => loadTrainingPreferences(resources.baseUrl));
   const [tab, setTab] = useState<TrainingTab>("create");
@@ -196,7 +196,7 @@ function TrainingPanelContent({ client, resources }: { client: TrainingClient; r
     {tab === "create" && <section className="panel" aria-labelledby="training-config-heading">
       <h3 id="training-config-heading">新建训练配置</h3>
       {c.activeVoiceId !== undefined && !c.voices.some(item => item.available) && <p className="availability-note">
-        请先<a href="#resources">上传参考声音</a>。
+        请先在上方「音色管理」上传参考声音。
       </p>}
       <p className="availability-note">训练前结束直播，关闭语音模型与本地 LLM，释放显存。</p>
       <form onSubmit={e => {

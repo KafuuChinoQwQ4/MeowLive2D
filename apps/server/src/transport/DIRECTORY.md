@@ -8,11 +8,12 @@
 transport/  # 控制接口、跨端连接与协议到领域对象的转换
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 ├── agent.rs  # Agent 状态控制与批量事件输入的 HTTP 边界
+├── agent_observability.rs  # Agent 调度、Trace 列表和详情的只读无缓存管理接口
 ├── auth.rs  # 默认软件管理者访问与可选管理员会话、HTTP 和 WebSocket 角色认证
 ├── bridge.rs  # 执行端双通道桥接、上下文版本校验及完成回执持久认可
 ├── companionship.rs  # 受认证保护的陪伴账本和礼物管理接口
 ├── error.rs  # 稳定的结构化 HTTP 错误映射
-├── http.rs  # HTTP 路由、最小健康接口及管理员与来源边界组装
+├── http.rs  # HTTP 路由、Agent 观察查询、最小健康接口及管理员与来源边界组装
 ├── live.rs  # 直播连接控制及脱敏设置查询和本机保存 HTTP 入口
 ├── llm.rs  # LLM 配置、模型目录、推理能力预览和显式连接测试的 HTTP 接口
 ├── llm_runtime.rs  # 运行配置、实时活动和用量 HTTP 接口
@@ -35,4 +36,4 @@ transport/  # 控制接口、跨端连接与协议到领域对象的转换
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 0f0c7884e345b2511661c57ea8f88411be38c1b1049a3dd5ce9473f7f01a729b -->
+<!-- directory-tree-sha256: 2a6bb19aa130fdb9b7767e0d111cacbebaf42c7f025aee07d105e621ae3bbd92 -->

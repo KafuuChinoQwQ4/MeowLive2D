@@ -162,7 +162,7 @@ export function CharacterPanel({ controller }: { controller: CharacterController
         {form.voice_id && !voiceOptions.some((voice) => voice.id === form.voice_id) && <option value={form.voice_id}>当前音色不可用</option>}
         {voiceOptions.map((voice) => <option key={voice.id} value={voice.id}>{voice.name}</option>)}
       </select>
-      {snapshot && voiceOptions.length === 0 && <p className="field-hint">请先上传参考音色。</p>}
+      {snapshot && voiceOptions.length === 0 && <p className="field-hint">请先到<a href="#training">声音训练</a>上传参考音色。</p>}
 
       <label htmlFor="mouth-parameter">嘴型参数</label>
       <input id="mouth-parameter" value={form.mouth_parameter} disabled={busy}

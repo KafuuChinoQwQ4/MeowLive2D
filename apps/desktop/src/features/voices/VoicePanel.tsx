@@ -109,9 +109,9 @@ export function VoicePanel({ controller, transcriber = defaultTranscriber }: { c
 
   return <section className="panel" aria-labelledby="voices-heading">
     <h2 id="voices-heading">音色管理</h2>
-    <p className="field-hint">训练版本在<a href="#training">已保存音色</a>中切换。</p>
+    <p className="field-hint">参考音色保存后即可使用；训练版本在下方「已训练音色」页签切换。</p>
     {snapshot && !snapshot.default_voice_available && snapshot.voices.length === 0 && <p className="availability-note" role="status">
-      尚未设置音色，请先上传参考录音，再按需<a href="#training">训练初始音色</a>。
+      尚未设置音色，请先上传参考录音，再按需在下方训练。
     </p>}
 
     <ul className="resource-list" aria-label="可用音色">

@@ -1,5 +1,8 @@
 //! 模型输出全部校验通过后才修改话题或准备语音；工作代次隔离迟到结果。
-use super::{ActiveSpeech, AgentSession, EventStatus, PreparedSpeech, settings::validate_text};
+use super::{
+    ActiveSpeech, AgentSession, DecisionResolution, EventStatus, PreparedSpeech,
+    settings::validate_text,
+};
 use crate::ports::llm::{AgentDecision, ConversationTurn};
 use meowlive_domain::{event::EventKind, speech::SpeechText};
 use std::collections::HashSet;
@@ -8,10 +11,26 @@ impl AgentSession {
     pub fn resolve(
         &mut self,
         work_id: u64,
-        mut decision: AgentDecision,
+        decision: AgentDecision,
         speech_id: String,
         now_ms: u64,
     ) -> Result<Option<PreparedSpeech>, String> {
+        self.resolve_detailed(work_id, decision, speech_id, now_ms)
+            .map(|resolution| match resolution {
+                DecisionResolution::Speech(speech) => Some(speech),
+                DecisionResolution::Silent
+                | DecisionResolution::Expired
+                | DecisionResolution::PolicySkipped => None,
+            })
+    }
+
+    pub fn resolve_detailed(
+        &mut self,
+        work_id: u64,
+        mut decision: AgentDecision,
+        speech_id: String,
+        now_ms: u64,
+    ) -> Result<DecisionResolution, String> {
         let flight = self
             .flight
             .as_ref()
@@ -40,7 +59,7 @@ impl AgentSession {
                 .update(&expired, EventStatus::Expired, None, None);
             self.scheduler
                 .update(&remaining, EventStatus::Pending, None, None);
-            return Ok(None);
+            return Ok(DecisionResolution::Expired);
         }
         if flight
             .batch
@@ -74,7 +93,7 @@ impl AgentSession {
                     None,
                     Some("生成期间直播间变忙，跳过欢迎"),
                 );
-                return Ok(None);
+                return Ok(DecisionResolution::PolicySkipped);
             }
         }
         if flight.required_read && decision.text.is_none() && decision.reply_to.is_empty() {
@@ -173,7 +192,7 @@ impl AgentSession {
         self.last_error = None;
         self.cooldown(now_ms);
         let Some(text) = text else {
-            return Ok(None);
+            return Ok(DecisionResolution::Silent);
         };
         let user = flight
             .batch
@@ -220,7 +239,7 @@ impl AgentSession {
                 assistant: text.clone(),
             },
         });
-        Ok(Some(PreparedSpeech { text }))
+        Ok(DecisionResolution::Speech(PreparedSpeech { text }))
     }
 
     pub fn fail(&mut self, work_id: u64, message: String, now_ms: u64) {

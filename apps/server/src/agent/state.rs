@@ -17,6 +17,7 @@ impl AppState {
     }
     pub(crate) fn sync_agent(&self, inner: &mut Inner) {
         if let Some(task) = self.agent_speech(inner) {
+            self.agent_observability.sync_speech(&task);
             inner.agent.sync_speech(&task, self.now_ms());
         }
     }
@@ -46,6 +47,7 @@ impl AppState {
                 };
                 task.error = None;
             }
+            self.agent_observability.sync_speech(&task);
             inner.agent.sync_speech(&task, self.now_ms());
         }
     }

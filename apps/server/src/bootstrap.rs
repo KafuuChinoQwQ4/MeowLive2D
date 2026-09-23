@@ -155,6 +155,13 @@ pub async fn run(config_path: &Path) -> Result<(), String> {
     state.llm_runtime = Arc::new(crate::llm_runtime::RuntimeStore::open(
         state.config.resources.directory.join("agent-runtime"),
     )?);
+    state.agent_observability = Arc::new(crate::agent_observability::AgentTraceStore::open(
+        state
+            .config
+            .resources
+            .directory
+            .join("agent-runtime/traces"),
+    )?);
     state.live_settings = Arc::new(crate::live_settings::LiveSettingsStore::new(
         crate::live_settings::settings_path(config_path),
     ));

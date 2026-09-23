@@ -19,6 +19,7 @@ pub struct AppState {
     pub config: Arc<AppConfig>,
     pub auth: Arc<AdminAuth>,
     pub llm_runtime: Arc<crate::llm_runtime::RuntimeStore>,
+    pub agent_observability: Arc<crate::agent_observability::AgentTraceStore>,
     pub llm_settings: Arc<crate::llm_settings::LlmSettingsStore>,
     pub live_settings: Arc<crate::live_settings::LiveSettingsStore>,
     pub agent_settings: Arc<crate::agent_settings::AgentSettingsStore>,
@@ -118,6 +119,7 @@ impl AppState {
             live_settings: Arc::new(crate::live_settings::LiveSettingsStore::default()),
             agent_settings: Arc::new(crate::agent_settings::AgentSettingsStore::default()),
             llm_runtime: Arc::new(crate::llm_runtime::RuntimeStore::memory()),
+            agent_observability: Arc::new(crate::agent_observability::AgentTraceStore::memory()),
             llm_settings: Arc::new(crate::llm_settings::LlmSettingsStore::new(
                 config.llm.clone(),
                 None,

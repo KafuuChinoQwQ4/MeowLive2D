@@ -1,5 +1,6 @@
 //! 可注入适配器的主服务组装边界，供进程入口与集成测试复用。
 pub mod agent;
+pub mod agent_observability;
 pub mod agent_settings;
 pub mod auth;
 pub mod bootstrap;

@@ -7,7 +7,7 @@
 ```text
 tests/  # 通信协议独立集成测试
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-├── agent_contracts.rs  # Agent 输入严格反序列化及公开 JSON 形状测试
+├── agent_contracts.rs  # Agent 输入与观察契约的严格反序列化及公开 JSON 形状测试
 ├── audio_frames.rs  # PCM 二进制帧编码、边界与损坏输入测试
 ├── compatibility.rs  # 协议必填字段、训练模式缺省兼容、未知标签与音频格式测试
 ├── control_serialization.rs  # 控制消息与执行回执序列化测试
@@ -18,4 +18,4 @@ tests/  # 通信协议独立集成测试
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: dc912f128784d46ab9206926de39882d375d9a95969d72dee6de7201c0a6fd8d -->
+<!-- directory-tree-sha256: 82faa3f12feab8972711a73736ab49a313dd6e97fa3f8a87885f1f15f4570628 -->

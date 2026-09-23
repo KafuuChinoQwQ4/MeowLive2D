@@ -96,7 +96,7 @@ export type AgentRuntimeSettingsRequest = { settings: AgentRuntimeSettings, sear
 
 export type LlmTokenUsage = { input_tokens: number | null, output_tokens: number | null, cache_read_tokens: number | null, cache_write_tokens: number | null, reasoning_tokens: number | null, };
 
-export type LlmUsageRecord = { id: string, started_at_ms: number, provider: string, api_format: string, base_url: string, model: string, operation: string,
+export type LlmUsageRecord = { id: string, trace_id?: string, turn_id?: string, tool_round?: number, retry_attempt?: number, started_at_ms: number, provider: string, api_format: string, base_url: string, model: string, operation: string,
 /**
  * running / completed / failed / cancelled / interrupted
  */
@@ -123,6 +123,28 @@ export type AgentActivitySnapshot = { run_id: string | null,
  * idle / thinking / receiving / tool / completed / failed / cancelled
  */
 phase: string, started_at_ms: number | null, updated_at_ms: number, output_characters: number, tool_round: number, tools: Array<AgentToolActivity>, message: string, };
+
+export type AgentSchedulerBlockReason = "ready" | "paused" | "model_unavailable" | "bridge_disconnected" | "resource_changing" | "gpu_busy" | "synthesizer_busy" | "receipt_backlog" | "playback_busy" | "decision_in_flight" | "speech_in_flight" | "cooldown" | "completion_buffer_full" | "work_id_exhausted" | "no_eligible_events";
+
+export type AgentSchedulerSnapshot = { ready: boolean, phase: AgentPhase, block_reason: AgentSchedulerBlockReason, message: string, remaining_ms: number | null, pending_events: number, deciding_events: number, active_speeches: number, updated_at_ms: number, };
+
+export type AgentTraceStatus = "running" | "completed" | "failed" | "cancelled" | "interrupted";
+
+export type AgentTraceStepKind = "scheduled" | "context_ready" | "turn_started" | "first_token" | "turn_finished" | "tool_started" | "tool_finished" | "decision_received" | "validation_finished" | "speech_queued" | "speech_synthesizing" | "speech_ready" | "speech_playing" | "trace_finished";
+
+export type AgentTraceStepStatus = "running" | "completed" | "failed" | "cancelled";
+
+export type AgentTraceStep = { sequence: number, occurred_at_ms: number, kind: AgentTraceStepKind, status: AgentTraceStepStatus, message: string, turn_id: string | null, tool_name: string | null, speech_id: string | null, elapsed_ms: number | null, sources: Array<string>, };
+
+export type AgentTraceEvent = { id: string, kind: string, viewer: string, summary: string, };
+
+export type AgentTurn = { id: string, index: number, tool_round: number, retry_attempt: number, provider: string, api_format: string, model: string, status: AgentTraceStatus, started_at_ms: number, first_token_ms: number | null, finished_at_ms: number | null, latency_ms: number, usage: LlmTokenUsage, };
+
+export type AgentTraceSummary = { id: string, status: AgentTraceStatus, trigger: string, started_at_ms: number, updated_at_ms: number, finished_at_ms: number | null, event_count: number, turn_count: number, tool_count: number, speech_id: string | null, result: string, truncated: boolean, };
+
+export type AgentTrace = { summary: AgentTraceSummary, events: Array<AgentTraceEvent>, turns: Array<AgentTurn>, steps: Array<AgentTraceStep>, };
+
+export type AgentTraceList = { traces: Array<AgentTraceSummary>, storage_available: boolean, truncated: boolean, };
 
 export type LlmSettings = { provider: string, api_format: string, base_url: string, model: string, mode: string, timeout_seconds: number, max_tokens: number, json_mode: boolean, reasoning_effort: string, };
 

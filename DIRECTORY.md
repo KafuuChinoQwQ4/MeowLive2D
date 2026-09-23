@@ -19,46 +19,57 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   │   ├── guide/  # 控制面板集中使用指南与各功能操作步骤
 │   │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   │   │   ├── GuidePanel.tsx  # 独立新手指南、可展开的功能用法与工作区跳转入口
-│   │   │   │   │   └── content.ts  # 启动、语音、角色、互动、观众、直播和训练的中文使用步骤
-│   │   │   │   ├── resources/  # 角色与音色功能的页面组装和共享状态
+│   │   │   │   │   └── content.ts  # 启动、语音、角色、互动、Agent 观察、观众、直播和训练的中文使用步骤
+│   │   │   │   ├── resources/  # 角色人物卡与音色页面组装、共享资源控制器
 │   │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   │   │   │   ├── ResourcesPanel.lifecycle.test.tsx  # 资源读取与操作的卸载取消测试
+│   │   │   │   │   ├── ResourcesPanel.lifecycle.test.tsx  # 资源读取与操作取消及训练选用后的音色刷新测试
 │   │   │   │   │   ├── ResourcesPanel.preview.test.tsx  # 音色试听状态跟踪、执行端断线、失败与重试的前端回归测试
 │   │   │   │   │   ├── ResourcesPanel.regressions.test.tsx  # 当前角色重新加载与安装成功后刷新失败回归
-│   │   │   │   │   ├── ResourcesPanel.tsx  # 组装角色音色面板与同服务本地转写客户端并显示资源操作状态
+│   │   │   │   │   ├── ResourcesPanel.tsx  # 按角色或音色模式组装人物卡、资源面板及切页和训练操作后的刷新
 │   │   │   │   │   ├── index.ts  # 资源管理页面公共入口
-│   │   │   │   │   └── useResourcesController.ts  # 角色音色快照、资源删除及桌面模型管理共享控制器
+│   │   │   │   │   └── useResourcesController.ts  # 角色音色快照、切页刷新竞态、资源删除及桌面模型管理控制器
 │   │   │   │   ├── AdminGate.test.tsx  # 认证启停、登录退出、错误重试与过期响应竞态回归测试
 │   │   │   │   ├── AdminGate.tsx  # 默认直接访问控制面板及显式认证部署的会话检查、登录退出与访问门禁
 │   │   │   │   ├── App.desktop.test.tsx  # 原生桌面地址初始化、导航功能请求地址与失败回归
 │   │   │   │   ├── App.launcher.test.tsx  # 服务启停后的业务门控、环境页面常驻访问与模型检索草稿保留测试
-│   │   │   │   ├── App.navigation.test.tsx  # 切页保留在途播报、历史深链接与未知页面回退的集成测试
+│   │   │   │   ├── App.navigation.test.tsx  # 切页保留在途播报、历史深链接、观察页导航与未知页面回退的集成测试
+│   │   │   │   ├── App.organization.test.tsx  # 导航分组、同页编辑保存、切页音色刷新及迟到响应集成测试
 │   │   │   │   ├── App.test.tsx  # 导航功能显隐、草稿保留与当前页标识的集成测试
-│   │   │   │   ├── App.tsx  # 组装客户端与原生配置，选择受管或手动模式的导航控制台
+│   │   │   │   ├── App.tsx  # 组装业务与观察客户端、角色音色训练同步及受管或手动导航控制台
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   │   ├── ManagedWorkspace.tsx  # 受管服务状态、模型启用提示与功能工作区集成
 │   │   │   │   ├── Workspace.guide.test.tsx  # 服务未就绪时访问指南、指南跳转与草稿保留的回归测试
-│   │   │   │   ├── Workspace.tsx  # 简洁侧栏、独立环境与指南页面、快捷入口及稳定挂载的导航布局
+│   │   │   │   ├── Workspace.tsx  # 分组侧栏、快捷入口、稳定挂载及当前页面上下文的导航布局
 │   │   │   │   ├── WorkspaceIcon.tsx  # 控制台导航、品牌猫形与快捷操作的代码内 SVG 图标
 │   │   │   │   ├── navigation.ts  # 控制台功能导航、分组、页面说明与 URL fragment 映射
 │   │   │   │   ├── styles.css  # 控制台公共样式、响应式布局与服务滑动开关样式
 │   │   │   │   ├── useWorkspaceNavigation.ts  # 页面选择、访问记录与浏览器前进后退同步
-│   │   │   │   └── workspace.css  # 柔和工作区主题、统一控件、响应式布局与训练、使用指南和连接配置样式
+│   │   │   │   └── workspace.css  # 柔和工作区主题、统一下拉控件、人物卡、响应式布局与训练、使用指南和连接配置样式
 │   │   │   ├── features/  # 面向用户的功能模块，各自封装组件与状态
 │   │   │   │   ├── agent/  # Agent 人设、话题和互动策略设置
-│   │   │   │   │   ├── AgentPanel.test.tsx  # Agent 状态控制、错误呈现、轮询竞态与取消清理测试
-│   │   │   │   │   ├── AgentPanel.tsx  # Agent 运行条件、暂停恢复、设置、事件输入与历史的组合面板
-│   │   │   │   │   ├── AgentSettingsForm.bounds.test.tsx  # 默认空话题及人设话题长度与后端一致性的回归测试
+│   │   │   │   │   ├── AgentPanel.test.tsx  # Agent 状态控制、最新人物卡合并、轮询竞态与取消清理测试
+│   │   │   │   │   ├── AgentPanel.tsx  # Agent 运行条件、暂停恢复、互动设置、事件输入与历史的组合面板
 │   │   │   │   │   ├── AgentSettingsForm.interaction.test.tsx  # 互动策略表单持久化、草稿保留与阈值边界测试
-│   │   │   │   │   ├── AgentSettingsForm.test.tsx  # Agent 设置草稿、输入校验与毫秒请求映射测试
-│   │   │   │   │   ├── AgentSettingsForm.tsx  # 保留草稿并编辑人设、冷却和弹幕欢迎互动策略的 Agent 设置表单
+│   │   │   │   │   ├── AgentSettingsForm.test.tsx  # 互动设置保存、草稿保留、输入校验及读取失败反馈测试
+│   │   │   │   │   ├── AgentSettingsForm.tsx  # 编辑话题、冷却及弹幕欢迎策略并保留人物卡的 Agent 互动表单
 │   │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   │   │   ├── EventHistory.test.tsx  # Agent 事件内容、状态、播报关联与错误展示测试
 │   │   │   │   │   ├── EventHistory.tsx  # Agent 事件状态、关联播报及错误历史列表
 │   │   │   │   │   ├── EventSimulator.test.tsx  # 模拟事件校验、成功清空、失败保留与重复反馈测试
 │   │   │   │   │   ├── EventSimulator.tsx  # 聊天、礼物、SC 与进房模拟及 JSON 批量回放表单
+│   │   │   │   │   ├── PersonaCardPanel.bounds.test.tsx  # 人物卡必填身份、完整提示词 Unicode 长度及旧人设兼容测试
+│   │   │   │   │   ├── PersonaCardPanel.test.tsx  # 人物卡结构化提示词、字段还原、最新互动设置合并及保存确认测试
+│   │   │   │   │   ├── PersonaCardPanel.tsx  # 角色页人物卡编辑、Unicode 校验与合并最新互动设置后保存
 │   │   │   │   │   ├── index.ts  # Agent 自动互动面板的功能出口
+│   │   │   │   │   ├── personaCard.test.ts  # 人物卡标签转义、粘贴内容无损还原及非标准旧人设兼容测试
+│   │   │   │   │   ├── personaCard.ts  # 人物卡字段模型及兼容旧纯文本人设的提示词序列化与还原
 │   │   │   │   │   └── useAgentController.ts  # 修订号防回滚及卸载取消的串行 Agent 轮询与动作控制器
+│   │   │   │   ├── agent-observability/  # Agent 调度原因、Trace 历史、模型 Turn 和执行时间线观察页面
+│   │   │   │   │   ├── AgentObservabilityPanel.test.tsx  # 调度时间线、历史选择、隐私边界、可见性轮询与请求取消测试
+│   │   │   │   │   ├── AgentObservabilityPanel.tsx  # Agent 调度快照、Trace 列表、模型 Turn 与执行步骤观察面板
+│   │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   │   │   ├── agent-observability.css  # Agent 观察页的双栏历史时间线、状态徽章与窄屏布局样式
+│   │   │   │   │   └── index.ts  # Agent 观察功能组件导出入口
 │   │   │   │   ├── characters/  # 角色模型选择、导入与动作映射界面
 │   │   │   │   │   ├── CharacterPanel.test.tsx  # 角色与安装模型删除确认、导入保存加载及能力预览交互测试
 │   │   │   │   │   ├── CharacterPanel.tsx  # 角色配置及安装模型增删、音色绑定、口型和热键管理界面
@@ -125,17 +136,17 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   │   │   ├── TrainingPanel.audio.test.tsx  # 训练片段多格式转换上传、异步重选、容量与导入失败回归测试
 │   │   │   │   │   ├── TrainingPanel.feedback.test.tsx  # 验证训练测量行内结果、异常弹窗、模型中断提示与终态竞态去重
 │   │   │   │   │   ├── TrainingPanel.preferences.test.tsx  # 验证训练偏好恢复、服务隔离和存储异常回退
-│   │   │   │   │   ├── TrainingPanel.saved.test.tsx  # 音色保存重开切换、删除确认及清理失败重试交互测试
+│   │   │   │   │   ├── TrainingPanel.saved.test.tsx  # 音色确认后资源同步、保存重开切换、删除与失败重试测试
 │   │   │   │   │   ├── TrainingPanel.test.tsx  # 训练配置独立选择、服务忙碌时编辑、提交审核与试听取消交互测试
 │   │   │   │   │   ├── TrainingPanel.transcription.test.tsx  # 训练声音与文本模式、空白转写行内结果及错误弹窗、审核与过期请求回归测试
-│   │   │   │   │   ├── TrainingPanel.tsx  # 本地训练偏好、性能设置、记录分页、音色版本、模型开关及结果弹窗工作区
+│   │   │   │   │   ├── TrainingPanel.tsx  # 本地训练偏好、任务、音色版本、模型开关与资源变更通知工作区
 │   │   │   │   │   ├── TrainingPanel.workspace.test.tsx  # 训练页签与素材分页、音色归组、性能参数及独立模型启停测试
 │   │   │   │   │   ├── TrainingResultDialog.tsx  # 训练成功行内提示、错误弹窗、建议提示及键盘焦点恢复
-│   │   │   │   │   ├── TrainingVoiceLibrary.tsx  # 按参考音色归组的训练音色库、版本选择与单版本操作
+│   │   │   │   │   ├── TrainingVoiceLibrary.tsx  # 按参考音色归组并经用户确认后切换的训练音色库、版本选择与单版本操作
 │   │   │   │   │   ├── index.ts  # 训练面板公开组件导出
 │   │   │   │   │   ├── trainingFeedback.ts  # 训练操作结果、任务终态通知及失败原因对应的改正建议
 │   │   │   │   │   ├── useTraining.test.tsx  # 训练轮询独立更新、故障恢复与取消迟到结果测试
-│   │   │   │   │   └── useTraining.ts  # 训练资源与模型状态轮询、操作反馈、终态通知及异步取消保护
+│   │   │   │   │   └── useTraining.ts  # 训练状态和资源轮询、版本选用通知、结果反馈与异步取消保护
 │   │   │   │   ├── viewers/  # 管理员只读观众档案与持久事件查询页面
 │   │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   │   │   ├── MemoryCard.tsx  # 记忆证据、版本及纠正删除冻结操作卡片
@@ -178,6 +189,8 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   │   │   └── index.ts  # 模型库契约校验、官方链接校验和带会话令牌的限时请求
 │   │   │   │   ├── server/  # Rust 主服务 HTTP / WebSocket 客户端入口
 │   │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   │   │   ├── agent-observability.test.ts  # Agent 观察查询 URL、严格响应、安全来源、错误和取消测试
+│   │   │   │   │   ├── agent-observability.ts  # 带认证和严格运行时校验的 Agent 调度及 Trace 查询客户端
 │   │   │   │   │   ├── agent.bounds.test.ts  # Agent 合法最大快照、冷却与礼物数量边界回归测试
 │   │   │   │   │   ├── agent.failures.test.ts  # Agent 畸形响应、HTTP 错误、超时与取消测试
 │   │   │   │   │   ├── agent.interaction.test.ts  # Agent 互动配置及 SC、进房事件响应校验测试
@@ -194,7 +207,7 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   │   │   ├── live.requests.test.ts  # 直播控制和凭据配置请求、方法与载荷测试
 │   │   │   │   │   ├── live.ts  # 直播状态与控制、面板凭据设置读写及响应校验客户端
 │   │   │   │   │   ├── llm-runtime.test.ts  # 运行服务路由、契约、错误脱敏和超时取消测试
-│   │   │   │   │   ├── llm-runtime.ts  # 运行设置、用量和活动 HTTP 客户端及严格响应验证
+│   │   │   │   │   ├── llm-runtime.ts  # 运行设置、可关联 Trace 的用量和活动 HTTP 客户端及严格响应验证
 │   │   │   │   │   ├── llm.reasoning.test.ts  # 推理预览 HTTP 契约、档位和预算响应校验测试
 │   │   │   │   │   ├── llm.test.ts  # LLM 配置、模型目录及连接测试客户端的契约与异常测试
 │   │   │   │   │   ├── llm.ts  # LLM 配置、模型列表与推理预览的认证请求、契约校验及取消处理
@@ -269,12 +282,18 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   ├── src/  # 主服务启动、配置解析及 HTTP / WebSocket 适配源码
 │   │   │   ├── agent/  # Agent 服务状态、跨端映射和异步模型调度
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   │   │   ├── mapping.rs  # 统一事件及 Agent 业务状态到公开 HTTP DTO 的映射
-│   │   │   │   ├── runtime.rs  # 有界工具循环、实时阶段与取消所有权
-│   │   │   │   ├── runtime_tests.rs  # Agent 工具循环、推理设置透传、活动状态、取消和超时回归测试
-│   │   │   │   ├── state.rs  # Agent 查询控制、本机设置保存、原子事件接收及语音状态同步
+│   │   │   │   ├── admission.rs  # worker 与观察接口共用的 Agent 准入判断和中文阻塞原因
+│   │   │   │   ├── mapping.rs  # 统一事件、Agent 业务状态和安全 Trace 事件摘要到公开 DTO 的映射
+│   │   │   │   ├── observation_tests.rs  # 上下文加载、资料版本查询、回应关联与语音阶段失效的观察链路回归测试
+│   │   │   │   ├── runtime.rs  # 有界工具循环、模型 Turn 观察、实时阶段与取消所有权
+│   │   │   │   ├── runtime_tests.rs  # Agent 准入、工具循环、未知工具脱敏、活动状态、取消和超时回归测试
+│   │   │   │   ├── state.rs  # Agent 查询控制、本机设置保存、原子事件接收及语音 Trace 状态同步
 │   │   │   │   ├── tools.rs  # 时间、直播播放、OBS 与网页搜索只读工具白名单
-│   │   │   │   └── worker.rs  # 实时 Agent 调度、资料期限版本栅栏及持久回应关联
+│   │   │   │   └── worker.rs  # 实时 Agent 调度、Trace 生命周期、资料版本栅栏及持久回应关联
+│   │   │   ├── agent_observability/  # Agent Trace 内存状态机、持久恢复与有界保留实现
+│   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   │   │   │   ├── mod.rs  # Agent 调度快照、Trace Turn 状态机、语音关联和降级历史
+│   │   │   │   └── persistence.rs  # Agent 活动 Trace 原子保存、完成分段、恢复与保留策略
 │   │   │   ├── config/  # 按 Agent 与模型能力拆分的配置校验
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   │   ├── agent.rs  # Agent 人设、弹幕欢迎互动策略和有界调度参数的 TOML 配置
@@ -293,17 +312,18 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   ├── llm_runtime/  # 运行配置、计量与持久化实现
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   │   ├── ledger.rs  # 历史用量筛选聚合与缓存子集费用估算
-│   │   │   │   ├── metering.rs  # 单次模型调用观测计量及取消收束
-│   │   │   │   ├── persistence.rs  # 私有运行设置原子保存与调用账本分段恢复
+│   │   │   │   ├── metering.rs  # 单次模型调用计量、Trace Turn 关联及取消收束
+│   │   │   │   ├── persistence.rs  # 私有运行设置原子保存、Trace 关联字段校验与调用账本分段恢复
 │   │   │   │   └── settings.rs  # 运行配置验证与搜索密钥目标绑定
 │   │   │   ├── transport/  # 控制接口、跨端连接与协议到领域对象的转换
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   │   ├── agent.rs  # Agent 状态控制与批量事件输入的 HTTP 边界
+│   │   │   │   ├── agent_observability.rs  # Agent 调度、Trace 列表和详情的只读无缓存管理接口
 │   │   │   │   ├── auth.rs  # 默认软件管理者访问与可选管理员会话、HTTP 和 WebSocket 角色认证
 │   │   │   │   ├── bridge.rs  # 执行端双通道桥接、上下文版本校验及完成回执持久认可
 │   │   │   │   ├── companionship.rs  # 受认证保护的陪伴账本和礼物管理接口
 │   │   │   │   ├── error.rs  # 稳定的结构化 HTTP 错误映射
-│   │   │   │   ├── http.rs  # HTTP 路由、最小健康接口及管理员与来源边界组装
+│   │   │   │   ├── http.rs  # HTTP 路由、Agent 观察查询、最小健康接口及管理员与来源边界组装
 │   │   │   │   ├── live.rs  # 直播连接控制及脱敏设置查询和本机保存 HTTP 入口
 │   │   │   │   ├── llm.rs  # LLM 配置、模型目录、推理能力预览和显式连接测试的 HTTP 接口
 │   │   │   │   ├── llm_runtime.rs  # 运行配置、实时活动和用量 HTTP 接口
@@ -321,10 +341,10 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   │   ├── viewers.rs  # 控制面板的有界观众和持久事件摘要查询
 │   │   │   │   └── websocket.rs  # 唯一执行端连接准入及音频配对校验
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   │   ├── agent.rs  # Agent 异步驱动与服务状态组装入口
+│   │   │   ├── agent.rs  # Agent 异步驱动、共享准入判断与服务状态组装入口
 │   │   │   ├── agent_settings.rs  # 本机 Agent 人设话题与互动偏好的校验加载及原子保存
 │   │   │   ├── auth.rs  # 管理员短期会话、凭据摘要、撤销及独立设备授权
-│   │   │   ├── bootstrap.rs  # 配置与持久能力组装、模型适配器及后台任务生命周期
+│   │   │   ├── bootstrap.rs  # 配置、Trace 与用量持久能力组装、模型适配器及后台任务生命周期
 │   │   │   ├── companionship.rs  # 设备完成回执的有界异步账本提交与失败诊断
 │   │   │   ├── config.rs  # TOML 配置、本机 LLM 与 Agent 覆盖加载及启动前全局校验
 │   │   │   ├── gpu.rs  # 训练试听测量独占租约、保留直播及 Agent 状态的音色切换准入与互斥测试
@@ -332,15 +352,15 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   ├── lib.rs  # 可注入适配器的服务模块导出与集成测试入口
 │   │   │   ├── live.rs  # 直播连接单会话状态所有权、非阻塞控制与面板配置即时应用
 │   │   │   ├── live_settings.rs  # 直播凭据的本机原子保存、重启加载和脱敏配置快照
-│   │   │   ├── llm_runtime.rs  # Agent 运行设置、活动与调用账本存储入口
+│   │   │   ├── llm_runtime.rs  # Agent 运行设置、活动、调用账本与可观察 Turn 存储入口
 │   │   │   ├── llm_settings.rs  # 本机 LLM 配置原子持久化、目录连接草稿与同目标密钥复用校验
 │   │   │   ├── main.rs  # Linux / WSL 主服务入口。业务编排位于 meowlive-application。
-│   │   │   ├── memory.rs  # 记忆后台任务、上下文检索及资料失效控制
+│   │   │   ├── memory.rs  # 记忆后台任务、上下文检索及资料失效时的播报和观察记录收束
 │   │   │   ├── memory_worker_tests.rs  # 真实 HTTP 模型与 PostgreSQL 工作队列及过期观察器联调测试
 │   │   │   ├── resources.rs  # 桌面资源请求关联、单操作准入与取消生命周期
-│   │   │   ├── state.rs  # 语音、Agent、唯一执行桥接和直播连接的共享状态及取消生命周期
+│   │   │   ├── state.rs  # 语音、Agent、观察记录、唯一执行桥接和直播连接的共享状态及取消生命周期
 │   │   │   ├── viewers.rs  # 持久事件接收与模拟来源隔离、回应调度和缺口诊断
-│   │   │   └── worker.rs  # 语音任务 I/O 驱动、PCM 分片传输与设备回执等待
+│   │   │   └── worker.rs  # 语音任务 I/O 驱动、实时观察步骤、PCM 分片传输与设备回执等待
 │   │   ├── tests/  # 主服务配置、HTTP、桥接与完整播报集成测试
 │   │   │   ├── agent_support/  # Agent 服务集成测试公共夹具
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
@@ -358,15 +378,17 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   ├── admin_auth.rs  # 管理员登录撤销、会话过期、设备权限隔离和来源边界测试
 │   │   │   ├── agent_api.rs  # Agent 默认暂停、设置、事件校验、去重与停止接口测试
 │   │   │   ├── agent_bootstrap.rs  # LLM 启动配置、缺失环境变量及无认证本地模型测试
-│   │   │   ├── agent_cancellation.rs  # 暂停停止配置修改和断线取消在途 LLM 的集成测试
+│   │   │   ├── agent_cancellation.rs  # 暂停停止配置修改和断线取消在途 LLM、Turn 与 Trace 的集成测试
 │   │   │   ├── agent_capacity.rs  # 事件批量请求大小和容量拒绝的原子性测试
 │   │   │   ├── agent_configuration.rs  # Agent 和 LLM 的默认配置、字段边界及解析错误脱敏测试
+│   │   │   ├── agent_observability_http.rs  # Agent 观察接口参数、详情、认证、错误码与无缓存响应测试
+│   │   │   ├── agent_observability_store.rs  # Trace 边界、语音去重、持久恢复、损坏拒绝和写盘降级测试
 │   │   │   ├── agent_process.rs  # 真实主服务重启恢复 Agent 设置及受控模型静音播报闭环测试
 │   │   │   ├── agent_receipt_retention.rs  # 语音历史裁剪时保留 Agent 已完成播放结果的回归测试
-│   │   │   ├── agent_retries.rs  # 模型临时错误分类和有限重试次数的集成测试
+│   │   │   ├── agent_retries.rs  # 模型临时错误分类、有限重试及独立观察 Turn 的集成测试
 │   │   │   ├── agent_runtime.rs  # 模拟事件单次回复到设备播放完成、冷却后不重播及断线未知状态集成测试
 │   │   │   ├── agent_settings.rs  # Agent 设置持久保存、配置隔离、并发一致性与失败保留测试
-│   │   │   ├── agent_tools_e2e.rs  # 原生流式模型、网页检索、后续决策、播放回执和用量集成测试
+│   │   │   ├── agent_tools_e2e.rs  # 原生流式模型、网页检索、Trace Turn、播放回执和用量关联集成测试
 │   │   │   ├── bridge_handshake.rs  # 协议版本、唯一执行端与双连接配对测试
 │   │   │   ├── configuration.rs  # 示例配置兼容及无效参数拒绝测试
 │   │   │   ├── http_api.rs  # 状态、播报输入与停止接口测试
@@ -410,7 +432,7 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 ├── config/  # 独立数据库部署配置与 Linux、Windows 配置示例
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   ├── README.md  # 数据库、主服务、长语音、直播互动策略和 Windows 执行端配置说明
-│   ├── agent-runtime.md  # Agent 原生协议、统一推理强度、缓存、搜索工具、实时交互及用量估算说明
+│   ├── agent-runtime.md  # Agent 原生协议、推理强度、缓存、搜索、Trace Turn 观察及用量估算说明
 │   ├── databases.compose.yaml  # MeowLive2D 独立 PostgreSQL、pgvector 与 Neo4j 的容器、端口、数据挂载和资源上限
 │   ├── databases.env.example  # 独立数据库的私有凭据变量格式示例，不含实际密码
 │   ├── desktop.example.toml  # Windows 执行端连接、缓冲、VTS 插件与口型的默认关闭示例配置
@@ -571,11 +593,11 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   ├── src/  # Agent、事件调度、语音与资源任务用例
 │   │   │   ├── agent/  # Agent 配置、输出校验、播放关联及状态类型
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   │   │   ├── decisions.rs  # 模型输出校验、时效与繁忙复核、工作隔离和完整原文语音准备
+│   │   │   │   ├── decisions.rs  # 模型输出校验、结构化静默与作废结果、工作隔离和完整原文语音准备
 │   │   │   │   ├── interaction.rs  # 有界流量统计、弹幕朗读模式、进房欢迎冷却及原文播报前缀
-│   │   │   │   ├── playback.rs  # 播放状态同步和已完成对话记忆
+│   │   │   │   ├── playback.rs  # 播放状态同步、入队前取消和已完成对话记忆
 │   │   │   │   ├── settings.rs  # 人设配置和调度资源上限校验
-│   │   │   │   └── types.rs  # Agent 阶段、事件状态及应用调用结果
+│   │   │   │   └── types.rs  # Agent 阶段、事件状态、结构化等待原因及应用调用结果
 │   │   │   ├── ports/  # 业务方定义的模型、语音、存储和执行能力边界
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   │   ├── companionship.rs  # 陪伴账本礼物确认与完成回执存储接口
@@ -600,7 +622,7 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   │   ├── fairness.rs  # 完成驱动的观众公平、有限重选和追问焦点
 │   │   │   │   └── selection.rs  # SC 独立优先选择、欢迎单轮隔离、朗读长度约束与礼物分组
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   │   ├── agent.rs  # Agent 生命周期、决策调度和状态快照
+│   │   │   ├── agent.rs  # Agent 生命周期、结构化等待原因、决策调度和状态快照
 │   │   │   ├── lib.rs  # 业务用例与外部能力接口。通过注入 ports 的实现调用外部能力。
 │   │   │   ├── performance.rs  # 协调发言、动作、下发与执行回执；处理代次、取消及重连后未知状态。
 │   │   │   ├── resources.rs  # 角色与音色档案用例、删除和选择清理、持久化事务及映射一致性
@@ -616,9 +638,9 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   │   └── mod.rs  # 已连接队列、下发和完成流程测试夹具
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   │   ├── agent_decisions.rs  # 输出校验、暂停隔离及决策冷却测试
+│   │   │   ├── agent_decisions.rs  # 输出校验、静默和作废结果区分、暂停隔离及决策冷却测试
 │   │   │   ├── agent_fairness.rs  # 稳定身份公平调度与完成反馈边界测试
-│   │   │   ├── agent_lifecycle.rs  # 配置、暂停、停止和播放生命周期测试
+│   │   │   ├── agent_lifecycle.rs  # 配置、结构化等待、暂停、入队前取消和播放生命周期测试
 │   │   │   ├── agent_memory.rs  # 已完成对话数量及内容长度边界测试
 │   │   │   ├── agent_settings.rs  # 人设配置与运行资源上限测试
 │   │   │   ├── interaction_policy.rs  # SC 优先和时效、弹幕流量策略、欢迎抑制冷却及长原文播报测试
@@ -757,9 +779,10 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   ├── src/  # 与业务领域分离的通信 DTO 模块
 │   │   │   ├── bin/  # 协议开发命令入口
 │   │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   │   │   └── export-types.rs  # 从 Rust DTO 生成并检查 TypeScript 契约
+│   │   │   │   └── export-types.rs  # 从 Rust DTO 生成并检查含 Agent 观察模型的 TypeScript 契约
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   │   ├── agent.rs  # Agent 设置、直播事件、阶段、处理状态与公开快照 DTO
+│   │   │   ├── agent_observability.rs  # Agent 调度快照、Trace、Turn、步骤及列表跨端契约
 │   │   │   ├── audio.rs  # PCM 格式约定及有界二进制音频帧编解码
 │   │   │   ├── auth.rs  # 管理员认证状态、登录请求和短期会话响应契约
 │   │   │   ├── companionship.rs  # 仅供管理端的陪伴账本与礼物确认契约
@@ -770,7 +793,7 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   ├── lib.rs  # 跨进程通信契约的唯一来源。与业务领域对象分离，按协议版本演进。
 │   │   │   ├── live.rs  # 直播平台连接状态、面板凭据配置请求与脱敏快照契约
 │   │   │   ├── llm.rs  # LLM 接入配置、模型目录与统一推理档位预览的跨端契约
-│   │   │   ├── llm_runtime.rs  # 运行配置、模型单价、调用用量与活动跨端契约
+│   │   │   ├── llm_runtime.rs  # 运行配置、模型单价、Trace Turn 关联用量与活动跨端契约
 │   │   │   ├── memory.rs  # 记忆证据管理和后台任务状态跨端契约
 │   │   │   ├── model_library.rs  # 本机环境、模型目录、安装结果及下载任务的跨进程契约
 │   │   │   ├── obs.rs  # OBS 场景录制操作、本机连接设置与脱敏状态契约
@@ -782,7 +805,7 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   │   │   └── viewers.rs  # 管理员观众身份、昵称历史和持久事件分页契约
 │   │   ├── tests/  # 通信协议独立集成测试
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   │   ├── agent_contracts.rs  # Agent 输入严格反序列化及公开 JSON 形状测试
+│   │   │   ├── agent_contracts.rs  # Agent 输入与观察契约的严格反序列化及公开 JSON 形状测试
 │   │   │   ├── audio_frames.rs  # PCM 二进制帧编码、边界与损坏输入测试
 │   │   │   ├── compatibility.rs  # 协议必填字段、训练模式缺省兼容、未知标签与音频格式测试
 │   │   │   ├── control_serialization.rs  # 控制消息与执行回执序列化测试
@@ -802,7 +825,7 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 │   ├── contracts/  # 供前端使用的跨端协议类型出口
 │   │   ├── src/  # 从 Rust 生成的 TypeScript 协议类型和版本常量
 │   │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   │   │   └── index.ts  # 自动生成的前端跨端协议类型与版本常量
+│   │   │   └── index.ts  # 自动生成的前端跨端协议类型、Agent 观察模型与版本常量
 │   │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 │   │   ├── README.md  # 协议类型来源、生成命令和消费方式
 │   │   ├── package.json  # 前端协议类型包的导出边界与类型检查命令
@@ -888,7 +911,7 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 ├── Cargo.toml  # Rust workspace 成员、共享依赖、编译基线和 lint 配置
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 ├── LICENSE  # MIT 开源许可证与项目版权声明
-├── README.md  # 项目入口、运行方式、弹幕 SC 与欢迎策略及陪伴记忆功能说明
+├── README.md  # 项目入口、运行方式、音色确认、Agent 人物卡与观察、弹幕 SC 与欢迎策略及陪伴记忆功能说明
 ├── package-lock.json  # npm 工作区依赖版本及完整性锁定结果
 ├── package.json  # npm workspaces、依赖基线及统一开发和检查命令
 └── tsconfig.base.json  # 所有 TypeScript 工作区共享的严格类型与模块配置
@@ -909,4 +932,4 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: ffcc3dbbc38e8a321b2a505cc043d670ded5cc42f4e3e87890e9ba9436ffaf7e -->
+<!-- directory-tree-sha256: 14cfea46fbc4e87cc5b2ced312ceaf2a032ba5bb003dcc6d5928dbf181872b2f -->

@@ -26,6 +26,8 @@ services/  # 前端访问主服务、Linux 启动管理与 Windows 桌面能力�
 │   └── index.ts  # 模型库契约校验、官方链接校验和带会话令牌的限时请求
 ├── server/  # Rust 主服务 HTTP / WebSocket 客户端入口
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
+│   ├── agent-observability.test.ts  # Agent 观察查询 URL、严格响应、安全来源、错误和取消测试
+│   ├── agent-observability.ts  # 带认证和严格运行时校验的 Agent 调度及 Trace 查询客户端
 │   ├── agent.bounds.test.ts  # Agent 合法最大快照、冷却与礼物数量边界回归测试
 │   ├── agent.failures.test.ts  # Agent 畸形响应、HTTP 错误、超时与取消测试
 │   ├── agent.interaction.test.ts  # Agent 互动配置及 SC、进房事件响应校验测试
@@ -42,7 +44,7 @@ services/  # 前端访问主服务、Linux 启动管理与 Windows 桌面能力�
 │   ├── live.requests.test.ts  # 直播控制和凭据配置请求、方法与载荷测试
 │   ├── live.ts  # 直播状态与控制、面板凭据设置读写及响应校验客户端
 │   ├── llm-runtime.test.ts  # 运行服务路由、契约、错误脱敏和超时取消测试
-│   ├── llm-runtime.ts  # 运行设置、用量和活动 HTTP 客户端及严格响应验证
+│   ├── llm-runtime.ts  # 运行设置、可关联 Trace 的用量和活动 HTTP 客户端及严格响应验证
 │   ├── llm.reasoning.test.ts  # 推理预览 HTTP 契约、档位和预算响应校验测试
 │   ├── llm.test.ts  # LLM 配置、模型目录及连接测试客户端的契约与异常测试
 │   ├── llm.ts  # LLM 配置、模型列表与推理预览的认证请求、契约校验及取消处理
@@ -79,4 +81,4 @@ services/  # 前端访问主服务、Linux 启动管理与 Windows 桌面能力�
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: a70883dfe63387f486187d14c56f731580f18456e29d4f309cabbd36037073f0 -->
+<!-- directory-tree-sha256: c8dc8a1894e8b34e665e3a251c927dc8240d16d845dd88adadb59e38e874b400 -->

@@ -220,6 +220,14 @@ pub(super) fn visit_segments(
 fn validate_record(record: &LlmUsageRecord) -> Result<(), String> {
     if record.id.is_empty()
         || record.id.len() > 128
+        || record
+            .trace_id
+            .as_ref()
+            .is_some_and(|value| value.is_empty() || value.len() > 128)
+        || record
+            .turn_id
+            .as_ref()
+            .is_some_and(|value| value.is_empty() || value.len() > 128)
         || record.provider.len() > 64
         || record.model.len() > 128
         || record.api_format.len() > 64

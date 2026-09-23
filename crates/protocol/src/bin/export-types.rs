@@ -1,6 +1,7 @@
 use meowlive_protocol::{
-    agent::*, audio::*, auth::*, control::*, execution::*, launcher::*, live::*, llm::*,
-    llm_runtime::*, model_library::*, obs::*, resources::*, training::*, training_runtime::*,
+    agent::*, agent_observability::*, audio::*, auth::*, control::*, execution::*, launcher::*,
+    live::*, llm::*, llm_runtime::*, model_library::*, obs::*, resources::*, training::*,
+    training_runtime::*,
 };
 use meowlive_protocol::{companionship, memory, relationships, viewer_merge, viewers};
 use std::{env, fs, path::PathBuf, process::ExitCode};
@@ -59,6 +60,17 @@ fn main() -> ExitCode {
         LlmUsageSnapshot::decl(),
         AgentToolActivity::decl(),
         AgentActivitySnapshot::decl(),
+        AgentSchedulerBlockReason::decl(),
+        AgentSchedulerSnapshot::decl(),
+        AgentTraceStatus::decl(),
+        AgentTraceStepKind::decl(),
+        AgentTraceStepStatus::decl(),
+        AgentTraceStep::decl(),
+        AgentTraceEvent::decl(),
+        AgentTurn::decl(),
+        AgentTraceSummary::decl(),
+        AgentTrace::decl(),
+        AgentTraceList::decl(),
         LlmSettings::decl(),
         LlmSettingsSnapshot::decl(),
         LlmSettingsRequest::decl(),

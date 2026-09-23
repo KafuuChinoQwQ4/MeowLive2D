@@ -1,6 +1,7 @@
 import { ModelLibraryManualGuide } from "../features/model-library/ModelLibraryPanel";
 import { SpeechPanel } from "../features/live";
 import { AgentPanel } from "../features/agent";
+import { AgentObservabilityPanel } from "../features/agent-observability";
 import { LlmPanel } from "../features/llm";
 import { ViewerPanel } from "../features/viewers";
 import { ConnectionPanel } from "../features/connections";
@@ -18,6 +19,7 @@ import { createLlmClient } from "../services/server/llm";
 import { createLlmRuntimeClient } from "../services/server/llm-runtime";
 import { createViewerClient } from "../services/server/viewers";
 import { createAdminSessionClient } from "../services/server/auth";
+import { createAgentObservabilityClient } from "../services/server/agent-observability";
 import { ObsPanel } from "../features/obs";
 import { ManagedWorkspace } from "./ManagedWorkspace";
 import { Workspace, type WorkspaceProps } from "./Workspace";
@@ -32,6 +34,7 @@ function AppContent() {
   const [desktop, setDesktop] = useState<DesktopStatus | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [soundRevision, setSoundRevision] = useState(0);
   useEffect(() => {
     let cancelled = false;
     let retryRequested = attempt > 0;
@@ -64,15 +67,16 @@ function AppContent() {
     live: createLiveClient({ baseUrl }), resources: createResourceClient({ baseUrl }),
     training: createTrainingClient({ baseUrl }), obs: createObsClient({ baseUrl }),
     llm: createLlmClient({ baseUrl }), runtime: createLlmRuntimeClient({ baseUrl }), viewers: createViewerClient({ baseUrl }),
-    auth: createAdminSessionClient({ baseUrl }),
+    auth: createAdminSessionClient({ baseUrl }), observability: createAgentObservabilityClient({ baseUrl }),
   }), [baseUrl]);
   const panels: WorkspaceProps["pages"] = {
     live: <ConnectionPanel client={clients.live} />,
     obs: <ObsPanel client={clients.obs} />,
-    resources: <ResourcesPanel resourceClient={clients.resources} speechClient={clients.speech} trainingClient={clients.training} />,
-    training: <TrainingPanel client={clients.training} resources={clients.resources} />,
+    resources: <ResourcesPanel resourceClient={clients.resources} speechClient={clients.speech} trainingClient={clients.training} agentClient={clients.agent} />,
+    training: <div className="sound-workspace"><ResourcesPanel mode="voices" refreshToken={soundRevision} resourceClient={clients.resources} speechClient={clients.speech} trainingClient={clients.training} /><TrainingPanel client={clients.training} resources={clients.resources} onResourcesChanged={() => setSoundRevision(value => value + 1)} /></div>,
     speech: <SpeechPanel client={clients.speech} />,
     agent: <AgentPanel client={clients.agent} runtimeClient={clients.runtime} />,
+    "agent-observability": <AgentObservabilityPanel client={clients.observability} />,
     viewers: <ViewerPanel client={clients.viewers} />,
     llm: <LlmPanel client={clients.llm} runtimeClient={clients.runtime} />,
   };

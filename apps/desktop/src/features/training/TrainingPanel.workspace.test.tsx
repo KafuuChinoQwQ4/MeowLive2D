@@ -114,7 +114,7 @@ it("关闭模型时可选用保存的音色，选择动作不会加载模型", a
   await screen.findByText("训练就绪");
   await user.click(screen.getByRole("tab", { name: /已训练音色/ }));
   await user.selectOptions(screen.getByLabelText("选择已保存音色"), "voice-1");
-  await user.click(screen.getByRole("button", { name: "使用所选音色" }));
+  await user.click(screen.getByRole("button", { name: "确认所选音色" }));
   await waitFor(() => expect(deps.client.activate).toHaveBeenCalledWith("job-1", expect.any(AbortSignal)));
   expect(deps.client.setModelsEnabled).not.toHaveBeenCalled();
   expect(screen.getByRole("button", { name: "启用语音模型" })).toBeEnabled();

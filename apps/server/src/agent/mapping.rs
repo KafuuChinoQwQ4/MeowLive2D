@@ -23,6 +23,25 @@ pub(crate) fn interaction(
     }
 }
 
+pub(crate) fn trace_event(
+    event: &LiveEvent,
+) -> meowlive_protocol::agent_observability::AgentTraceEvent {
+    let (kind, summary) = match &event.kind {
+        EventKind::Chat { text } => ("chat", text.clone()),
+        EventKind::Gift { name, count } => ("gift", format!("{name} × {count}")),
+        EventKind::SuperChat {
+            text, amount_cny, ..
+        } => ("super_chat", format!("{amount_cny} 元：{text}")),
+        EventKind::RoomEnter => ("room_enter", "进入直播间".into()),
+    };
+    meowlive_protocol::agent_observability::AgentTraceEvent {
+        id: event.id.clone(),
+        kind: kind.into(),
+        viewer: event.viewer.clone(),
+        summary,
+    }
+}
+
 pub(crate) fn interaction_dto(
     value: meowlive_application::agent::InteractionSettings,
 ) -> dto::InteractionSettings {

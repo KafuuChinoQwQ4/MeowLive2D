@@ -8,7 +8,7 @@
 contracts/  # 供前端使用的跨端协议类型出口
 ├── src/  # 从 Rust 生成的 TypeScript 协议类型和版本常量
 │   ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-│   └── index.ts  # 自动生成的前端跨端协议类型与版本常量
+│   └── index.ts  # 自动生成的前端跨端协议类型、Agent 观察模型与版本常量
 ├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
 ├── README.md  # 协议类型来源、生成命令和消费方式
 ├── package.json  # 前端协议类型包的导出边界与类型检查命令
@@ -23,4 +23,4 @@ contracts/  # 供前端使用的跨端协议类型出口
 
 已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: a0aa5384de84c1471a40125bffdd7f0bdd28cb40b8941a59078459e19841f001 -->
+<!-- directory-tree-sha256: 02ff4c85e92f9b785a948967b9b12b195a8cf36bbfd7ca7d1dd63def189656f7 -->
