@@ -201,6 +201,7 @@ impl AgentSession {
             request: DecisionRequest {
                 memory_context: vec![],
                 persona: self.settings.persona.clone(),
+                system_prompt: self.settings.system_prompt.clone(),
                 topic: self.settings.topic.clone(),
                 events: batch.events.clone(),
                 history: self.history.iter().cloned().collect(),

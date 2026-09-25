@@ -15,6 +15,24 @@ fn session() -> AgentSession {
 fn configured(settings: AgentSettings) -> AgentSession {
     AgentSession::new(settings, AgentLimits::default()).unwrap()
 }
+
+#[test]
+fn custom_system_prompt_is_attached_to_model_work() {
+    let mut settings = AgentSettings {
+        cooldown_ms: 1000,
+        system_prompt: "直接读出弹幕原文".into(),
+        ..Default::default()
+    };
+    settings.interaction.chat_read_mode = ChatReadMode::All;
+    let mut agent = configured(settings);
+    agent.submit(chat("one", 0), 0).unwrap();
+    agent.set_paused(false, 0);
+
+    let work = agent.begin(0).unwrap();
+
+    assert_eq!(work.request.system_prompt, "直接读出弹幕原文");
+}
+
 fn enter(id: &str, viewer: &str, at: u64) -> LiveEvent {
     LiveEvent {
         kind: EventKind::RoomEnter,
@@ -49,7 +67,8 @@ fn sparse_chat_reads_original_message_before_the_reply() {
         .resolve(work.id, answer(&["one"]), "speech".into(), 0)
         .unwrap()
         .unwrap();
-    assert!(speech.text.contains("小猫"));
+    assert!(!speech.text.contains("小猫说"));
+    assert!(speech.text.starts_with("你好 one。"));
     assert!(speech.text.contains("你好 one"));
     assert!(speech.text.find("你好 one").unwrap() < speech.text.find("你好呀").unwrap());
 }
@@ -164,6 +183,8 @@ fn superchat_has_its_own_priority_turn_and_retains_amount_and_full_text() {
         .unwrap()
         .unwrap();
     assert!(prepared.text.starts_with("感谢小猫的30元SC。"));
+    assert!(!prepared.text.contains("留言说"));
+    assert!(!prepared.text.contains("？。"));
     assert!(prepared.text.contains("你最喜欢哪部电影？"));
     assert!(prepared.text.ends_with("你好呀"));
 }

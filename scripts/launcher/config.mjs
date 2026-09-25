@@ -33,9 +33,26 @@ key_saved=False
 if profile.exists():
  if profile.is_symlink() or profile.stat().st_size>16384: raise ValueError('invalid profile')
  saved=json.loads(profile.read_text())
- if saved.get('schema')!=1: raise ValueError('invalid profile')
- llm=saved['config']
- key_saved=bool(saved.get('api_key'))
+ if not isinstance(saved,dict): raise ValueError('invalid profile')
+ schema=saved.get('schema')
+ if schema==1:
+  llm=saved.get('config')
+  key_saved=bool(saved.get('api_key'))
+ elif schema==2:
+  profiles=saved.get('profiles')
+  selected=saved.get('selected_profile_id')
+  if not isinstance(profiles,list) or len(profiles)>32: raise ValueError('invalid profile')
+  if any(not isinstance(item,dict) or not isinstance(item.get('id'),str) or not isinstance(item.get('config'),dict) for item in profiles): raise ValueError('invalid profile')
+  if len({item['id'] for item in profiles})!=len(profiles): raise ValueError('invalid profile')
+  if selected is not None:
+   if not isinstance(selected,str): raise ValueError('invalid profile')
+   matches=[item for item in profiles if item.get('id')==selected]
+   if len(matches)!=1: raise ValueError('invalid profile')
+   llm=matches[0].get('config')
+   key_saved=bool(matches[0].get('api_key'))
+ else:
+  raise ValueError('invalid profile')
+ if not isinstance(llm,dict): raise ValueError('invalid profile')
 print(json.dumps({
  'listen':data.get('server',{}).get('listen_address','127.0.0.1:19600'),
  'tts':data.get('speech',{}).get('base_url','http://127.0.0.1:9880'),
@@ -117,7 +134,7 @@ export async function loadConfiguration(root, { env = process.env } = {}) {
         logPath: join(root, 'logs/control-panel/server.log') },
       { id: 'tts', url: ttsUrl, issue: ttsIssue, cwd: root, command: python, memoryGuard: true,
         args: [join(root, 'scripts/start-managed-inference.py'), '--engine-root', engine, '--data-dir', join(root, 'data/control-panel-inference'),
-          '--port', new URL(ttsUrl).port, '--device', settings.ttsDevice, '--memory-mode', settings.ttsMemoryMode], env: { ...ttsEnv, PYTHONDONTWRITEBYTECODE: '1', PYTHONUNBUFFERED: '1' },
+          '--port', new URL(ttsUrl).port, '--device', settings.ttsDevice, '--memory-mode', settings.ttsMemoryMode], env: { ...ttsEnv, PYTHONDONTWRITEBYTECODE: '1', PYTHONUNBUFFERED: '1', MEOWLIVE_AUTO_ENABLE_MODELS: '1' },
         logPath: join(root, 'logs/control-panel/tts.log') },
     ],
   };

@@ -129,6 +129,7 @@ fn agent_snapshot_serializes_only_public_state() {
         settings: AgentSettings {
             interaction: Default::default(),
             persona: "猫娘".into(),
+            system_prompt: String::new(),
             topic: "游戏".into(),
             proactive_enabled: false,
             cooldown_ms: 30_000,
@@ -152,6 +153,7 @@ fn agent_snapshot_serializes_only_public_state() {
             "phase": "speaking",
             "settings": {
                 "persona": "猫娘",
+                "system_prompt": "",
                 "topic": "游戏",
                 "proactive_enabled": false,
                 "cooldown_ms": 30_000,

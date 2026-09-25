@@ -42,12 +42,14 @@ export function ViewerPanel({ client = defaultClient }: { client?: ViewerClient 
   const [viewers, setViewers] = useState<ViewerPage | null>(null);
   const [events, setEvents] = useState<ViewerEventPage | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [storageUnavailable, setStorageUnavailable] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refresh, setRefresh] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
     setError(null);
+    setStorageUnavailable(false);
     setLoading(true);
     setViewers(null);
     setEvents(null);
@@ -58,7 +60,10 @@ export function ViewerPanel({ client = defaultClient }: { client?: ViewerClient 
           setEvents(nextEvents);
         }
       })
-      .catch(error => { if (!controller.signal.aborted) setError(loadErrorMessage(error)); })
+      .catch(error => { if (!controller.signal.aborted) {
+        setError(loadErrorMessage(error));
+        setStorageUnavailable(error instanceof ServerRequestError && error.code === "viewer_store_unavailable");
+      } })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [client, offset, refresh]);
@@ -73,6 +78,7 @@ export function ViewerPanel({ client = defaultClient }: { client?: ViewerClient 
       </div>
     </details>
     {error && <p className="error-banner" role="alert">{error}<button type="button" className="secondary-button" onClick={() => setRefresh(value => value + 1)}>重新读取</button></p>}
+    {storageUnavailable && <p className="availability-note">尚未准备数据库时，可先完成安装和连接配置。<a href="#setup">查看数据库下载与启用步骤</a></p>}
     <div className="panel-grid">
       <details className="panel viewer-collapsible" open><summary><h3>观众列表</h3></summary>
         <div className="viewer-records-body">

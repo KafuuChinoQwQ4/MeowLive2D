@@ -58,6 +58,9 @@ async fn rejects_invalid_bounded_request_before_network_io() {
     request.persona = "x".repeat(2001);
     requests.push(request);
     let mut request = llm_support::request(Vec::new());
+    request.system_prompt = "x".repeat(4001);
+    requests.push(request);
+    let mut request = llm_support::request(Vec::new());
     request.topic = "x".repeat(201);
     requests.push(request);
     let mut request = llm_support::request(Vec::new());

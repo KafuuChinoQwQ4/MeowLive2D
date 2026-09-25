@@ -20,6 +20,7 @@ max_audio_bytes = 33554432
 # Agent 启动时始终暂停；在面板中配置并恢复后才会调用模型。
 [agent]
 persona = "你是一位友好、自然的 Live2D 主播，用简短中文与观众互动。"
+system_prompt = ""
 topic = ""
 proactive_enabled = false
 cooldown_ms = 30000

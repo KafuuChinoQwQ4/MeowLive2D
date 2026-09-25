@@ -76,6 +76,7 @@ pub async fn measure(
                 model.decide(DecisionRequest {
                     memory_context: vec![],
                     persona: "你是一位中文主播，请简短回应这条测试弹幕。".into(),
+                    system_prompt: String::new(),
                     topic: "本地联合运行测量".into(),
                     history: vec![],
                     events: vec![LiveEvent {

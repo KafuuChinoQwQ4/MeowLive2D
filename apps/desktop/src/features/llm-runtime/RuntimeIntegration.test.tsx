@@ -11,7 +11,7 @@ import { activitySnapshot, runtimeSnapshot } from "./runtime-fixtures";
 describe("运行层页面接入", () => {
   it("LLM 页用已保存连接填入价格身份，不读取密钥", async () => {
     const llm = { settings: { provider: "custom", api_format: "openai_chat", base_url: "https://llm.example.com/v1", model: "chosen-model", mode: "cloud", timeout_seconds: 30, max_tokens: 1024, json_mode: true, reasoning_effort: "default" },
-      key_configured: true, restart_required: false, active_model: "chosen-model", storage_available: true };
+      key_configured: true, restart_required: false, active_model: "chosen-model", storage_available: true, profiles: [], selected_profile_id: null };
     const client = createLlmClient({ fetcher: async url => new Response(JSON.stringify(String(url).endsWith("/reasoning")
       ? { requested: "default", effective: null, supported: [], strategy: "unsupported", budget_tokens: null, note: "保留模型默认行为。", error: null } : llm)) });
     let savedPrice: Record<string, unknown> | undefined;

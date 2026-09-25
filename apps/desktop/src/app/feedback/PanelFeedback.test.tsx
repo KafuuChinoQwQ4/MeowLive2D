@@ -134,8 +134,8 @@ it("shows successful OBS recording and an error after a refused stop", async () 
 });
 
 it("shows LLM validation errors in a dialog and saved configuration inline", async () => {
-  const snapshot = { settings: { provider: "custom", api_format: "openai_chat" as const, base_url: "http://localhost/v1", model: "local", mode: "local" as const, timeout_seconds: 30, max_tokens: 512, json_mode: true, reasoning_effort: "default" }, key_configured: false, restart_required: false, active_model: "local", storage_available: true };
-  const client: LlmClient = { baseUrl: "test", getSettings: vi.fn().mockResolvedValue(snapshot), saveSettings: vi.fn().mockResolvedValue({ ...snapshot, restart_required: true }), testSettings: vi.fn(), listModels: vi.fn(), previewReasoning: vi.fn().mockResolvedValue({ requested: "default", effective: null, supported: [], strategy: "unsupported", budget_tokens: null, note: "保留模型默认行为。", error: null }) };
+  const snapshot = { settings: { provider: "custom", api_format: "openai_chat" as const, base_url: "http://localhost/v1", model: "local", mode: "local" as const, timeout_seconds: 30, max_tokens: 512, json_mode: true, reasoning_effort: "default" }, key_configured: false, restart_required: false, active_model: "local", storage_available: true, profiles: [], selected_profile_id: null };
+  const client: LlmClient = { baseUrl: "test", getSettings: vi.fn().mockResolvedValue(snapshot), saveSettings: vi.fn(), createProfile: vi.fn().mockResolvedValue({ ...snapshot, profiles: [{ id: "profile-id", name: "配置1", settings: snapshot.settings, key_configured: false }], selected_profile_id: "profile-id", restart_required: true }), selectProfile: vi.fn(), renameProfile: vi.fn(), deleteProfile: vi.fn(), testSettings: vi.fn(), listModels: vi.fn(), previewReasoning: vi.fn().mockResolvedValue({ requested: "default", effective: null, supported: [], strategy: "unsupported", budget_tokens: null, note: "保留模型默认行为。", error: null }) };
   render(<FeedbackProvider><LlmPanel client={client} /></FeedbackProvider>);
   await act(async () => {});
   fireEvent.change(screen.getByLabelText("模型"), { target: { value: "" } });
@@ -147,7 +147,7 @@ it("shows LLM validation errors in a dialog and saved configuration inline", asy
   await screen.findByRole("option", { name: "Local（local）" });
   fireEvent.change(screen.getByLabelText("模型"), { target: { value: "local" } });
   fireEvent.click(screen.getByRole("button", { name: "保存配置" }));
-  expect(await screen.findByRole("status", { name: "LLM 配置已保存" })).toHaveTextContent("重启主服务");
+  expect(await screen.findByRole("status", { name: "LLM 配置已另存" })).toHaveTextContent("重启主服务");
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
 

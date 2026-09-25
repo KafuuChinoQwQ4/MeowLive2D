@@ -57,8 +57,7 @@ async fn event_batch_is_validated_atomically_and_replay_ids_are_deduplicated() {
 #[tokio::test]
 async fn saving_settings_pauses_and_stop_clears_pending_events() {
     let state = state();
-    let mut settings =
-        json!({"persona":"温柔猫咪","topic":"游戏","proactive_enabled":true,"cooldown_ms":1000});
+    let mut settings = json!({"persona":"温柔猫咪","system_prompt":"","topic":"游戏","proactive_enabled":true,"cooldown_ms":1000});
     let (code, snapshot) = request(
         router(state.clone()),
         "POST",

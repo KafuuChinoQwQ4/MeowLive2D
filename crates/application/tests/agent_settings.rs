@@ -18,6 +18,10 @@ fn validates_persona_topic_and_cooldown_before_mutating_configuration() {
             ..default.clone()
         },
         AgentSettings {
+            system_prompt: "猫".repeat(4001),
+            ..default.clone()
+        },
+        AgentSettings {
             topic: "猫".repeat(201),
             ..default.clone()
         },
@@ -41,6 +45,7 @@ fn validates_persona_topic_and_cooldown_before_mutating_configuration() {
         AgentSettings {
             persona: "猫".repeat(2000),
             topic: "猫".repeat(200),
+            system_prompt: "猫".repeat(4000),
             cooldown_ms: 3_600_000,
             ..default
         }

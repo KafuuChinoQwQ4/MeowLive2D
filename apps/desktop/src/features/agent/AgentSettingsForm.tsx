@@ -10,6 +10,7 @@ export function AgentSettingsForm({ settings, disabled, onSave }: {
 }) {
   const feedback = useFeedback();
   const [topic, setTopic] = useState(settings.topic);
+  const [systemPrompt, setSystemPrompt] = useState(settings.system_prompt);
   const [proactive, setProactive] = useState(settings.proactive_enabled);
   const [cooldownSeconds, setCooldownSeconds] = useState(String(settings.cooldown_ms / 1_000));
   const [chatReadMode, setChatReadMode] = useState(settings.interaction.chat_read_mode);
@@ -26,6 +27,7 @@ export function AgentSettingsForm({ settings, disabled, onSave }: {
     const seconds = Number(cooldownSeconds);
     const messages: string[] = [];
     if ([...topic].length > 200) messages.push("直播话题最多 200 个字符，可以留空。");
+    if ([...systemPrompt].length > 4_000) messages.push("系统提示词最多 4000 个字符，可以留空。");
     if (!Number.isInteger(seconds) || seconds < 1 || seconds > 3_600) messages.push("冷却时间必须是 1 到 3600 秒的整数。");
     const chatCount = Number(busyChatCount);
     const enterCount = Number(busyEnterCount);
@@ -53,6 +55,7 @@ export function AgentSettingsForm({ settings, disabled, onSave }: {
     try {
       await onSave({
         persona: settings.persona,
+        system_prompt: systemPrompt.trim(),
         topic: topic.trim(),
         proactive_enabled: proactive,
         cooldown_ms: seconds * 1_000,
@@ -77,6 +80,11 @@ export function AgentSettingsForm({ settings, disabled, onSave }: {
         <label htmlFor="agent-topic">直播话题</label>
         <input id="agent-topic" value={topic} disabled={disabled}
           onChange={(event) => setTopic(event.target.value)} />
+        <label htmlFor="agent-system-prompt">系统提示词</label>
+        <textarea id="agent-system-prompt" rows={6} maxLength={4000} value={systemPrompt} disabled={disabled}
+          placeholder="补充主播的语气、互动规则和回复偏好"
+          onChange={(event) => setSystemPrompt(event.target.value)} />
+        <p className="field-hint">这段内容会作为自定义系统提示词发送给模型；固定输出格式和安全规则仍由程序维护。</p>
         <label htmlFor="agent-cooldown">冷却时间（秒）</label>
         <input id="agent-cooldown" type="number" min="1" max="3600" step="1" value={cooldownSeconds} disabled={disabled}
           onChange={(event) => setCooldownSeconds(event.target.value)} />

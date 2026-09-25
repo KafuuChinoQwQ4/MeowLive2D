@@ -2,6 +2,7 @@
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AgentSettings {
     pub persona: String,
+    pub system_prompt: String,
     pub topic: String,
     pub proactive_enabled: bool,
     pub cooldown_ms: u64,
@@ -11,6 +12,7 @@ impl Default for AgentSettings {
     fn default() -> Self {
         Self {
             persona: "你是一位友好、自然的 Live2D 主播，用简短中文与观众互动。".into(),
+            system_prompt: String::new(),
             topic: String::new(),
             proactive_enabled: false,
             cooldown_ms: 30_000,
@@ -22,6 +24,7 @@ impl AgentSettings {
     pub fn validate(&self) -> Result<(), String> {
         self.interaction.validate()?;
         validate_text("persona", &self.persona, 2000, false)?;
+        validate_text("system prompt", &self.system_prompt, 4000, true)?;
         validate_text("topic", &self.topic, 200, true)?;
         if !(1000..=3_600_000).contains(&self.cooldown_ms) {
             return Err("cooldown must be between 1000 and 3600000 milliseconds".into());

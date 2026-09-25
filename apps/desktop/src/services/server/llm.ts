@@ -1,4 +1,4 @@
-import type { LlmModelsRequest, LlmModelsResult, LlmReasoningRequest, LlmReasoningResult, LlmSettings, LlmSettingsRequest, LlmSettingsSnapshot, LlmTestResult } from "@meowlive/contracts";
+import type { LlmModelsRequest, LlmModelsResult, LlmProfileCreateRequest, LlmProfileIdRequest, LlmProfileRenameRequest, LlmReasoningRequest, LlmReasoningResult, LlmSettings, LlmSettingsRequest, LlmSettingsSnapshot, LlmTestResult } from "@meowlive/contracts";
 import { readServerError, ServerRequestError } from "./responses";
 import { createAuthenticatedFetch } from "./auth";
 
@@ -6,6 +6,10 @@ export interface LlmClient {
   readonly baseUrl: string;
   getSettings(signal?: AbortSignal): Promise<LlmSettingsSnapshot>;
   saveSettings(request: LlmSettingsRequest, signal?: AbortSignal): Promise<LlmSettingsSnapshot>;
+  createProfile(request: LlmProfileCreateRequest, signal?: AbortSignal): Promise<LlmSettingsSnapshot>;
+  selectProfile(request: LlmProfileIdRequest, signal?: AbortSignal): Promise<LlmSettingsSnapshot>;
+  renameProfile(request: LlmProfileRenameRequest, signal?: AbortSignal): Promise<LlmSettingsSnapshot>;
+  deleteProfile(request: LlmProfileIdRequest, signal?: AbortSignal): Promise<LlmSettingsSnapshot>;
   testSettings(request: LlmSettingsRequest, signal?: AbortSignal): Promise<LlmTestResult>;
   listModels(request: LlmModelsRequest, signal?: AbortSignal): Promise<LlmModelsResult>;
   previewReasoning(request: LlmReasoningRequest, signal?: AbortSignal): Promise<LlmReasoningResult>;
@@ -36,9 +40,17 @@ function readSettings(value: unknown): LlmSettings {
 }
 
 export function readLlmSnapshot(value: unknown): LlmSettingsSnapshot {
-  if (!object(value) || !exactKeys(value, ["settings", "key_configured", "restart_required", "active_model", "storage_available"])
+  if (!object(value) || !exactKeys(value, ["settings", "key_configured", "restart_required", "active_model", "storage_available", "profiles", "selected_profile_id"])
     || typeof value.key_configured !== "boolean" || typeof value.restart_required !== "boolean"
-    || !boundedText(value.active_model, 128, true) || typeof value.storage_available !== "boolean") throw invalid();
+    || !boundedText(value.active_model, 128, true) || typeof value.storage_available !== "boolean"
+    || !Array.isArray(value.profiles) || value.profiles.length > 32
+    || value.profiles.some(profile => !object(profile)
+      || !exactKeys(profile, ["id", "name", "settings", "key_configured"])
+      || !boundedText(profile.id, 64) || !boundedText(profile.name, 256)
+      || typeof profile.key_configured !== "boolean")) throw invalid();
+  const ids = new Set(value.profiles.map(profile => (profile as Record<string, unknown>).id));
+  if ((value.selected_profile_id !== null && (!boundedText(value.selected_profile_id, 64) || !ids.has(value.selected_profile_id)))) throw invalid();
+  for (const profile of value.profiles) readSettings((profile as Record<string, unknown>).settings);
   return { ...value, settings: readSettings(value.settings) } as LlmSettingsSnapshot;
 }
 
@@ -83,7 +95,7 @@ export function createLlmClient(options: { baseUrl?: string; fetcher?: typeof fe
   const baseUrl = (options.baseUrl ?? import.meta.env.VITE_MEOWLIVE_SERVER_URL ?? "http://127.0.0.1:19600").replace(/\/+$/u, "");
   const fetcher = options.fetcher ?? createAuthenticatedFetch(baseUrl);
 
-  async function request<T>(path: string, method: "GET" | "POST", read: (value: unknown) => T, signal?: AbortSignal, body?: LlmSettingsRequest | LlmModelsRequest | LlmReasoningRequest): Promise<T> {
+  async function request<T>(path: string, method: "GET" | "POST", read: (value: unknown) => T, signal?: AbortSignal, body?: LlmSettingsRequest | LlmModelsRequest | LlmReasoningRequest | LlmProfileCreateRequest | LlmProfileIdRequest | LlmProfileRenameRequest): Promise<T> {
     signal?.throwIfAborted();
     const controller = new AbortController();
     const cancel = () => controller.abort();
@@ -123,6 +135,10 @@ export function createLlmClient(options: { baseUrl?: string; fetcher?: typeof fe
     baseUrl,
     getSettings: signal => request("/api/llm/settings", "GET", readLlmSnapshot, signal),
     saveSettings: (body, signal) => request("/api/llm/settings", "POST", readLlmSnapshot, signal, body),
+    createProfile: (body, signal) => request("/api/llm/profiles", "POST", readLlmSnapshot, signal, body),
+    selectProfile: (body, signal) => request("/api/llm/profiles/select", "POST", readLlmSnapshot, signal, body),
+    renameProfile: (body, signal) => request("/api/llm/profiles/rename", "POST", readLlmSnapshot, signal, body),
+    deleteProfile: (body, signal) => request("/api/llm/profiles/delete", "POST", readLlmSnapshot, signal, body),
     testSettings: (body, signal) => request("/api/llm/test", "POST", readTestResult, signal, body),
     listModels: (body, signal) => request("/api/llm/models", "POST", readModelsResult, signal, body),
     previewReasoning: (body, signal) => request("/api/llm/reasoning", "POST", value => readReasoningResult(value, body), signal, body),

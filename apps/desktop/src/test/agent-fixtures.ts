@@ -20,7 +20,7 @@ export function agentStatus(overrides: Partial<AgentSnapshot> = {}): AgentSnapsh
   return {
     paused: true,
     phase: "paused",
-    settings: { persona: "温柔的猫娘主播", topic: "轻松聊天", proactive_enabled: false, cooldown_ms: 30_000, interaction: { ...interactionSettings } },
+    settings: { persona: "温柔的猫娘主播", system_prompt: "", topic: "轻松聊天", proactive_enabled: false, cooldown_ms: 30_000, interaction: { ...interactionSettings } },
     events: [],
     last_error: null,
     current_speech_id: null,

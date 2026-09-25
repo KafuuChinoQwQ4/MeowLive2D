@@ -32,6 +32,7 @@ pub fn request(events: Vec<LiveEvent>) -> DecisionRequest {
     DecisionRequest {
         memory_context: vec![],
         persona: "你是可靠而友好的猫娘主播。".into(),
+        system_prompt: String::new(),
         topic: "测试直播".into(),
         events,
         history: vec![ConversationTurn {

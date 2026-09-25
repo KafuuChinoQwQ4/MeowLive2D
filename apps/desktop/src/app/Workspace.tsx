@@ -6,6 +6,7 @@ import { FeedbackScope } from "./feedback/OperationFeedback";
 import { AdminGate } from "./AdminGate";
 import type { AdminSessionClient } from "../services/server/auth";
 import { GuidePanel } from "./guide/GuidePanel";
+import { DatabaseSetupPanel } from "../features/database-setup/DatabaseSetupPanel";
 
 export interface WorkspaceProps {
   overview: ReactNode;
@@ -59,9 +60,9 @@ export function Workspace({ overview, pages, setup, ready, status, notice, admin
             {(["setup", "resources", "speech"] as const).map(id => <button className="studio-shortcut" key={id} onClick={() => navigate(id)}><WorkspaceIcon name={id} /><span>{id === "setup" ? "环境与模型" : id === "speech" ? "试播一句话" : "角色与人物卡"}</span><WorkspaceIcon name="arrow" /></button>)}
           </div>
         </section>
-        <section className="studio-page studio-page-setup" aria-label="环境与模型" hidden={active !== "setup"}>{visited.has("setup") && <FeedbackScope name="setup">{setup}</FeedbackScope>}</section>
+        <section className="studio-page studio-page-setup" aria-label="环境与模型" hidden={active !== "setup"}>{visited.has("setup") && <FeedbackScope name="setup"><DatabaseSetupPanel />{setup}</FeedbackScope>}</section>
         <section className="studio-page studio-page-guide" aria-label="使用指南" hidden={active !== "guide"}>{visited.has("guide") && <GuidePanel onNavigate={navigate} />}</section>
-        {active !== "overview" && active !== "setup" && active !== "guide" && !ready && <section className="panel studio-unavailable"><WorkspaceIcon name="overview" /><h2>先准备好主服务</h2><p>开启主服务后即可使用。</p><button className="primary-button" onClick={() => navigate("overview")}>前往启动与运行</button></section>}
+        {active !== "overview" && active !== "setup" && active !== "guide" && !ready && <section className="panel studio-unavailable"><WorkspaceIcon name="overview" /><h2>正在等待主服务</h2><p>主服务自动就绪后即可使用；启动异常可在运行页查看。</p><button className="primary-button" onClick={() => navigate("overview")}>前往启动与运行</button></section>}
         {ready && workspacePages.filter(item => item.id !== "overview" && item.id !== "setup" && item.id !== "guide").map(item => {
           const id = item.id as keyof WorkspaceProps["pages"];
           return <section key={id} className={`studio-page studio-page-${id}`} aria-label={item.label} hidden={active !== id}>

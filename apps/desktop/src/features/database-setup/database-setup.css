@@ -1,0 +1,9 @@
+.database-setup { margin-bottom: 1.5rem; }
+.database-setup .connection-card { align-items: flex-start; }
+.database-source { display: block; margin: .6rem 0; overflow-wrap: anywhere; }
+.database-source [role="alert"] { display: block; margin-top: .4rem; }
+.database-instructions { margin-top: 1rem; }
+.database-instructions summary { cursor: pointer; font-weight: 600; }
+.database-instructions li { margin: 1rem 0; }
+.database-instructions pre { max-width: 100%; overflow-x: auto; padding: 1rem; background: var(--bg-muted, #f3f5f4); border-radius: .5rem; }
+.database-instructions code { overflow-wrap: anywhere; }

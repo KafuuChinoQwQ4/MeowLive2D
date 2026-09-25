@@ -33,6 +33,10 @@ impl Default for TrainingConfig {
 }
 impl TrainingConfig {
     pub fn validate(&self) -> Result<(), String> {
+        #[cfg(windows)]
+        if self.enabled || self.managed_inference {
+            return Err("Windows 内置主服务暂不支持本地训练和受管推理；请关闭 training.enabled 与 managed_inference，或在 desktop.toml 连接 Linux / WSL 主服务使用训练功能。".into());
+        }
         if self.directory.as_os_str().is_empty() || !(60..=86400).contains(&self.timeout_seconds) {
             return Err("训练目录不能为空，训练超时须为 60–86400 秒".into());
         }

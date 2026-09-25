@@ -10,7 +10,7 @@ vi.mock("../services/desktop", () => ({ getDesktopStatus: vi.fn() }));
 import { getDesktopStatus } from "../services/desktop";
 import { App } from "./App";
 
-const llmSnapshot = { settings: { provider: "custom", api_format: "openai_responses", base_url: "", model: "", mode: "cloud", timeout_seconds: 30, max_tokens: 1024, json_mode: true }, key_configured: false, restart_required: false, active_model: "", storage_available: true };
+const llmSnapshot = { settings: { provider: "custom", api_format: "openai_responses", base_url: "", model: "", mode: "cloud", timeout_seconds: 30, max_tokens: 1024, json_mode: true, reasoning_effort: "default" }, key_configured: false, restart_required: false, active_model: "", storage_available: true, profiles: [], selected_profile_id: null };
 
 afterEach(() => { vi.unstubAllGlobals(); vi.resetAllMocks(); window.history.replaceState(null, "", "/"); });
 
@@ -35,7 +35,7 @@ it("waits for desktop configuration and uses its address in every panel", async 
   render(<App />);
   expect(screen.queryByRole("heading", { name: "文字播报" })).not.toBeInTheDocument();
   expect(fetcher).not.toHaveBeenCalled();
-  finish({ config_path: "desktop.toml", server_url: "http://127.0.0.1:19777", runtime: { running: true, simulation: true, last_error: null } });
+  finish({ config_path: "desktop.toml", server_url: "http://127.0.0.1:19777", server: { ready: true, managed: true, last_error: null, log_path: "server.log" }, runtime: { running: true, simulation: true, last_error: null } });
   await userEvent.click(await screen.findByRole("link", { name: "语音播报" }));
   await screen.findByRole("heading", { name: "文字播报" });
   for (const name of ["角色与人物卡", "Agent 互动", "Agent 观察", "LLM 接入", "直播连接", "OBS 控制", "声音训练"]) {
@@ -52,5 +52,19 @@ it("shows desktop initialization errors without starting panels at a fallback ad
   vi.stubGlobal("fetch", fetcher);
   render(<App />);
   expect(await screen.findByRole("alert")).toHaveTextContent("桌面配置读取失败");
+  expect(fetcher).not.toHaveBeenCalled();
+});
+
+it("waits for the bundled service and displays startup errors without polling business APIs", async () => {
+  vi.mocked(getDesktopStatus).mockResolvedValue({ config_path: "desktop.toml", server_url: "http://127.0.0.1:19777",
+    server: { ready: false, managed: false, last_error: "主服务端口已被占用", log_path: "server.log" },
+    runtime: { running: true, simulation: true, last_error: null } });
+  const fetcher = vi.fn<typeof fetch>();
+  vi.stubGlobal("fetch", fetcher);
+  render(<App />);
+  expect((await screen.findAllByText("主服务端口已被占用"))[0]).toBeVisible();
+  expect(screen.queryByRole("switch", { name: "主服务" })).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole("link", { name: "语音播报" }));
+  expect(await screen.findByRole("heading", { name: "正在等待主服务" })).toBeInTheDocument();
   expect(fetcher).not.toHaveBeenCalled();
 });

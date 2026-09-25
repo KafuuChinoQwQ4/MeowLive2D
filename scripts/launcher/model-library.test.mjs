@@ -25,7 +25,8 @@ async function fixture(t, installed = true, options = {}) {
   const port = server.address().port;
   await new Promise(resolve => server.close(resolve));
   const configuration = { modelSettings: { root, engine, python: process.execPath, environment: detectEnvironment('linux', {}) },
-    setup: {}, definitions: [{ id: 'tts', issue: null, args: ['--data-dir', join(root, 'data/inference')], url: `http://127.0.0.1:${port}` }] };
+    setup: {}, definitions: [{ id: 'tts', issue: null, command: process.execPath, cwd: root, env: process.env, logPath: join(root, 'tts.log'),
+      args: ['-e', `require('node:http').createServer((req,res) => res.end(JSON.stringify({openapi:'3.0.0',paths:{'/tts':{post:{}}}}))).listen(${port},'127.0.0.1')`, '--', '--data-dir', join(root, 'data/inference')], url: `http://127.0.0.1:${port}` }] };
   const supervisor = new Supervisor(configuration);
   const library = new ModelLibrary(configuration, supervisor, { catalog, extraRoots: [], ...options });
   t.after(async () => { await library.close(); await supervisor.close(); if (server.listening) await new Promise(resolve => server.close(resolve)); await rm(root, { recursive: true, force: true }); });
@@ -51,6 +52,7 @@ test('local model selection persists a discovered path and changes the inference
   assert.equal((await library.snapshot()).selected_id, item.id);
   assert.equal(JSON.parse(await readFile(join(root, 'config/local/model-selection.json'), 'utf8')).path, other);
   assert.equal(supervisor.records.get('tts').def.args.at(-1), other);
+  assert.ok(supervisor.records.get('tts').child, 'selecting a complete model automatically starts TTS');
   await rm(join(other, gptRequiredFiles[0][0]));
   await assert.rejects(library.action('select', item.id), /缺少运行文件/);
 });

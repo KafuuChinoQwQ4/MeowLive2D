@@ -2,6 +2,7 @@
 
 mod bootstrap;
 mod commands;
+pub mod managed_server;
 pub mod startup;
 
 pub fn run() -> Result<(), String> {

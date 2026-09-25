@@ -1,8 +1,11 @@
 """Model lifetime tests use controlled objects and never load GPU/model weights."""
 from pathlib import Path
+from contextlib import asynccontextmanager, redirect_stderr, redirect_stdout
 import asyncio
 import gc
 import importlib.util
+import io
+import os
 import tempfile
 import threading
 import types
@@ -20,6 +23,68 @@ class Pipeline:
 
 
 class ModelRuntimeTests(unittest.TestCase):
+    @unittest.skipUnless(importlib.util.find_spec("fastapi"), "受管推理环境的 HTTP 集成测试")
+    def test_launcher_autoloads_models_and_manual_unload_stays_unloaded(self):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        lifecycle = []
+        @asynccontextmanager
+        async def lifespan(app):
+            lifecycle.append("startup")
+            yield {"upstream": True}
+            lifecycle.append("shutdown")
+        app = FastAPI(lifespan=lifespan)
+        with patch.dict(os.environ, {"MEOWLIVE_AUTO_ENABLE_MODELS": "1"}):
+            runtime = model_runtime.install_model_runtime(app, lambda config: Pipeline(), {})
+        @app.post("/tts")
+        def speak():
+            return {"audio": runtime.speak()}
+        with TestClient(app) as client:
+            self.assertEqual(client.get("/meowlive/models").json()["state"], "loaded")
+            self.assertEqual(client.post("/tts").json(), {"audio": "audio"})
+            client.post("/meowlive/models", json={"enabled": False})
+            self.assertEqual(client.get("/meowlive/models").json()["state"], "unloaded")
+            self.assertEqual(client.post("/tts").status_code, 409)
+        self.assertEqual(lifecycle, ["startup", "shutdown"])
+
+    @unittest.skipUnless(importlib.util.find_spec("fastapi"), "受管推理环境的 HTTP 集成测试")
+    def test_automatic_model_load_failure_remains_visible_and_can_be_retried(self):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        app = FastAPI()
+        attempts = []
+        def factory(config):
+            attempts.append(True)
+            if len(attempts) == 1:
+                raise ValueError("controlled model load failure")
+            return Pipeline()
+        with patch.dict(os.environ, {"MEOWLIVE_AUTO_ENABLE_MODELS": "1"}):
+            model_runtime.install_model_runtime(app, factory, {})
+        with redirect_stderr(io.StringIO()), TestClient(app) as client:
+            self.assertEqual(client.get("/meowlive/models").json()["state"], "failed")
+            self.assertEqual(client.post("/meowlive/models", json={"enabled": True}).json()["state"], "loaded")
+
+    def test_managed_entrypoint_passes_auto_load_flag_through_private_environment(self):
+        spec = importlib.util.spec_from_file_location("managed_inference", Path(__file__).with_name("start-managed-inference.py"))
+        launcher = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(launcher)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            models = {key: root / key for key in ("gpt", "sovits", "bert", "hubert")}
+            for flag in ("1", "0"):
+                with (patch.dict(os.environ, {"MEOWLIVE_AUTO_ENABLE_MODELS": flag, "PRIVATE_API_KEY": "not-forwarded"}),
+                      patch.object(sys, "argv", ["inference", "--engine-root", str(root), "--data-dir", str(root)]),
+                      patch.object(launcher, "assets", return_value=models),
+                      patch.object(launcher, "workspace", return_value=root),
+                      patch.object(launcher, "configure_inference_memory"),
+                      patch.object(launcher, "prepare_runtime"),
+                      patch.object(os, "chdir"), patch.object(os, "execve") as execute,
+                      redirect_stdout(io.StringIO())):
+                    launcher.main()
+                child_env = execute.call_args.args[2]
+                self.assertEqual(child_env["MEOWLIVE_AUTO_ENABLE_MODELS"], flag)
+                self.assertNotIn("PRIVATE_API_KEY", child_env)
+
     @unittest.skipUnless(importlib.util.find_spec("fastapi"), "受管推理环境的 HTTP 集成测试")
     def test_http_starts_idle_and_requires_explicit_enable(self):
         from fastapi import FastAPI

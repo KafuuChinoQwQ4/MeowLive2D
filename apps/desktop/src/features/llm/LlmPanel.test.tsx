@@ -12,6 +12,7 @@ const snapshot = (overrides: Partial<LlmSettingsSnapshot> = {}): LlmSettingsSnap
     model: "gpt-4o-mini", mode: "cloud", timeout_seconds: 30, max_tokens: 1024, json_mode: true, reasoning_effort: "default",
   },
   key_configured: true, restart_required: false, active_model: "gpt-4o-mini", storage_available: true,
+  profiles: [], selected_profile_id: null,
   ...overrides,
 });
 
@@ -25,6 +26,7 @@ function client(overrides: Partial<LlmClient> = {}): LlmClient {
       { id: "gpt-4o-mini", name: "GPT 4o Mini" }, { id: "gpt-4.1-mini", name: "GPT 4.1 Mini" },
     ] }),
     previewReasoning: vi.fn().mockImplementation(async request => ({ requested: request.reasoning_effort, effective: null, supported: [], strategy: "unsupported", budget_tokens: null, note: "保留模型默认行为。", error: null })),
+    createProfile: vi.fn(), selectProfile: vi.fn(), renameProfile: vi.fn(), deleteProfile: vi.fn(),
     ...overrides,
   };
 }
@@ -51,7 +53,7 @@ describe("LLM 接入面板", () => {
   });
 
   it("切换供应商套用协议和地址、清空模型，并要求明确处理密钥", async () => {
-    const api = client();
+    const api = client({ createProfile: vi.fn().mockImplementation(async request => snapshot({ settings: request.settings, restart_required: true })) });
     render(<LlmPanel client={api} />);
     await screen.findByRole("option", { name: /gpt-4o-mini.*已保存/ });
     await userEvent.click(screen.getByText("高级设置"));
@@ -69,7 +71,7 @@ describe("LLM 接入面板", () => {
     await userEvent.click(screen.getByRole("button", { name: "获取模型" }));
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "模型" }), "claude-model");
     await userEvent.click(screen.getByRole("button", { name: "保存配置" }));
-    expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ api_key: null, clear_api_key: true }), expect.any(AbortSignal));
+    expect(api.createProfile).toHaveBeenCalledWith(expect.objectContaining({ name: "配置1", api_key: null, clear_api_key: true }), expect.any(AbortSignal));
     expect(await screen.findByRole("status")).toHaveTextContent("重启主服务");
     expect(screen.getByRole("link", { name: "前往运行总览" })).toHaveAttribute("href", "#overview");
   });
@@ -143,5 +145,102 @@ describe("LLM 接入面板", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("读取失败");
     fireEvent.click(screen.getByRole("button", { name: "重新加载" }));
     expect(await screen.findByRole("option", { name: /gpt-4o-mini.*已保存/ })).toBeInTheDocument();
+  });
+
+  it("选择已保存配置后加载对应连接草稿", async () => {
+    const first = snapshot({ profiles: [
+      { id: "openai-id", name: "OpenAI", settings: snapshot().settings, key_configured: true },
+      { id: "claude-id", name: "Claude", settings: { ...snapshot().settings, provider: "claude", api_format: "anthropic_messages", base_url: "https://api.anthropic.com/v1", model: "claude-sonnet" }, key_configured: true },
+    ], selected_profile_id: "openai-id" });
+    const second = snapshot({
+      settings: first.profiles[1].settings,
+      profiles: first.profiles,
+      selected_profile_id: "claude-id",
+      key_configured: true,
+      active_model: "gpt-4o-mini",
+      restart_required: true,
+    });
+    const api = client({ getSettings: vi.fn().mockResolvedValue(first), selectProfile: vi.fn().mockResolvedValue(second) });
+    render(<LlmPanel client={api} />);
+    await screen.findByRole("option", { name: /gpt-4o-mini.*已保存/ });
+    await userEvent.click(screen.getByRole("button", { name: "已保存配置" }));
+    await userEvent.click(screen.getByRole("button", { name: /Claude/ }));
+    expect(api.selectProfile).toHaveBeenCalledWith({ id: "claude-id" }, expect.any(AbortSignal));
+    expect(screen.getByLabelText("API 地址")).toHaveValue("https://api.anthropic.com/v1");
+    expect(screen.getByRole("combobox", { name: "模型" })).toHaveValue("claude-sonnet");
+  });
+
+  it("双击配置标题后按回车直接保存重命名", async () => {
+    const original = snapshot({
+      profiles: [{ id: "deepseek-id", name: "配置2", settings: snapshot().settings, key_configured: true }],
+      selected_profile_id: "deepseek-id",
+    });
+    const renamed = snapshot({
+      profiles: [{ id: "deepseek-id", name: "DeepSeek", settings: snapshot().settings, key_configured: true }],
+      selected_profile_id: "deepseek-id",
+    });
+    const api = client({
+      getSettings: vi.fn().mockResolvedValue(original),
+      renameProfile: vi.fn().mockResolvedValue(renamed),
+    });
+    render(<LlmPanel client={api} />);
+    await screen.getByLabelText("配置标题");
+    await userEvent.click(screen.getByRole("button", { name: "已保存配置" }));
+    expect(await screen.findByRole("button", { name: /配置2/ })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "已保存配置" }));
+    const nameInput = screen.getByLabelText("配置标题");
+    await userEvent.dblClick(nameInput);
+    await userEvent.clear(nameInput);
+    await userEvent.type(nameInput, "DeepSeek");
+    await userEvent.keyboard("{Enter}");
+
+    expect(api.renameProfile).toHaveBeenCalledWith({ id: "deepseek-id", name: "DeepSeek" }, expect.any(AbortSignal));
+    expect(screen.getByLabelText("配置标题")).toHaveValue("DeepSeek");
+    await userEvent.click(screen.getByRole("button", { name: "已保存配置" }));
+    expect(screen.getByRole("button", { name: /DeepSeek/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "重命名配置" })).not.toBeInTheDocument();
+  });
+
+  it("新建配置前保存当前配置，然后打开独立的空白草稿", async () => {
+    const settings = {
+      ...snapshot().settings,
+      provider: "gemini",
+      api_format: "gemini_generate_content",
+      base_url: "https://generativelanguage.googleapis.com/v1beta",
+      model: "gemini-3.8-flash",
+    };
+    const original = snapshot({
+      settings,
+      key_configured: true,
+      profiles: [{ id: "gemini-id", name: "Gemini", settings, key_configured: true }],
+      selected_profile_id: "gemini-id",
+    });
+    const persisted = snapshot({
+      ...original,
+      settings: { ...settings, timeout_seconds: 60 },
+      profiles: [{ id: "gemini-id", name: "Gemini", settings: { ...settings, timeout_seconds: 60 }, key_configured: true }],
+      selected_profile_id: "gemini-id",
+      restart_required: true,
+    });
+    const api = client({
+      getSettings: vi.fn().mockResolvedValue(original),
+      saveSettings: vi.fn().mockResolvedValue(persisted),
+      createProfile: vi.fn(),
+    });
+    render(<LlmPanel client={api} />);
+    await screen.findByLabelText("API 地址");
+    await userEvent.click(screen.getByText("高级设置"));
+    fireEvent.change(screen.getByLabelText("超时时间（秒）"), { target: { value: "60" } });
+
+    await userEvent.click(screen.getByRole("button", { name: "已保存配置" }));
+    await userEvent.click(screen.getByRole("button", { name: "新建配置" }));
+
+    expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({
+      settings: expect.objectContaining({ timeout_seconds: 60 }),
+    }), expect.any(AbortSignal));
+    expect(api.createProfile).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("API 地址")).toHaveValue("");
+    expect(screen.getByRole("combobox", { name: "模型" })).toHaveValue("");
+    expect(screen.getByLabelText("配置标题")).toHaveValue("配置1");
   });
 });

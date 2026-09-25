@@ -9,10 +9,16 @@ function client(status = launcherSnapshot()): LauncherClient {
   return { getStatus: vi.fn().mockResolvedValue(status), setEnabled: vi.fn().mockResolvedValue(status) };
 }
 
-it("keeps service switches available while hiding business panels until the server is ready", async () => {
-  render(<LauncherPanel client={client()}><h2>文字播报</h2></LauncherPanel>);
-  expect(await screen.findByRole("switch", { name: "主服务" })).not.toBeChecked();
-  await waitFor(() => expect(screen.getByRole("switch", { name: "主服务" })).toBeEnabled());
+it("shows automatic startup and lets the user stop the main service from its switch", async () => {
+  const api = client(launcherSnapshot("running"));
+  vi.mocked(api.setEnabled).mockResolvedValueOnce(launcherSnapshot("stopped"));
+  render(<LauncherPanel client={api}><h2>文字播报</h2></LauncherPanel>);
+  await screen.findByText(/主服务会自动启动/);
+  const toggle = screen.getByRole("switch", { name: "主服务" });
+  expect(toggle).toBeChecked();
+  await userEvent.click(toggle);
+  expect(api.setEnabled).toHaveBeenLastCalledWith("server", false, "a".repeat(64), expect.any(AbortSignal));
+  await waitFor(() => expect(toggle).not.toBeChecked());
   expect(screen.queryByRole("heading", { name: "文字播报" })).not.toBeInTheDocument();
   expect(screen.getByRole("switch", { name: "Windows 执行端" })).toBeDisabled();
 });
@@ -23,18 +29,13 @@ it("links LLM setup to the configuration page and explains that launcher status 
   expect(screen.getByText(/保存后重启主服务/)).toBeVisible();
 });
 
-it("shows starting until the real status is ready and allows cancellation", async () => {
-  const api = client();
-  vi.mocked(api.setEnabled).mockResolvedValueOnce(launcherSnapshot("starting")).mockResolvedValueOnce(launcherSnapshot("stopping"));
-  render(<LauncherPanel client={api}><h2>文字播报</h2></LauncherPanel>);
-  const toggle = await screen.findByRole("switch", { name: "主服务" });
-  await waitFor(() => expect(toggle).toBeEnabled());
-  await userEvent.click(toggle);
-  await waitFor(() => expect(toggle).toBeChecked());
-  expect(screen.getByText("启动中")).toBeInTheDocument();
+it("shows automatic startup progress until the server is ready", async () => {
+  render(<LauncherPanel client={client(launcherSnapshot("starting"))}><h2>文字播报</h2></LauncherPanel>);
+  expect(await screen.findByText("启动中")).toBeInTheDocument();
   expect(screen.queryByRole("heading", { name: "文字播报" })).not.toBeInTheDocument();
-  await userEvent.click(toggle);
-  expect(api.setEnabled).toHaveBeenLastCalledWith("server", false, "a".repeat(64), expect.any(AbortSignal));
+  const toggle = screen.getByRole("switch", { name: "主服务" });
+  expect(toggle).toBeChecked();
+  expect(toggle).toBeEnabled();
 });
 
 it("shows the business controls for a ready server and explains how to stop an external TTS", async () => {
@@ -48,7 +49,7 @@ it("a refused start leaves the switch off and displays the failure", async () =>
   const api = client();
   vi.mocked(api.setEnabled).mockRejectedValue(new Error("端口被占用"));
   render(<LauncherPanel client={api} />);
-  const toggle = await screen.findByRole("switch", { name: "主服务" });
+  const toggle = await screen.findByRole("switch", { name: "TTS 语音引擎" });
   await waitFor(() => expect(toggle).toBeEnabled());
   await userEvent.click(toggle);
   expect(await screen.findByRole("alert")).toHaveTextContent("端口被占用");
@@ -60,7 +61,7 @@ it("an unavailable manager disables switches and explains the single startup com
   vi.mocked(api.getStatus).mockRejectedValue(new Error("无法连接启动管理"));
   render(<LauncherPanel client={api} />);
   expect(await screen.findByRole("alert")).toHaveTextContent("./launchers/start.sh");
-  expect(screen.getByRole("switch", { name: "主服务" })).toBeDisabled();
+  expect(screen.getByRole("switch", { name: "TTS 语音引擎" })).toBeDisabled();
 });
 
 

@@ -127,14 +127,28 @@ fn viewer_key(event: &LiveEvent) -> String {
 
 pub(crate) fn read_prefix(event: &LiveEvent) -> String {
     match &event.kind {
-        EventKind::Chat { text } => format!("{}说：{}。", event.viewer, text),
+        EventKind::Chat { text } => spoken_text(text),
         EventKind::SuperChat {
             text, amount_cny, ..
         } => format!(
-            "感谢{}的{}元SC。留言说：{}。",
-            event.viewer, amount_cny, text
+            "感谢{}的{}元SC。{}",
+            event.viewer,
+            amount_cny,
+            spoken_text(text)
         ),
         EventKind::RoomEnter => format!("欢迎{}，感谢你来到直播间！", event.viewer),
         EventKind::Gift { .. } => String::new(),
     }
+}
+
+fn spoken_text(text: &str) -> String {
+    let mut spoken = text.to_owned();
+    if !spoken
+        .chars()
+        .last()
+        .is_some_and(|character| matches!(character, '。' | '！' | '？' | '!' | '?' | '.' | '…'))
+    {
+        spoken.push('。');
+    }
+    spoken
 }

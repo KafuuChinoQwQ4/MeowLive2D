@@ -3,9 +3,10 @@ import { expect, it, vi } from "vitest";
 import { agentStatus } from "../../test/agent-fixtures";
 import { AgentSettingsForm } from "./AgentSettingsForm";
 
-it("保存读弹幕策略、欢迎开关及拥挤阈值，并将欢迎间隔转换成毫秒", async () => {
+it("保存系统提示词、读弹幕策略、欢迎开关及拥挤阈值，并将欢迎间隔转换成毫秒", async () => {
   const onSave = vi.fn().mockResolvedValue(true);
   render(<AgentSettingsForm settings={agentStatus().settings} disabled={false} onSave={onSave} />);
+  fireEvent.change(screen.getByLabelText("系统提示词"), { target: { value: "直接读出弹幕原文" } });
   fireEvent.change(screen.getByLabelText("读弹幕策略"), { target: { value: "selective" } });
   fireEvent.click(screen.getByLabelText("欢迎进房观众"));
   for (const [label, value] of [
@@ -13,7 +14,7 @@ it("保存读弹幕策略、欢迎开关及拥挤阈值，并将欢迎间隔转�
     ["欢迎间隔（秒）", "45"], ["同一观众欢迎间隔（秒）", "900"],
   ]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
   fireEvent.click(screen.getByRole("button", { name: "保存设置并暂停" }));
-  await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ interaction: {
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ system_prompt: "直接读出弹幕原文", interaction: {
     chat_read_mode: "selective", welcome_enabled: false,
     busy_chat_count: 9, busy_enter_count: 5, busy_pending_count: 7,
     welcome_cooldown_ms: 45_000, welcome_viewer_cooldown_ms: 900_000,

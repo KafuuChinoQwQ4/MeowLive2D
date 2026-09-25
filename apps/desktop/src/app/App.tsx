@@ -48,6 +48,8 @@ function AppContent() {
         feedback.clearIssue("desktop:configuration");
         if (status && !status.runtime.running) feedback.reportIssue("desktop:runtime", "桌面执行端已停止", status.runtime.last_error || "请关闭并重新启动桌面程序。");
         else feedback.clearIssue("desktop:runtime");
+        if (status?.server.last_error) feedback.reportIssue("desktop:server", "主服务未就绪", status.server.last_error);
+        else feedback.clearIssue("desktop:server");
         if (retryRequested) { retryRequested = false; feedback.success("桌面连接已恢复", "已读取桌面配置。"); }
         if (status) timer = setTimeout(() => void update(), 3_000);
       } catch {
@@ -81,10 +83,18 @@ function AppContent() {
     llm: <LlmPanel client={clients.llm} runtimeClient={clients.runtime} />,
   };
   const errorNotice = error && <div className="error-banner" role="alert">{error} <button onClick={() => setAttempt(value => value + 1)}>重试桌面连接</button></div>;
+  const serverLabel = desktop?.server.ready ? "主服务运行中" : desktop?.server.last_error ? "主服务未就绪" : "主服务启动中";
   if (desktop === undefined) return <main className="studio-initial"><h1>MeowLive2D</h1>{errorNotice || <p role="status">正在读取桌面配置…</p>}</main>;
   if (desktop === null && import.meta.env.VITE_MEOWLIVE_LAUNCHER === "true") return <ManagedWorkspace pages={panels} adminClient={clients.auth} />;
-  return <Workspace pages={panels} adminClient={clients.auth} setup={<ModelLibraryManualGuide />} ready status={[{ label: desktop ? (desktop.runtime.running ? "桌面执行端运行中" : "桌面执行端已停止") : "手动服务模式", available: desktop?.runtime.running ?? null }]}
-    notice={errorNotice} overview={<>{errorNotice}{desktop ? <section className="connection-card" aria-label="桌面执行端">
+  return <Workspace pages={panels} adminClient={clients.auth} setup={<ModelLibraryManualGuide />} ready={desktop === null || (!error && desktop.server.ready)} status={[...(desktop ? [{ label: serverLabel, available: !error && desktop.server.ready }] : []), { label: desktop ? (desktop.runtime.running ? "桌面执行端运行中" : "桌面执行端已停止") : "手动服务模式", available: desktop?.runtime.running ?? null }]}
+    notice={errorNotice} overview={<>{errorNotice}{desktop && <section className="connection-card" aria-label="主服务">
+      <div><h2>{serverLabel}</h2><p>打开应用时自动启动，关闭应用时自动退出。</p><p className="server-address">{desktop.server_url}</p>
+        {desktop.server.ready && !desktop.server.managed && <p className="muted">已连接现有服务，由原启动程序管理。</p>}
+        {desktop.server.last_error && <p role="alert">{desktop.server.last_error}</p>}
+        <details><summary>主服务日志位置</summary><code>{desktop.server.log_path}</code></details>
+        <p className="field-hint">修改需重启的配置后，关闭并重新打开应用即可。</p>
+      </div>
+    </section>}{desktop ? <section className="connection-card" aria-label="桌面执行端">
       <div><h2>{desktop.runtime.running ? "桌面执行端运行中" : "桌面执行端已停止"}</h2><p className="server-address">{desktop.server_url}</p><p className="muted">{desktop.runtime.simulation ? "静音模拟：不输出设备声音" : "系统音频输出"}</p></div>
       {!desktop.runtime.running && <p role="alert">执行端已停止，请关闭并重新启动桌面程序。{desktop.runtime.last_error}</p>}
     </section> : <section className="panel studio-manual"><h2>从导航开始</h2><p className="muted">手动服务模式，请从左侧选择功能。</p><p className="availability-note">网页管理服务：运行 <code>./launchers/start.sh</code>。</p></section>}</>} />;

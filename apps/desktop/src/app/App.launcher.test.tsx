@@ -3,49 +3,37 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import { launcherSnapshot } from "../test/launcher-fixtures";
 import { jsonResponse, serverStatus } from "../test/server-fixtures";
-import { agentStatus } from "../test/agent-fixtures";
-import { resourceSnapshot } from "../test/resource-fixtures";
-import { liveSettingsSnapshot, liveSnapshot } from "../test/live-fixtures";
 import { App } from "./App";
 
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); window.history.replaceState(null, "", "/"); });
 
-it("the launcher survives stopping the main service and does not poll inactive business APIs", async () => {
+it("waits for automatic startup and hides business APIs when the service goes down", async () => {
   vi.stubEnv("VITE_MEOWLIVE_LAUNCHER", "true");
-  let status = launcherSnapshot();
+  let status = launcherSnapshot("starting");
   const businessCalls: string[] = [];
-  vi.stubGlobal("fetch", vi.fn<typeof fetch>(async (url, init) => {
+  vi.stubGlobal("fetch", vi.fn<typeof fetch>(async url => {
     const path = String(url);
-    if (path === "/api/launcher/services/server") {
-      status = launcherSnapshot(JSON.parse(String(init?.body)).enabled ? "running" : "stopped");
-      return jsonResponse(status);
-    }
     if (path === "/api/launcher/status") return jsonResponse(status);
     if (path.endsWith("/api/admin/session")) return jsonResponse({ enabled: false, authenticated: false });
     businessCalls.push(path);
-    if (path.endsWith("/api/agent")) return jsonResponse(agentStatus());
-    if (path.endsWith("/api/live/settings")) return jsonResponse(liveSettingsSnapshot());
-    if (path.endsWith("/api/live")) return jsonResponse(liveSnapshot());
-    if (path.endsWith("/api/resources")) return jsonResponse(resourceSnapshot());
     return jsonResponse(serverStatus());
   }));
   render(<App />);
-  const toggle = await screen.findByRole("switch", { name: "主服务" });
-  await waitFor(() => expect(toggle).toBeEnabled());
-  expect(businessCalls).toHaveLength(0);
+  await screen.findByText("启动中");
+  expect(screen.queryByRole("switch", { name: "主服务" })).not.toBeInTheDocument();
   await userEvent.click(screen.getByRole("link", { name: "语音播报" }));
   expect(await screen.findByRole("button", { name: "前往启动与运行" })).toBeInTheDocument();
   expect(businessCalls).toHaveLength(0);
+  status = launcherSnapshot("running");
   await userEvent.click(screen.getByRole("button", { name: "前往启动与运行" }));
-  await userEvent.click(toggle);
+  await userEvent.click(screen.getByRole("button", { name: "刷新服务状态" }));
   await userEvent.click(screen.getByRole("link", { name: "语音播报" }));
   expect(await screen.findByRole("heading", { name: "文字播报" })).toBeInTheDocument();
   expect(businessCalls.length).toBeGreaterThan(0);
+  status = launcherSnapshot("failed");
   await userEvent.click(screen.getByRole("link", { name: "启动与运行" }));
-  await userEvent.click(toggle);
+  await userEvent.click(screen.getByRole("button", { name: "刷新服务状态" }));
   await waitFor(() => expect(screen.queryByRole("heading", { name: "文字播报" })).not.toBeInTheDocument());
-  expect(screen.getByRole("switch", { name: "主服务" })).toBeEnabled();
-  expect(screen.getByRole("heading", { name: "启动与运行" })).toBeInTheDocument();
 });
 
 it("environment and models remain accessible while the main service is stopped", async () => {
@@ -75,5 +63,5 @@ it("shows the execution client connection in the workspace status bar", async ()
   vi.stubGlobal("fetch", vi.fn<typeof fetch>(async () => jsonResponse(launcherSnapshot("running", "running", "running"))));
   render(<App />);
   expect(await screen.findByText("Windows 执行端 · 已连接")).toBeInTheDocument();
-  expect(screen.getAllByRole("switch")).toHaveLength(3);
+  expect(screen.getAllByRole("switch")).toHaveLength(2);
 });

@@ -19,6 +19,8 @@ const snapshot: LlmSettingsSnapshot = {
   restart_required: false,
   active_model: "gpt-4o-mini",
   storage_available: true,
+  profiles: [],
+  selected_profile_id: null,
 };
 const request: LlmSettingsRequest = { settings, api_key: null, clear_api_key: false };
 const modelsRequest: LlmModelsRequest = {
@@ -46,6 +48,26 @@ describe("LLM 服务边界", () => {
     ]);
     expect(JSON.parse(String(calls[1].init?.body))).toEqual({ ...request, api_key: "new-secret" });
     expect(JSON.parse(String(calls[2].init?.body))).toEqual({ ...request, clear_api_key: true });
+  });
+
+  it("通过独立接口管理已保存配置且只读取公开摘要", async () => {
+    const calls: Array<{ path: string; body?: unknown }> = [];
+    const fetcher = vi.fn<typeof fetch>(async (url, init) => {
+      calls.push({ path: String(url), body: init?.body ? JSON.parse(String(init.body)) : undefined });
+      return new Response(JSON.stringify(snapshot));
+    });
+    const client = createLlmClient({ baseUrl: "http://localhost:19600", fetcher });
+    await client.createProfile({ name: "DeepSeek", settings, api_key: "private", clear_api_key: false });
+    await client.selectProfile({ id: "profile-id" });
+    await client.renameProfile({ id: "profile-id", name: "我的 DeepSeek" });
+    await client.deleteProfile({ id: "profile-id" });
+    expect(calls.map(call => call.path)).toEqual([
+      "http://localhost:19600/api/llm/profiles",
+      "http://localhost:19600/api/llm/profiles/select",
+      "http://localhost:19600/api/llm/profiles/rename",
+      "http://localhost:19600/api/llm/profiles/delete",
+    ]);
+    expect(calls[0].body).toMatchObject({ name: "DeepSeek", api_key: "private" });
   });
 
   it("拒绝未知格式、越界参数和泄漏密钥的响应", () => {

@@ -49,6 +49,7 @@ function boundedText(value: unknown, min: number, max: number): value is string 
 function isSettings(value: unknown): value is AgentSettings {
   return isRecord(value)
     && boundedText(value.persona, 1, 2000)
+    && boundedText(value.system_prompt, 0, 4000)
     && boundedText(value.topic, 0, 200)
     && typeof value.proactive_enabled === "boolean"
     && isUint32(value.cooldown_ms) && value.cooldown_ms >= 1000 && value.cooldown_ms <= 3600000

@@ -7,10 +7,10 @@ export const featureGuides: Record<Exclude<WorkspacePage, "guide">, GuideTopic> 
     steps: [
       "Windows 双击 launchers/start-windows.cmd；Linux / WSL 运行 ./launchers/start.sh。保持启动终端打开。",
       "首次使用按 launchers/README.md 构建 Windows 执行程序并准备本机配置；实际位置可在「本机配置位置」查看。连接执行端会同时启用 VTS 连接，请先在 VTS 开启插件 API 并允许授权。",
-      "依次开启主服务、TTS 语音引擎、Windows 执行端，等待显示运行中或已连接。",
-      "到「声音训练」启用语音模型，再准备音色。TTS 服务与模型开关分开控制。",
+      "主服务随应用或启动器自动启动；网页启动器在主服务就绪后自动开启 TTS 和 Windows 执行端，并加载已选语音模型。",
+      "TTS 启动时会自动加载已选模型。训练或释放内存时，可在「声音训练」单独关闭语音模型，再准备音色。",
       "异常时先刷新状态，再展开服务卡片中的日志位置。配置路径在页面底部，可按本机情况查看。",
-      "退出前停止播报，依次关闭 Windows 执行端、TTS、主服务，最后在启动终端按 Ctrl+C。窗口已关闭但服务仍在时，运行 npm run stop。",
+      "退出前停止播报，在启动终端按 Ctrl+C，启动器自动回收本次启动的三个服务。Windows App 直接关闭窗口。窗口已关闭但服务仍在时，运行 npm run stop。",
     ],
     note: "关闭浏览器不会停止服务。关闭主服务会断开执行端；关闭 TTS 会中断语音生成。外部启动的服务需回原终端关闭。",
   },
@@ -18,7 +18,7 @@ export const featureGuides: Record<Exclude<WorkspacePage, "guide">, GuideTopic> 
     steps: [
       "检查环境与引擎状态。Windows 首次使用需完成 WSL2 准备；原生 Linux 无需 WSL。",
       "按 GPT-SoVITS 官方说明准备引擎，在 config/local/launcher.json 填写 Python 和引擎目录，重新启动控制面板。",
-      "先关闭 TTS，再从「本地模型」选择可用模型；没有模型时前往「下载模型」，下载后重新扫描。",
+      "从「本地模型」选择可用模型；切换时会自动暂停 TTS，保存选择后自动重启并加载新模型。没有模型时前往「下载模型」，下载后重新扫描。",
       "用名称或语言搜索模型，按使用范围筛选。「下载任务」可查看进度、取消或重试。",
     ],
     note: "目前可直接使用 GPT-SoVITS v2。标记「需适配」的模型仅提供下载，尚不能直接推理。路径 ./ 为项目目录，~/ 为 Linux 用户主目录，../ 为上级目录。",
@@ -62,7 +62,8 @@ export const featureGuides: Record<Exclude<WorkspacePage, "guide">, GuideTopic> 
   },
   viewers: {
     steps: [
-      "开启主服务后直接进入观众记录，无需另行登录。PostgreSQL 默认保存观众、事件、陪伴积分与记忆。",
+      "Windows 安装版首次未启用数据库时，先到「环境与模型 → 数据库与可选功能」下载所需依赖，按步骤配置连接并启用观众存储。Linux / WSL 源码启动器会自动准备 PostgreSQL，但需要 Docker 已运行。",
+      "主服务就绪后进入观众记录，无需另行登录。确认没有存储不可用提示，再查看观众、事件、陪伴积分与记忆；空列表表示尚无记录。",
       "在左侧查看当前与曾用昵称，右侧查看已接收事件；点击「管理详情」查看陪伴积分、礼物和记忆证据。",
       "积分调整、礼物修正与记忆管理需填写原因；关系图支持查询、登记与核对有证据的关系。",
       "身份合并前核对平台稳定身份，预览受影响记录，确认后执行。昵称相同不能作为合并依据。",

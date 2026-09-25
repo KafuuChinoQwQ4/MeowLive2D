@@ -3,7 +3,7 @@
 当前命令集中在根 `package.json`：
 
 - `./launchers/start.sh`：新人单入口，必要时安装前端依赖，打开带服务滑动开关的控制面板。
-- `npm start`：启动同一个面板与本机服务管理器；`-- --no-open` 不自动打开浏览器。
+- `npm start`：启动同一个面板与本机服务管理器，并自动拉起主服务、TTS 和 Windows 执行端；`-- --no-open` 不自动打开浏览器。
 - `npm run dev`：仅启动开发网页，主服务和 TTS 需自行管理。
 - `npm run test:launcher`：验证配置、密钥隔离、HTTP 控制边界及实际子进程启停、取消、冲突与回收。
 - `npm run typecheck`：检查所有 TypeScript 工作区。
@@ -27,9 +27,9 @@ Rust 开发入口通过 `rust_cache.py` 调用稳定版 Cargo，保留原有 inc
 
 首次 `rust:cleanup` 只清理与已成功构建的配置指纹相同的历史可执行程序，保留依赖库、构建脚本、工具链和无法准确确认归属的历史增量目录。`target/.rust-cache/` 内的清单属于可丢弃构建状态；缺失时保守跳过，损坏时报告错误。清理统计为去重后的文件分配空间估算，Windows 上不支持 Unix 文件锁时跳过删除。直接运行裸 `cargo`、Tauri 自身构建或自定义输出目录不会自动维护此清单；日常使用上述 npm 命令。切换配置、修改依赖或删除有效缓存仍会产生必要的重新编译，清理不承诺任意配置永远零重编译。
 
-`start-control-panel.mjs` 将 `launcher/` 中的配置、进程管理和 HTTP 控制接入 Vite。只接受 loopback 同源面板、会话令牌和固定的主服务、TTS 和 Windows 执行端三个开关，不接收任意 shell 命令；入口不自动启动模型或业务服务。主服务始终为现有 Rust 服务，Windows 执行库与协议版本不变。管理状态契约由 `crates/protocol/src/launcher.rs` 生成。真实服务日志和推理工作目录分别位于已排除索引的 logs/control-panel 与 data/control-panel-inference。
+`start-control-panel.mjs` 将 `launcher/` 中的配置、进程管理和 HTTP 控制接入 Vite。只接受 loopback 同源面板与会话令牌，管理范围固定为主服务、TTS 和 Windows 执行端，不接收任意 shell 命令；入口自动启动主服务，主服务就绪后自动启动 TTS 和 Windows 执行端，受管 TTS 自动加载所选模型。模型选择会串行停止旧 TTS、保存选择并重启；外部 TTS 不接管，资源不足或启动失败不循环重试。主服务始终为现有 Rust 服务，Windows 执行库与协议版本不变。管理状态契约由 `crates/protocol/src/launcher.rs` 生成。真实服务日志和推理工作目录分别位于已排除索引的 logs/control-panel 与 data/control-panel-inference。
 
-M5 引擎工具：`train-gpt-sovits.py` 读取服务端生成的任务清单，逐阶段调用上游 v2 训练入口；`engine_workspace.py` 创建只在项目数据内写入的源码副本、缓存及受限环境；`start-managed-inference.py` 启动使用私有 YAML 的本机推理实例；`model_runtime.py` 为自有 API 副本安装延迟加载和显式模型启停，TTS 服务就绪不代表模型已加载。运行脚本应使用 GPT-SoVITS 对应 Python，外部安装保持只读。`training_test.py` 用标准库测试任务与路径、代理环境、性能参数传递和低显存兼容配置；`model_runtime_test.py` 用模拟模型验证启停、清理和请求取消保护，推理 Python 含 FastAPI 时还运行受控 HTTP 测试；`npm run check` 包含这些测试。Python 缓存被 Git 与目录索引共同排除。
+M5 引擎工具：`train-gpt-sovits.py` 读取服务端生成的任务清单，逐阶段调用上游 v2 训练入口；`engine_workspace.py` 创建只在项目数据内写入的源码副本、缓存及受限环境；`start-managed-inference.py` 启动使用私有 YAML 的本机推理实例；`model_runtime.py` 为自有 API 副本安装延迟加载和显式模型启停，网页启动器通过受管子进程环境开启模型自动加载，独立启动仍支持待机模式；自动加载失败在模型状态中显示，并可手动重试。运行脚本应使用 GPT-SoVITS 对应 Python，外部安装保持只读。`training_test.py` 用标准库测试任务与路径、代理环境、性能参数传递和低显存兼容配置；`model_runtime_test.py` 用模拟模型验证启停、清理和请求取消保护，推理 Python 含 FastAPI 时还运行受控 HTTP 测试；`npm run check` 包含这些测试。Python 缓存被 Git 与目录索引共同排除。
 
 训练子进程的临时文件使用项目内的 `data/tmp/gsv-*` 短目录，避免 Python 3.10 数据加载进程的 Unix socket 路径超长。阶段正常结束、失败或收到取消信号时清理该目录；模型缓存仍在任务工作区。`stages.log` 实时写入阶段输出，最多保留 256 KiB；界面百分比按阶段更新（SoVITS 为 40%、GPT 为 70%），阶段内可通过日志中的批次和轮次判断训练是否推进。
 
@@ -40,3 +40,5 @@ M5 引擎工具：`train-gpt-sovits.py` 读取服务端生成的任务清单，�
 M6 观测工具：`npm run acceptance:observe -- --duration-seconds 600 --execution simulated` 只查询主服务状态并保存脱敏 JSON；`--observe` 是显式只读模式，默认也是只读。输出文件必须不存在。`npm run test:acceptance` 使用受控 HTTP 服务检查采样、超时、限流量、历史基线和重启计数；已纳入 `check`。Tauri 自动生成的 `src-tauri/gen/` 整体排除索引，避免生成 schema 的父目录触发用途缺项。
 
 Windows 开关由 `launcher/windows-client.mjs` 管理固定 Windows helper 作业与主服务握手状态；`launchers/windows-client.ps1` 使用 Windows Job Object 持有真实执行端，退出或租约过期时回收。日常入口集中于根 `launchers/`。
+
+`npm run desktop:build` 构建 Windows x64 App：先构建主服务，将配套 EXE 放在 `target/windows-bundle/`，再由 Tauri 打包 NSIS 安装器。Linux 使用 cargo-xwin、LLVM 和 NSIS；Windows 使用 MSVC。所有生成文件保留在已排除的 target/ 内。

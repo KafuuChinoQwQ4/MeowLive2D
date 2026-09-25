@@ -9,7 +9,7 @@ export function InstalledModels({ models, purpose, disabled, select, browse }: {
     const asr = kind === "asr";
     return <section key={kind} aria-label={asr ? "语音识别模型" : "声音生成模型"}>
       <div className="model-section-heading"><div><h3>{asr ? "语音识别 · 训练文本提取" : "声音生成 · 播报与训练"}</h3>
-        <p className="muted">{asr ? "上传训练录音后自动识别文字；选择对下一次转写生效。" : "切换声音生成模型前请关闭 TTS。"}</p></div></div>
+        <p className="muted">{asr ? "上传训练录音后自动识别文字；选择对下一次转写生效。" : "切换时自动暂停 TTS 并释放旧模型，切换完成后自动启动。"}</p></div></div>
       {items.length ? <div className="model-local-list">{items.map(model => <article className="model-local-card" key={model.id}>
         <div><div className="model-card-title"><h3>{model.name}</h3>
           <span className={`model-badge ${model.ready ? "is-ready" : "is-pending"}`}>{model.selected ? "当前使用" : model.ready ? "可以使用" : "尚未就绪"}</span>

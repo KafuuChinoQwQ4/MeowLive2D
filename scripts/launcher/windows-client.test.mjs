@@ -110,7 +110,7 @@ test('Windows start waits for main service and does not duplicate external clien
   const f = await fixture(t);
   f.setBridge({ ready: false, connected: false });
   assert.equal((await f.manager.snapshot()).can_start, false);
-  await assert.rejects(f.manager.setEnabled(true), /先打开主服务/);
+  await assert.rejects(f.manager.setEnabled(true), /等待主服务/);
   f.setBridge({ ready: true, connected: true });
   assert.equal((await f.manager.snapshot()).state, 'external');
   await f.manager.setEnabled(true);
@@ -204,6 +204,36 @@ test('main service stop waits for Windows disconnection while TTS control stays 
   await manager.setEnabled('tts', false);
   await manager.setEnabled('windows', true);
   assert.deepEqual(calls, [['windows-stop'], ['server', false], ['tts', false], ['windows', true]]);
+});
+
+test('automatic Windows startup waits for the main service and does not repeat on initialization', async t => {
+  const f = await fixture(t);
+  let ready;
+  const boot = new Promise(resolve => { ready = resolve; });
+  const supervisor = { token: 'token', initialize: () => boot,
+    snapshot: async () => ({ services: [{ id: 'server', state: 'running' }, { id: 'tts', state: 'failed' }] }) };
+  const manager = managedServices(supervisor, f.manager);
+  const starting = manager.initialize();
+  assert.equal(f.children.length, 0);
+  ready();
+  await starting;
+  assert.equal(f.children.length, 1, 'TTS failure must not block Windows audio connection');
+  await manager.initialize();
+  assert.equal(f.children.length, 1);
+  assert.equal((await f.manager.snapshot()).state, 'starting');
+});
+
+test('automatic Windows startup reports missing prerequisites without hiding the other services', async t => {
+  const f = await fixture(t);
+  f.manager.issue = '未找到 Windows 执行程序';
+  const supervisor = { token: 'token', initialize: async () => {},
+    snapshot: async () => ({ services: [{ id: 'server', state: 'running' }, { id: 'tts', state: 'running' }] }) };
+  const manager = managedServices(supervisor, f.manager);
+  await manager.initialize();
+  const snapshot = await manager.snapshot();
+  assert.equal(snapshot.services[2].state, 'failed');
+  assert.match(snapshot.services[2].message, /未找到/);
+  assert.equal(f.children.length, 0);
 });
 
 

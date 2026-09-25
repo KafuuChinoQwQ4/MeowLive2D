@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { createServer } from 'node:http';
 import { Supervisor } from './supervisor.mjs';
 
-async function fixture(t, { delay = 0, exit = false, startupMs = 3000, readMemory } = {}) {
+async function fixture(t, { delay = 0, exit = false, startupMs = 3000, readMemory, id = 'server' } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'meow-launcher-'));
   const socket = createServer();
   await new Promise(resolve => socket.listen(0, '127.0.0.1', resolve));
@@ -16,11 +16,11 @@ async function fixture(t, { delay = 0, exit = false, startupMs = 3000, readMemor
     const http = require('node:http');
     setTimeout(() => http.createServer((req, res) => {
       res.setHeader('content-type','application/json');
-      res.end(JSON.stringify({protocol_version:3,service:'meowlive',bridge_connected:false,speeches:[]}));
+      res.end(JSON.stringify(${id === 'tts' ? "{openapi:'3.0.0',paths:{'/tts':{post:{}}}}" : "{protocol_version:3,service:'meowlive',bridge_connected:false,speeches:[]}"}));
     }).listen(${port}, '127.0.0.1'), ${delay});
   `;
-  const definition = { id: 'server', url: `http://127.0.0.1:${port}`, command: process.execPath,
-    args: ['-e', code], cwd: root, env: process.env, issue: null, logPath: join(root, 'server.log') };
+  const definition = { id, url: `http://127.0.0.1:${port}`, command: process.execPath,
+    args: ['-e', code, '--'], cwd: root, env: process.env, issue: null, logPath: join(root, `${id}.log`) };
   const manager = new Supervisor({ definitions: [definition], setup: {}, startupMs, stopMs: 300, pollMs: 30, readMemory });
   t.after(async () => { await manager.close(); await rm(root, { recursive: true, force: true }); });
   return { manager, port, definition };
@@ -71,15 +71,111 @@ test('memory probing failure blocks guarded startup but unguarded services still
   await until(manager, 'running');
 });
 
-async function until(manager, expected) {
+async function until(manager, expected, index = 0) {
   const end = Date.now() + 5000;
   while (Date.now() < end) {
-    const status = (await manager.snapshot()).services[0];
+    const status = (await manager.snapshot()).services[index];
     if (status.state === expected) return status;
     await new Promise(resolve => setTimeout(resolve, 25));
   }
   assert.fail(`did not reach ${expected}: ${JSON.stringify(await manager.snapshot())}`);
 }
+
+test('initialization automatically starts the main service once', async t => {
+  const { manager } = await fixture(t);
+  await manager.initialize();
+  const first = manager.records.get('server').child;
+  await manager.initialize();
+  assert.equal(manager.records.get('server').child, first);
+  assert.equal((await until(manager, 'running')).managed, true);
+});
+
+test('initialization automatically starts every configured service after the main service', async t => {
+  const server = await fixture(t);
+  const tts = await fixture(t, { id: 'tts' });
+  const manager = new Supervisor({ definitions: [server.definition, tts.definition], setup: {}, pollMs: 30 });
+  t.after(() => manager.close());
+  await manager.initialize();
+  assert.equal((await until(manager, 'running')).state, 'running');
+  assert.equal((await until(manager, 'running', 1)).managed, true);
+  const first = manager.records.get('tts').child;
+  await manager.initialize();
+  assert.equal(manager.records.get('tts').child, first);
+});
+
+test('reconfiguring a running TTS pauses it and automatically starts it with the new model', async t => {
+  const { manager } = await fixture(t, { id: 'tts' });
+  await manager.setEnabled('tts', true);
+  await until(manager, 'running');
+  const first = manager.records.get('tts').child;
+  await manager.configureTts(async definition => ({ ...definition, args: [...definition.args, '--model-root', 'new-model'] }));
+  const second = manager.records.get('tts').child;
+  assert.notEqual(second, first);
+  assert.equal((await until(manager, 'running')).state, 'running');
+  assert.deepEqual(manager.records.get('tts').def.args.slice(-2), ['--model-root', 'new-model']);
+});
+
+test('failed model configuration restores the previous running TTS and reports the error', async t => {
+  const { manager, definition } = await fixture(t, { id: 'tts' });
+  await manager.setEnabled('tts', true);
+  await until(manager, 'running');
+  await assert.rejects(manager.configureTts(async () => { throw new Error('无法保存模型选择'); }), /无法保存/);
+  assert.equal((await until(manager, 'running')).managed, true);
+  assert.equal(manager.records.get('tts').def, definition);
+});
+
+test('closing during a model switch prevents the new model from starting', async t => {
+  const { manager } = await fixture(t, { id: 'tts' });
+  await manager.setEnabled('tts', true);
+  await until(manager, 'running');
+  let release, entered;
+  const gate = new Promise(resolve => { release = resolve; });
+  const updating = new Promise(resolve => { entered = resolve; });
+  const switching = manager.configureTts(async definition => { entered(); await gate; return definition; });
+  await updating;
+  const rejected = assert.rejects(switching, /退出/);
+  const closing = manager.close();
+  release();
+  await Promise.all([rejected, closing]);
+  assert.equal(manager.records.get('tts').child, null);
+});
+
+test('status remains responsive when polling races with a model switch', async t => {
+  const { manager } = await fixture(t, { id: 'tts' });
+  await manager.setEnabled('tts', true);
+  await until(manager, 'running');
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  const switching = manager.configureTts(async definition => { await gate; return definition; });
+  let timer;
+  try {
+    const snapshot = await Promise.race([manager.snapshot(), new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error('status blocked by model switch')), 500);
+    })]);
+    assert.equal(snapshot.services[0].can_start, false);
+    assert.equal(snapshot.services[0].can_stop, false);
+  } finally { clearTimeout(timer); release(); await switching; }
+});
+
+test('failed main-service startup does not start dependent TTS', async t => {
+  const server = await fixture(t, { exit: true });
+  const tts = await fixture(t, { id: 'tts' });
+  const manager = new Supervisor({ definitions: [server.definition, tts.definition], setup: {}, pollMs: 30 });
+  t.after(() => manager.close());
+  await manager.initialize();
+  assert.equal((await manager.snapshot()).services[0].state, 'failed');
+  assert.equal(manager.records.get('tts').child, null);
+});
+
+test('automatic startup keeps configuration failures visible in the panel', async t => {
+  const { manager, definition } = await fixture(t);
+  definition.issue = '主服务配置无效';
+  await manager.initialize();
+  const status = (await manager.snapshot()).services[0];
+  assert.equal(status.state, 'failed');
+  assert.equal(status.message, '主服务配置无效');
+  assert.equal(status.managed, false);
+});
 
 test('starts a real service once, waits for HTTP readiness and stops it', async t => {
   const { manager } = await fixture(t, { delay: 180 });

@@ -9,6 +9,7 @@ import { LlmPanel } from "./LlmPanel";
 const initial: LlmSettingsSnapshot = {
   settings: { provider: "custom", api_format: "openai_chat", base_url: "", model: "", mode: "cloud", timeout_seconds: 30, max_tokens: 1024, json_mode: true, reasoning_effort: "default" },
   key_configured: false, restart_required: false, active_model: "", storage_available: true,
+  profiles: [], selected_profile_id: null,
 };
 const catalog = { base_url: "https://example.com/v1", models: [{ id: "actual-model", name: "Actual Model" }, { id: "second-model", name: "Second Model" }] };
 const saved: LlmSettingsSnapshot = {
@@ -20,6 +21,7 @@ function client(snapshot = initial, overrides: Partial<LlmClient> = {}): LlmClie
     baseUrl: "http://127.0.0.1:19600", getSettings: vi.fn().mockResolvedValue(snapshot),
     listModels: vi.fn().mockResolvedValue(catalog), testSettings: vi.fn().mockResolvedValue({ message: "连接正常" }),
     saveSettings: vi.fn().mockImplementation(async request => ({ ...snapshot, settings: request.settings, restart_required: true })),
+    createProfile: vi.fn(), selectProfile: vi.fn(), renameProfile: vi.fn(), deleteProfile: vi.fn(),
     previewReasoning: vi.fn().mockImplementation(async request => ({ requested: request.reasoning_effort, effective: null, supported: [], strategy: "unsupported", budget_tokens: null, note: "保留模型默认行为。", error: null })),
     ...overrides,
   };
@@ -46,6 +48,7 @@ describe("LLM 模型选择流程", () => {
     expect(screen.getByLabelText("API 格式")).not.toBeVisible();
     fireEvent.change(screen.getByLabelText("API 地址"), { target: { value: "https://example.com" } });
     fireEvent.change(screen.getByLabelText("API 密钥"), { target: { value: "draft-key" } });
+    fireEvent.change(screen.getByLabelText("配置标题"), { target: { value: "DeepSeek 主号" } });
     await userEvent.click(screen.getByRole("button", { name: "获取模型" }));
     expect(await screen.findByText("已获取 2 个模型。" )).toBeVisible();
     expect(calls[1]).toEqual({ path: "http://127.0.0.1:19600/api/llm/models", body: {
@@ -60,7 +63,7 @@ describe("LLM 模型选择流程", () => {
     expect(await screen.findByRole("status")).toHaveTextContent("重启主服务");
     const expected = { settings: { ...initial.settings, base_url: "https://example.com/v1", model: "second-model" }, api_key: "draft-key", clear_api_key: false };
     expect(calls.find(call => call.path.endsWith("/test"))).toEqual({ path: "http://127.0.0.1:19600/api/llm/test", body: expected });
-    expect(calls.find(call => call.path.endsWith("/settings") && call.body)).toEqual({ path: "http://127.0.0.1:19600/api/llm/settings", body: expected });
+    expect(calls.find(call => call.path.endsWith("/profiles") && call.body)).toEqual({ path: "http://127.0.0.1:19600/api/llm/profiles", body: { ...expected, name: "DeepSeek 主号" } });
   });
 
   it.each([

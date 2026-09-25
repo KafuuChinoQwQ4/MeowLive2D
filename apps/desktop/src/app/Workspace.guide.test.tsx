@@ -24,6 +24,8 @@ it("opens a guide deep link before the main service is ready and can navigate to
   expect(screen.queryByRole("heading", { name: "先准备好主服务" })).not.toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "检查环境与模型" }));
   expect(screen.getByText("环境检查")).toBeVisible();
+  expect(screen.getByRole("heading", { name: "数据库与可选功能" })).toBeVisible();
+  expect(screen.getByRole("link", { name: "下载 Docker Desktop（Windows）" })).toHaveAttribute("href", "https://docs.docker.com/desktop/setup/install/windows-install/");
   expect(window.location.hash).toBe("#setup");
 });
 

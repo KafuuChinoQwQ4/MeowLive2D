@@ -142,6 +142,22 @@
 .studio-shell .live-metrics dd { font-size: 16px; font-weight: 600; }
 .studio-shell .empty-state { min-height: 220px; color: #957389; font-size: 13px; }
 .studio-shell .empty-state span { font-size: 11px; }
+.studio-shell .profile-toolbar { display: grid; grid-template-columns: minmax(82px, .3fr) minmax(0, 1.7fr); align-items: center; gap: 0 12px; margin-bottom: 14px; }
+.studio-shell .profile-toolbar > label { margin: 0; }
+.studio-shell .profile-picker { position: relative; min-width: 0; }
+.studio-shell .profile-picker-control { display: flex; min-width: 0; }
+.studio-shell .profile-picker-control input { width: 100%; min-width: 0; border-radius: 7px 0 0 7px; }
+.studio-shell .profile-toggle { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 10px; margin-left: -1px; border-radius: 0 7px 7px 0; white-space: nowrap; }
+.studio-shell .profile-chevron { transition: transform .16s ease; }
+.studio-shell .profile-toggle[aria-expanded="true"] .profile-chevron { transform: rotate(180deg); }
+.studio-shell .profile-list { position: absolute; z-index: 20; top: calc(100% + 4px); right: 0; left: 0; display: grid; gap: 2px; max-height: 280px; overflow: auto; padding: 6px; border: 1px solid var(--studio-border); border-radius: 7px; background: #fffafd; box-shadow: 0 8px 24px rgb(74 34 53 / 12%); }
+.studio-shell .profile-list > .field-hint { margin: 0; padding: 8px 10px; }
+.studio-shell .profile-option { display: flex; width: 100%; min-width: 0; align-items: center; justify-content: space-between; gap: 12px; border: 0; border-radius: 5px; padding: 8px 10px; background: transparent; color: var(--studio-ink); text-align: left; }
+.studio-shell .profile-option:hover, .studio-shell .profile-option[aria-pressed="true"] { background: #fbedf4; }
+.studio-shell .profile-option-name { min-width: 0; overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.studio-shell .profile-option-detail { flex: 0 1 auto; min-width: 0; overflow: hidden; color: var(--studio-muted); font-size: 11px; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+.studio-shell .profile-menu-actions { margin: 5px 4px 2px !important; padding-top: 8px; border-top: 1px solid var(--studio-border); }
+.studio-shell .profile-menu-actions button { flex: 1; min-height: 32px; padding: 6px 10px; font-size: 11px; }
 .studio-shell .form-actions { margin-top: 20px; gap: 9px; }
 .studio-shell .panel-divider { margin: 22px 0; background: var(--studio-border); }
 .studio-shell .segmented-control { background: #fbedf4; border-color: var(--studio-border); }
@@ -240,6 +256,9 @@
   .studio-shell .connection-card { padding: 16px; }
   .studio-shell .launcher-services { grid-template-columns: 1fr; }
   .studio-shell .live-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .studio-shell .profile-toolbar { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .studio-shell .profile-option { align-items: flex-start; flex-direction: column; gap: 2px; }
+  .studio-shell .profile-option-detail { text-align: left; }
   .studio-shell .form-actions { margin-top: 18px; }
   .guide-steps { gap: 18px; }
   .guide-topic > summary { padding: 16px 18px; }

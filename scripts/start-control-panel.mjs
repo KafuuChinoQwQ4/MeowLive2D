@@ -52,8 +52,9 @@ try {
         deny: ['**/.git/**', '**/.env*', '**/docs/**', '**/config/**', '**/logs/**', '**/data/**', '**/*.{crt,pem,key}'] } },
   });
   await vite.listen();
+  void services.initialize().catch(() => console.error('服务自动启动未完成，请在“启动与运行”查看状态与日志。'));
   console.log('\nMeowLive2D 控制面板：http://127.0.0.1:1420');
-  console.log('先在“环境与模型”检查安装，再依次打开主服务、TTS 和 Windows 执行端开关。保持启动窗口打开。\n');
+  console.log('主服务正在自动启动，就绪后会自动启动 TTS 和 Windows 执行端。缺少依赖或模型时请在面板按提示补齐。保持启动窗口打开。\n');
 } catch (error) {
   console.error(error.code === 'EADDRINUSE' || /already in use/.test(error.message)
     ? '1420 端口已被占用。已有控制面板可直接打开；若此前运行了 npm run dev，请先在原终端 Ctrl+C。'

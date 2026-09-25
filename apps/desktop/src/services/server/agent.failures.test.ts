@@ -18,7 +18,7 @@ function snapshot(overrides: Partial<AgentSnapshot> = {}): AgentSnapshot {
   return {
     paused: false,
     phase: "waiting",
-    settings: { persona: "猫娘", topic: "游戏", proactive_enabled: false, cooldown_ms: 30_000, interaction: { ...interactionSettings } },
+    settings: { persona: "猫娘", system_prompt: "", topic: "游戏", proactive_enabled: false, cooldown_ms: 30_000, interaction: { ...interactionSettings } },
     events: [event()],
     last_error: null,
     current_speech_id: null,

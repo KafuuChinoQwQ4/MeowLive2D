@@ -111,6 +111,7 @@ pub(super) fn snapshot(view: AgentView, configured: bool, connected: bool) -> dt
         },
         settings: dto::AgentSettings {
             persona: view.settings.persona,
+            system_prompt: view.settings.system_prompt,
             topic: view.settings.topic,
             proactive_enabled: view.settings.proactive_enabled,
             cooldown_ms: view.settings.cooldown_ms as u32,

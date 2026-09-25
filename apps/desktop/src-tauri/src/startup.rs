@@ -9,6 +9,18 @@ use std::{
 
 const DEFAULT_CONFIG: &str = include_str!("../../../../config/desktop.example.toml");
 
+/// Fixed setup destinations; the frontend cannot ask the shell to open arbitrary URLs.
+pub fn dependency_url(id: &str) -> Result<&'static str, &'static str> {
+    match id {
+        "docker" => Ok("https://docs.docker.com/desktop/setup/install/windows-install/"),
+        "postgres" => Ok("https://www.postgresql.org/download/windows/"),
+        "pgvector" => Ok("https://github.com/pgvector/pgvector#docker"),
+        "neo4j" => Ok("https://neo4j.com/deployment-center/"),
+        "project" => Ok("https://github.com/KafuuChinoQwQ4/MeowLive2D/archive/refs/heads/main.zip"),
+        _ => Err("未知的依赖下载来源"),
+    }
+}
+
 #[derive(Default)]
 pub struct StartupOptions {
     pub config_path: Option<PathBuf>,

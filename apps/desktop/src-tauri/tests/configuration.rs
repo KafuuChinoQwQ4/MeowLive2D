@@ -43,3 +43,23 @@ fn arguments_require_values_and_reject_unknown_or_duplicate_options() {
     assert!(parse_arguments(["--once"].map(String::from)).is_err());
     assert!(parse_arguments(["--config", "a", "--config", "b"].map(String::from)).is_err());
 }
+
+#[test]
+fn dependency_downloads_only_open_known_official_pages() {
+    use meowlive_desktop::startup::dependency_url;
+    assert_eq!(
+        dependency_url("docker"),
+        Ok("https://docs.docker.com/desktop/setup/install/windows-install/")
+    );
+    assert_eq!(
+        dependency_url("postgres"),
+        Ok("https://www.postgresql.org/download/windows/")
+    );
+    assert_eq!(
+        dependency_url("pgvector"),
+        Ok("https://github.com/pgvector/pgvector#docker")
+    );
+    assert!(dependency_url("https://example.com").is_err());
+    assert!(dependency_url("file:///C:/Windows/System32/cmd.exe").is_err());
+    assert!(dependency_url("docker --help").is_err());
+}

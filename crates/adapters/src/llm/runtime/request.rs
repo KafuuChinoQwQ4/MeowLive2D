@@ -230,6 +230,7 @@ mod tests {
         };
         let request = DecisionRequest {
             persona: "cat".into(),
+            system_prompt: String::new(),
             topic: "one".into(),
             events: vec![],
             history: vec![],

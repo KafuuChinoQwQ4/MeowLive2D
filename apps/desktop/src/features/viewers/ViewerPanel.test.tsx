@@ -69,6 +69,7 @@ it("为持久化存储故障显示配置提示", async () => {
   render(<ViewerPanel client={unavailable} />);
 
   expect(await screen.findByRole("alert")).toHaveTextContent("持久化存储配置");
+  expect(screen.getByRole("link", { name: "查看数据库下载与启用步骤" })).toHaveAttribute("href", "#setup");
 });
 
 it("旧服务拒绝访问时提示更新服务而不是登录管理员", async () => {
@@ -99,6 +100,7 @@ it("读取失败后可在本页重新读取", async () => {
   await userEvent.click(screen.getByRole("button", { name: "重新读取" }));
 
   expect(await screen.findByText("旧昵称")).toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "查看数据库下载与启用步骤" })).not.toBeInTheDocument();
 });
 it("opens management using the actual viewer ID",async()=>{
  render(<ViewerPanel client={client}/>);

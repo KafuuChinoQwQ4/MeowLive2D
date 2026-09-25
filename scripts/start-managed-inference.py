@@ -27,6 +27,8 @@ def main():
     configure_inference_memory(work, args.memory_mode)
     prepare_runtime(work)
     env = environment(work, models)
+    # Forward only this explicit startup flag through the inference environment allowlist.
+    env["MEOWLIVE_AUTO_ENABLE_MODELS"] = "1" if os.environ.get("MEOWLIVE_AUTO_ENABLE_MODELS") == "1" else "0"
     config = root / "tts-infer.yaml"
     # JSON is valid YAML. The upstream API will update only this private config.
     config.write_text(json.dumps({"custom": {
@@ -35,7 +37,9 @@ def main():
         "t2s_weights_path": str(models["gpt"]), "vits_weights_path": str(models["sovits"]),
     }}, indent=2))
     print(f"受管推理配置：{config}", flush=True)
-    print("模型待机：服务启动后请在面板启用语音模型；关闭模型可释放权重内存。", flush=True)
+    print("自动加载：服务启动时加载所选语音模型；训练前可在面板关闭模型。"
+          if env.get("MEOWLIVE_AUTO_ENABLE_MODELS") == "1"
+          else "模型待机：服务启动后请在面板启用语音模型；关闭模型可释放权重内存。", flush=True)
     print("低内存推理：使用轻量中文注音，不加载 G2PW 多音字模型。" if args.memory_mode == "low"
           else "标准推理：加载 G2PW 多音字模型，需要更多内存。", flush=True)
     if args.prepare_only:

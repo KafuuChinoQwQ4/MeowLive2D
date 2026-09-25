@@ -4,20 +4,22 @@ import { invoke } from "@tauri-apps/api/core";
 import { getDesktopStatus, readDesktopStatus } from "./index";
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); vi.resetAllMocks(); });
 
+const server = { ready: true, managed: true, last_error: null, log_path: "server.log" };
+
 describe("desktop status boundary", () => {
   it("browser mode needs no native bridge", async () => {
     expect(await getDesktopStatus()).toBeNull();
   });
 
   it("preserves the configured server and refuses malformed native status", () => {
-    expect(readDesktopStatus({ config_path: "C:/Users/test/desktop.toml", server_url: "http://192.168.1.10:19600", runtime: { running: true, simulation: false, last_error: null } })).toEqual({ config_path: "C:/Users/test/desktop.toml", server_url: "http://192.168.1.10:19600", runtime: { running: true, simulation: false, last_error: null } });
-    expect(() => readDesktopStatus({ config_path: "x", server_url: "javascript:alert(1)", runtime: { running: true, simulation: false, last_error: null } })).toThrow();
-    expect(() => readDesktopStatus({ config_path: "x", server_url: "http://localhost:19600", runtime: { running: "yes" } })).toThrow();
+    expect(readDesktopStatus({ server, config_path: "C:/Users/test/desktop.toml", server_url: "http://192.168.1.10:19600", runtime: { running: true, simulation: false, last_error: null } })).toEqual({ server, config_path: "C:/Users/test/desktop.toml", server_url: "http://192.168.1.10:19600", runtime: { running: true, simulation: false, last_error: null } });
+    expect(() => readDesktopStatus({ server, config_path: "x", server_url: "javascript:alert(1)", runtime: { running: true, simulation: false, last_error: null } })).toThrow();
+    expect(() => readDesktopStatus({ server, config_path: "x", server_url: "http://localhost:19600", runtime: { running: "yes" } })).toThrow();
   });
 
   it("refuses credentials, query strings and malformed native origins", () => {
     for (const server_url of ["http://user:secret@localhost:19600", "http://localhost:19600?key=private", "http://localhost:19600#private", "http://localhost:bad", "http://localhost:19600 "]) {
-      expect(() => readDesktopStatus({ config_path: "desktop.toml", server_url, runtime: { running: true, simulation: false, last_error: null } })).toThrow();
+      expect(() => readDesktopStatus({ server, config_path: "desktop.toml", server_url, runtime: { running: true, simulation: false, last_error: null } })).toThrow();
     }
   });
 

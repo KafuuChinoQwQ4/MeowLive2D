@@ -69,6 +69,7 @@ impl ModelObserver for Observer {
 fn request() -> DecisionRequest {
     DecisionRequest {
         persona: "private-prompt-marker".into(),
+        system_prompt: String::new(),
         topic: String::new(),
         events: vec![],
         history: vec![],

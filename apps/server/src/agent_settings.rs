@@ -52,6 +52,7 @@ pub fn load_override(config_path: &Path) -> Result<Option<AgentSettings>, String
     }
     let settings = AgentSettings {
         persona: saved.settings.persona,
+        system_prompt: saved.settings.system_prompt,
         topic: saved.settings.topic,
         proactive_enabled: saved.settings.proactive_enabled,
         cooldown_ms: u64::from(saved.settings.cooldown_ms),
@@ -82,6 +83,7 @@ impl AgentSettingsStore {
             schema: 1,
             settings: SettingsDto {
                 persona: settings.persona.clone(),
+                system_prompt: settings.system_prompt.clone(),
                 topic: settings.topic.clone(),
                 proactive_enabled: settings.proactive_enabled,
                 cooldown_ms: settings.cooldown_ms as u32,

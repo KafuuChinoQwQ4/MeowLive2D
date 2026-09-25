@@ -49,7 +49,7 @@ describe("LLM 推理预览契约", () => {
 
   it("读取八档和云端 65536 上限，拒绝未知档位及本地超额配置", () => {
     const settings = { provider: "openai", api_format: "openai_responses", base_url: "", model: "", mode: "cloud", timeout_seconds: 30, max_tokens: 65536, json_mode: true, reasoning_effort: "default" };
-    const snapshot = { settings, key_configured: false, restart_required: false, active_model: "", storage_available: true };
+    const snapshot = { settings, key_configured: false, restart_required: false, active_model: "", storage_available: true, profiles: [], selected_profile_id: null };
     for (const reasoning_effort of ["default", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"]) {
       expect(readLlmSnapshot({ ...snapshot, settings: { ...settings, reasoning_effort } }).settings.reasoning_effort).toBe(reasoning_effort);
     }

@@ -148,9 +148,17 @@ export type AgentTraceList = { traces: Array<AgentTraceSummary>, storage_availab
 
 export type LlmSettings = { provider: string, api_format: string, base_url: string, model: string, mode: string, timeout_seconds: number, max_tokens: number, json_mode: boolean, reasoning_effort: string, };
 
-export type LlmSettingsSnapshot = { settings: LlmSettings, key_configured: boolean, restart_required: boolean, active_model: string, storage_available: boolean, };
+export type LlmSettingsSnapshot = { settings: LlmSettings, key_configured: boolean, restart_required: boolean, active_model: string, storage_available: boolean, profiles: Array<LlmProfileSummary>, selected_profile_id: string | null, };
+
+export type LlmProfileSummary = { id: string, name: string, settings: LlmSettings, key_configured: boolean, };
 
 export type LlmSettingsRequest = { settings: LlmSettings, api_key: string | null, clear_api_key: boolean, };
+
+export type LlmProfileCreateRequest = { name: string, settings: LlmSettings, api_key: string | null, clear_api_key: boolean, };
+
+export type LlmProfileIdRequest = { id: string, };
+
+export type LlmProfileRenameRequest = { id: string, name: string, };
 
 export type LlmReasoningRequest = { provider: string, api_format: string, model: string, reasoning_effort: string, max_tokens: number, };
 
@@ -270,7 +278,7 @@ app_id: string, access_key_id_configured: boolean, access_key_secret_configured:
 
 export type LiveSettingsRequest = { enabled: boolean, app_id: string, access_key_id: string | null, access_key_secret: string | null, identity_code: string | null, clear_credentials: boolean, };
 
-export type AgentSettings = { persona: string, topic: string, proactive_enabled: boolean, cooldown_ms: number, interaction: InteractionSettings, };
+export type AgentSettings = { persona: string, system_prompt: string, topic: string, proactive_enabled: boolean, cooldown_ms: number, interaction: InteractionSettings, };
 
 export type EventPayload = { "type": "chat", text: string, } | { "type": "gift", name: string, count: number, } | { "type": "super_chat", text: string, amount_cny: number, start_at_ms: number, end_at_ms: number, } | { "type": "room_enter" };
 

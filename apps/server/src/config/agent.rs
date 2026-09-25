@@ -6,6 +6,7 @@ use serde::Deserialize;
 #[serde(default, deny_unknown_fields)]
 pub struct AgentConfig {
     pub persona: String,
+    pub system_prompt: String,
     pub topic: String,
     pub proactive_enabled: bool,
     pub cooldown_ms: u64,
@@ -25,6 +26,7 @@ impl Default for AgentConfig {
         let limits = AgentLimits::default();
         Self {
             persona: settings.persona,
+            system_prompt: settings.system_prompt,
             topic: settings.topic,
             proactive_enabled: settings.proactive_enabled,
             cooldown_ms: settings.cooldown_ms,
@@ -44,6 +46,7 @@ impl AgentConfig {
     pub fn settings(&self) -> AgentSettings {
         AgentSettings {
             persona: self.persona.clone(),
+            system_prompt: self.system_prompt.clone(),
             topic: self.topic.clone(),
             proactive_enabled: self.proactive_enabled,
             cooldown_ms: self.cooldown_ms,

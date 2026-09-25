@@ -126,6 +126,7 @@ impl AppConfig {
         }
         if let Some(agent) = crate::agent_settings::load_override(path)? {
             config.agent.persona = agent.persona;
+            config.agent.system_prompt = agent.system_prompt;
             config.agent.topic = agent.topic;
             config.agent.proactive_enabled = agent.proactive_enabled;
             config.agent.cooldown_ms = agent.cooldown_ms;

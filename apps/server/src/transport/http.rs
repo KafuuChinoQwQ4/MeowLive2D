@@ -88,6 +88,10 @@ pub fn router(state: AppState) -> Router {
             "/api/llm/settings",
             get(super::llm::settings).post(super::llm::save),
         )
+        .route("/api/llm/profiles", post(super::llm::create_profile))
+        .route("/api/llm/profiles/select", post(super::llm::select_profile))
+        .route("/api/llm/profiles/rename", post(super::llm::rename_profile))
+        .route("/api/llm/profiles/delete", post(super::llm::delete_profile))
         .route(
             "/api/agent/runtime",
             get(super::llm_runtime::settings)

@@ -32,7 +32,7 @@ async fn sends_explicit_wav_request_and_decodes_audio() {
 #[tokio::test]
 async fn sends_complete_long_superchat_and_reply_to_engine() {
     let expected = format!(
-        "感谢小猫的30元SC。留言说：{}。{}",
+        "感谢小猫的30元SC。{}。{}",
         "原".repeat(500),
         "答".repeat(500)
     );

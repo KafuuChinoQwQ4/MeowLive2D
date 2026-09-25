@@ -149,10 +149,17 @@ async fn saves_requested_level_reloads_it_and_accepts_old_configuration() {
     }
     let mut legacy: Value =
         serde_json::from_slice(&std::fs::read(settings_path(&config_path)).unwrap()).unwrap();
-    legacy["config"]
-        .as_object_mut()
-        .unwrap()
-        .remove("reasoning_effort");
+    if legacy.get("profiles").is_some() {
+        legacy["profiles"][0]["config"]
+            .as_object_mut()
+            .unwrap()
+            .remove("reasoning_effort");
+    } else {
+        legacy["config"]
+            .as_object_mut()
+            .unwrap()
+            .remove("reasoning_effort");
+    }
     std::fs::write(settings_path(&config_path), legacy.to_string()).unwrap();
     let loaded = serde_json::to_value(load_override(&config_path).unwrap().unwrap()).unwrap();
     assert_eq!(loaded["reasoning_effort"], "default");

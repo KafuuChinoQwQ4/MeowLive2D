@@ -6,13 +6,14 @@ import { deferred } from "../../test/server-fixtures";
 import { LlmPanel } from "./LlmPanel";
 
 const settings = { provider: "openai", api_format: "openai_responses", base_url: "https://api.openai.com/v1", model: "gpt-5", mode: "cloud", timeout_seconds: 30, max_tokens: 4096, json_mode: true, reasoning_effort: "default" };
-const snapshot: LlmSettingsSnapshot = { settings, key_configured: true, restart_required: false, active_model: "gpt-5", storage_available: true };
+const snapshot: LlmSettingsSnapshot = { settings, key_configured: true, restart_required: false, active_model: "gpt-5", storage_available: true, profiles: [{ id: "openai-profile", name: "OpenAI", settings, key_configured: true }], selected_profile_id: "openai-profile" };
 const mapped: LlmReasoningResult = { requested: "ultra", effective: "high", supported: ["minimal", "low", "medium", "high"], strategy: "openai_effort", budget_tokens: null, note: "已映射到模型最高档 high。", error: null };
 
 function client(overrides: Partial<LlmClient> = {}): LlmClient {
   return {
     baseUrl: "test", getSettings: vi.fn().mockResolvedValue(snapshot),
     saveSettings: vi.fn().mockImplementation(async request => ({ ...snapshot, settings: request.settings, restart_required: true })),
+    createProfile: vi.fn(), selectProfile: vi.fn(), renameProfile: vi.fn(), deleteProfile: vi.fn(),
     testSettings: vi.fn().mockResolvedValue({ message: "连接正常" }),
     listModels: vi.fn().mockResolvedValue({ base_url: settings.base_url, models: [{ id: "gpt-5", name: "GPT 5" }, { id: "other-model", name: "Other" }] }),
     previewReasoning: vi.fn().mockImplementation(async request => ({ ...mapped, requested: request.reasoning_effort, effective: request.reasoning_effort === "default" ? null : "high" })),

@@ -10,6 +10,7 @@ function agentSnapshot(overrides: Partial<AgentSnapshot> = {}): AgentSnapshot {
     phase: "paused",
     settings: {
       persona: "温柔的猫娘主播",
+      system_prompt: "",
       topic: "轻松聊天",
       proactive_enabled: false,
       cooldown_ms: 30_000,
@@ -34,7 +35,7 @@ describe("Agent HTTP 请求", () => {
   });
 
   it("原样保存设置并接受暂停后的快照", async () => {
-    const settings = { persona: "冷静的主持人", topic: "动作游戏", proactive_enabled: true, cooldown_ms: 45_000, interaction: { ...interactionSettings } };
+    const settings = { persona: "冷静的主持人", system_prompt: "直接读出弹幕", topic: "动作游戏", proactive_enabled: true, cooldown_ms: 45_000, interaction: { ...interactionSettings } };
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(agentSnapshot({ settings })));
 
     await expect(createAgentClient({ fetcher }).saveSettings(settings)).resolves.toMatchObject({ paused: true, settings });

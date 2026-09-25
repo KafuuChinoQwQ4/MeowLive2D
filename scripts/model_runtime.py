@@ -3,6 +3,8 @@ import gc
 import asyncio
 import ast
 import copy
+import os
+from contextlib import asynccontextmanager
 from functools import wraps
 from pathlib import Path
 import shutil
@@ -144,6 +146,19 @@ def install_model_runtime(app, pipeline_type, config):
     # it. Keep the startup configuration isolated across enable/disable cycles.
     startup_config = copy.deepcopy(config)
     runtime = ModelRuntime(lambda: pipeline_type(copy.deepcopy(startup_config)), release_model_memory)
+
+    if os.environ.get("MEOWLIVE_AUTO_ENABLE_MODELS") == "1":
+        previous_lifespan = app.router.lifespan_context
+        @asynccontextmanager
+        async def load_on_startup(application):
+            async with previous_lifespan(application) as state:
+                try:
+                    await asyncio.to_thread(runtime.set_enabled, True)
+                except RuntimeUnavailable:
+                    # Keep the control API available to report failure and allow retry.
+                    traceback.print_exc()
+                yield state
+        app.router.lifespan_context = load_on_startup
 
     @app.get("/meowlive/models")
     def model_status():

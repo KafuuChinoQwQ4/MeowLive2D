@@ -44,6 +44,7 @@ impl Drop for Fixture {
 fn settings() -> Value {
     json!({
         "persona":"温柔猫咪\n简短回应",
+        "system_prompt":"直接读出弹幕原文",
         "topic":"日常",
         "proactive_enabled":true,
         "cooldown_ms":45000,
@@ -59,8 +60,14 @@ fn settings() -> Value {
     })
 }
 
+fn legacy_settings() -> Value {
+    let mut value = settings();
+    value["system_prompt"] = json!("");
+    value
+}
+
 #[tokio::test]
-async fn legacy_saved_settings_and_requests_default_missing_interaction() {
+async fn legacy_saved_settings_and_requests_default_optional_fields() {
     let fixture = Fixture::new();
     let legacy = json!({
         "persona": "温柔猫咪\n简短回应",
@@ -72,7 +79,7 @@ async fn legacy_saved_settings_and_requests_default_missing_interaction() {
     fixture.write_override(&saved);
     assert_eq!(
         serde_json::to_value(fixture.state().agent_snapshot().await.settings).unwrap(),
-        settings()
+        legacy_settings()
     );
     assert_eq!(
         std::fs::read_to_string(settings_path(&fixture.config)).unwrap(),
@@ -87,10 +94,10 @@ async fn legacy_saved_settings_and_requests_default_missing_interaction() {
     )
     .await;
     assert_eq!(code, 200);
-    assert_eq!(snapshot["settings"], settings());
+    assert_eq!(snapshot["settings"], legacy_settings());
     assert_eq!(
         serde_json::to_value(fixture.state().agent_snapshot().await.settings).unwrap(),
-        settings()
+        legacy_settings()
     );
 }
 

@@ -7,6 +7,8 @@ use ts_rs::TS;
 #[serde(deny_unknown_fields)]
 pub struct AgentSettings {
     pub persona: String,
+    #[serde(default)]
+    pub system_prompt: String,
     pub topic: String,
     pub proactive_enabled: bool,
     pub cooldown_ms: u32,

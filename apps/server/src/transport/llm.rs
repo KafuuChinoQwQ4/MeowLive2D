@@ -9,7 +9,8 @@ use meowlive_application::ports::{
     llm::DecisionRequest, llm_runtime::ModelOptions, reasoning::ReasoningEffort,
 };
 use meowlive_protocol::llm::{
-    LlmModelOption, LlmModelsRequest, LlmModelsResult, LlmReasoningRequest, LlmReasoningResult,
+    LlmModelOption, LlmModelsRequest, LlmModelsResult, LlmProfileCreateRequest,
+    LlmProfileIdRequest, LlmProfileRenameRequest, LlmReasoningRequest, LlmReasoningResult,
     LlmSettingsRequest, LlmSettingsSnapshot, LlmTestResult,
 };
 
@@ -126,6 +127,62 @@ pub async fn save(
         .map(Json)
         .map_err(invalid)
 }
+pub async fn create_profile(
+    State(state): State<AppState>,
+    body: Result<Json<LlmProfileCreateRequest>, JsonRejection>,
+) -> Result<Json<LlmSettingsSnapshot>, ApiError> {
+    let Json(request) = body.map_err(|_| invalid("LLM 配置字段无效".into()))?;
+    let config = state
+        .llm_settings
+        .profile_candidate(request.clone())
+        .await
+        .map_err(invalid)?;
+    let mut combined = state.config.as_ref().clone();
+    combined.llm = config;
+    combined.validate().map_err(invalid)?;
+    state
+        .llm_settings
+        .create_profile(request)
+        .await
+        .map(Json)
+        .map_err(invalid)
+}
+pub async fn select_profile(
+    State(state): State<AppState>,
+    body: Result<Json<LlmProfileIdRequest>, JsonRejection>,
+) -> Result<Json<LlmSettingsSnapshot>, ApiError> {
+    let Json(request) = body.map_err(|_| invalid("LLM 配置标识无效".into()))?;
+    state
+        .llm_settings
+        .select_profile(request)
+        .await
+        .map(Json)
+        .map_err(invalid)
+}
+pub async fn rename_profile(
+    State(state): State<AppState>,
+    body: Result<Json<LlmProfileRenameRequest>, JsonRejection>,
+) -> Result<Json<LlmSettingsSnapshot>, ApiError> {
+    let Json(request) = body.map_err(|_| invalid("LLM 配置标题无效".into()))?;
+    state
+        .llm_settings
+        .rename_profile(request)
+        .await
+        .map(Json)
+        .map_err(invalid)
+}
+pub async fn delete_profile(
+    State(state): State<AppState>,
+    body: Result<Json<LlmProfileIdRequest>, JsonRejection>,
+) -> Result<Json<LlmSettingsSnapshot>, ApiError> {
+    let Json(request) = body.map_err(|_| invalid("LLM 配置标识无效".into()))?;
+    state
+        .llm_settings
+        .delete_profile(request)
+        .await
+        .map(Json)
+        .map_err(invalid)
+}
 pub async fn test(
     State(state): State<AppState>,
     body: Result<Json<LlmSettingsRequest>, JsonRejection>,
@@ -151,6 +208,7 @@ pub async fn test(
             DecisionRequest {
                 memory_context: vec![],
                 persona: "你是一位中文主播，请输出一条简短问候以测试连接。".into(),
+                system_prompt: String::new(),
                 topic: "连接测试".into(),
                 events: vec![],
                 history: vec![],

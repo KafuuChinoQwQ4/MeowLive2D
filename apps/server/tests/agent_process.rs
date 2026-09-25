@@ -27,6 +27,7 @@ async fn saved_agent_settings_survive_server_restart_and_remain_paused() {
     let client = reqwest::Client::new();
     let mut settings = json!({
         "persona": "温柔猫咪，用简短中文回应。\n喜欢聊音乐。",
+        "system_prompt": "直接读出弹幕原文",
         "topic": "夜间电台",
         "proactive_enabled": true,
         "cooldown_ms": 12000,
@@ -79,7 +80,7 @@ async fn server_executable_wires_model_environment_events_and_real_speech_worker
             completion_response(&body, json!({"reply_to":[events["events"][0]["id"]],"text":"欢迎来到直播间","topic":"游戏"}))
         }
     })).route("/tts",post(|Json(body):Json<Value>|async move {
-        assert_eq!(body["text"],"观众说：晚上好。欢迎来到直播间");
+        assert_eq!(body["text"],"晚上好。欢迎来到直播间");
         ([("content-type","audio/wav")],wav())
     }));
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();

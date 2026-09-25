@@ -152,7 +152,7 @@ try {
         if (-not $NoOpen) { Start-Process 'http://127.0.0.1:1420' }
         exit 0
     }
-    Write-Host '请保持此窗口打开。页面中先检查环境和语音模型，再依次打开主服务、TTS 和 Windows 执行端开关。'
+    Write-Host '请保持此窗口打开。先检查环境和语音模型；主服务会自动启动，就绪后自动开启 TTS 和 Windows 执行端。'
     Write-Host '首次安装前端依赖可能稍久；未自动打开时，手动访问上方网址。'
     $browserJob = $null
     try {

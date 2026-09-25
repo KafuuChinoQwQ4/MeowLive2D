@@ -157,7 +157,7 @@ export class ModelLibrary {
       } else definition.issue ??= '尚未发现完整的 GPT-SoVITS v2 模型，请先进入“环境与模型”下载或重新扫描。';
       this.selected = item?.id ?? null; this.markSelected();
       return definition;
-    });
+    }, { restart: persist });
   }
 
   async applyAsrSelection(item) {

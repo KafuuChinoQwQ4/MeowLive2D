@@ -50,6 +50,16 @@ pub struct LlmSettingsSnapshot {
     pub restart_required: bool,
     pub active_model: String,
     pub storage_available: bool,
+    pub profiles: Vec<LlmProfileSummary>,
+    pub selected_profile_id: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
+pub struct LlmProfileSummary {
+    pub id: String,
+    pub name: String,
+    pub settings: LlmSettings,
+    pub key_configured: bool,
 }
 
 #[derive(Clone, Deserialize, Serialize, TS)]
@@ -59,6 +69,28 @@ pub struct LlmSettingsRequest {
     // None preserves the saved key only for the same provider, format and base URL.
     pub api_key: Option<String>,
     pub clear_api_key: bool,
+}
+
+#[derive(Clone, Deserialize, Serialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct LlmProfileCreateRequest {
+    pub name: String,
+    pub settings: LlmSettings,
+    pub api_key: Option<String>,
+    pub clear_api_key: bool,
+}
+
+#[derive(Clone, Deserialize, Serialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct LlmProfileIdRequest {
+    pub id: String,
+}
+
+#[derive(Clone, Deserialize, Serialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct LlmProfileRenameRequest {
+    pub id: String,
+    pub name: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]

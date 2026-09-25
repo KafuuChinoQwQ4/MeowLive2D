@@ -31,6 +31,33 @@ fn wav(seconds: u32, sample_rate: u32, channels: u16, amplitude: i16) -> Vec<u8>
 }
 
 #[test]
+fn native_absolute_engine_path_supports_windows_prefixes_and_rejects_parent_traversal() {
+    let root = temp_root("native-path").canonicalize().unwrap();
+    let store = FileResourceStore::new(FileResourceStoreConfig {
+        storage_root: root.clone(),
+        engine_root: root.to_string_lossy().into_owned(),
+    })
+    .unwrap();
+    let reference = store
+        .store_reference(&uuid::Uuid::new_v4().to_string(), &wav(3, 8000, 1, 100))
+        .unwrap();
+    let resolved = store.resolve_reference(&reference.reference).unwrap();
+    assert!(std::path::Path::new(&resolved).is_file());
+    assert!(
+        FileResourceStore::new(FileResourceStoreConfig {
+            storage_root: root.clone(),
+            engine_root: root
+                .join("..")
+                .join("outside")
+                .to_string_lossy()
+                .into_owned(),
+        })
+        .is_err()
+    );
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn persists_versioned_catalog_and_reopens_with_distinct_engine_paths() {
     let root = temp_root("resource-reopen");
     let config = FileResourceStoreConfig {

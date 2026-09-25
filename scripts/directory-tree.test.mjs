@@ -20,6 +20,8 @@ function fixture(t) {
       scripts: "开发工具",
       "scripts/directory-descriptions.json": "目录用途登记",
       src: "业务源码",
+      "src/components": "界面组件",
+      "src/components/widget.ts": "界面组件入口",
       "src/main.rs": "程序入口",
     },
   };
@@ -29,22 +31,29 @@ function fixture(t) {
   };
   const saveCatalog = () => write("scripts/directory-descriptions.json", JSON.stringify(catalog));
   write("src/main.rs", "fn main() {}\n");
+  write("src/components/widget.ts", "export const widget = true;\n");
   saveCatalog();
   const run = (mode) => spawnSync(process.execPath, [script, mode, "--root", root], { encoding: "utf8" });
   const read = (name) => readFileSync(path.join(root, name), "utf8");
+  const tree = (name) => read(name).match(/```text\n([\s\S]*?)\n```/)[1];
   const ok = (mode) => {
     const result = run(mode);
     assert.equal(result.status, 0, result.stderr);
   };
-  return { root, catalog, write, read, saveCatalog, run, ok };
+  return { root, catalog, write, read, tree, saveCatalog, run, ok };
 }
 
-test("recursively generates annotated trees and check rejects an edited index", (t) => {
+test("each index lists only direct child directories and check rejects an edited index", (t) => {
   const f = fixture(t);
   f.ok("--write");
-  assert.match(f.read("DIRECTORY.md"), /main\.rs\s+# 程序入口/);
-  assert.match(f.read("src/DIRECTORY.md"), /main\.rs\s+# 程序入口/);
-  assert.match(f.read("scripts/DIRECTORY.md"), /directory-descriptions\.json/);
+  assert.match(f.read("DIRECTORY.md"), /src\/\s+# 业务源码/);
+  assert.match(f.read("DIRECTORY.md"), /\[src\/\]\(src\/DIRECTORY\.md\)/);
+  assert.doesNotMatch(f.tree("DIRECTORY.md"), /components|main\.rs|widget\.ts/);
+  assert.match(f.read("src/DIRECTORY.md"), /components\/\s+# 界面组件/);
+  assert.match(f.read("src/DIRECTORY.md"), /\[components\/\]\(components\/DIRECTORY\.md\)/);
+  assert.doesNotMatch(f.tree("src/DIRECTORY.md"), /main\.rs|widget\.ts/);
+  assert.doesNotMatch(f.tree("src/components/DIRECTORY.md"), /widget\.ts/);
+  assert.doesNotMatch(f.tree("scripts/DIRECTORY.md"), /directory-descriptions\.json/);
   f.ok("--check");
   f.write("src/DIRECTORY.md", "手动删掉了目录树\n");
   assert.notEqual(f.run("--check").status, 0);
@@ -58,11 +67,13 @@ test("content-only edits invalidate their directory and ancestor indexes", (t) =
   f.ok("--write");
   const rootBefore = f.read("DIRECTORY.md");
   const childBefore = f.read("src/DIRECTORY.md");
-  f.write("src/main.rs", "fn main() { println!(\"changed\"); }\n");
+  const nestedBefore = f.read("src/components/DIRECTORY.md");
+  f.write("src/components/widget.ts", "export const widget = false;\n");
   assert.notEqual(f.run("--check").status, 0);
   assert.equal(f.read("DIRECTORY.md"), rootBefore);
   f.ok("--write");
   assert.notEqual(f.read("src/DIRECTORY.md"), childBefore);
+  assert.notEqual(f.read("src/components/DIRECTORY.md"), nestedBefore);
   assert.notEqual(f.read("DIRECTORY.md"), rootBefore);
   f.ok("--check");
 });
@@ -79,7 +90,8 @@ test("added and removed files require matching purpose entries before writing", 
   f.catalog.entries["src/worker.rs"] = "后台任务执行";
   f.saveCatalog();
   f.ok("--write");
-  assert.match(f.read("src/DIRECTORY.md"), /worker\.rs\s+# 后台任务执行/);
+  assert.doesNotMatch(f.tree("src/DIRECTORY.md"), /worker\.rs/);
+  assert.doesNotMatch(f.tree("src/components/DIRECTORY.md"), /worker\.rs/);
   rmSync(path.join(f.root, "src/worker.rs"));
   result = f.run("--check");
   assert.notEqual(result.status, 0);
@@ -131,8 +143,7 @@ test("private configuration variants and Python environments stay outside direct
   f.ok("--write");
   assert.equal(existsSync(path.join(f.root, ".venv/DIRECTORY.md")), false);
   assert.doesNotMatch(f.read("DIRECTORY.md"), /launcher\.local|desktop\.local|extension\.pyd|\.venv/);
-  assert.match(f.read("DIRECTORY.md"), /server\.example\.toml/);
-  assert.match(f.read("DIRECTORY.md"), /\.env\.example/);
+  assert.doesNotMatch(f.tree("DIRECTORY.md"), /server\.example\.toml|\.env\.example/);
   f.ok("--check");
 });
 
@@ -164,18 +175,23 @@ test("Git excludes private settings and generated files while keeping templates,
   for (const name of publicPaths) assert.ok(!ignored.has(name), `${name} must remain publishable`);
 });
 
-test("ignored local docs have complete indexes without making tracked indexes depend on them", (t) => {
+test("ignored local docs get per-directory indexes without making tracked indexes depend on them", (t) => {
   const f = fixture(t);
   f.ok("--write");
   const mainBefore = f.read("DIRECTORY.md");
-  f.write("docs/plan.md", "# 本地计划\n");
+  f.write("docs/superpowers/plans/outline.md", "# 本地计划\n");
   f.write("docs/directory-descriptions.json", JSON.stringify({ entries: {
-    ".": "本地文档", "plan.md": "实施计划", "directory-descriptions.json": "本地用途登记",
+    ".": "本地文档", superpowers: "开发记录", "superpowers/plans": "实施计划",
+    "superpowers/plans/outline.md": "实施提纲", "directory-descriptions.json": "本地用途登记",
   } }));
   f.ok("--write");
-  assert.match(f.read("docs/DIRECTORY.md"), /plan\.md\s+# 实施计划/);
+  assert.match(f.read("docs/DIRECTORY.md"), /superpowers\/\s+# 开发记录/);
+  assert.doesNotMatch(f.tree("docs/DIRECTORY.md"), /outline\.md/);
+  assert.match(f.read("docs/superpowers/DIRECTORY.md"), /plans\/\s+# 实施计划/);
+  assert.doesNotMatch(f.tree("docs/superpowers/DIRECTORY.md"), /outline\.md/);
+  assert.doesNotMatch(f.tree("docs/superpowers/plans/DIRECTORY.md"), /outline\.md/);
   assert.equal(f.read("DIRECTORY.md"), mainBefore);
-  f.write("docs/plan.md", "# 修改后的本地计划\n");
+  f.write("docs/superpowers/plans/outline.md", "# 修改后的本地计划\n");
   assert.notEqual(f.run("--check").status, 0);
   f.ok("--write");
   assert.equal(f.read("DIRECTORY.md"), mainBefore);

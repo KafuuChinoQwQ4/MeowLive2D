@@ -25,6 +25,7 @@ fn state() -> AppState {
 fn request() -> DecisionRequest {
     DecisionRequest {
         persona: "测试主播".into(),
+        system_prompt: String::new(),
         topic: "聊天".into(),
         events: vec![],
         history: vec![],

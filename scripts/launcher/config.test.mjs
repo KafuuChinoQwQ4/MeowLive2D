@@ -44,6 +44,7 @@ test('TTS defaults to low memory mode and guards available system memory', async
   const tts = config.definitions.find(s => s.id === 'tts');
   assert.equal(tts.args[tts.args.indexOf('--memory-mode') + 1], 'low');
   assert.equal(tts.memoryGuard, true);
+  assert.equal(tts.env.MEOWLIVE_AUTO_ENABLE_MODELS, '1');
 });
 
 test('standard TTS text model is an explicit choice; invalid memory modes are rejected', async t => {
@@ -136,4 +137,30 @@ test('saved LLM profile overrides legacy model metadata without exposing its key
   assert.equal(config.definitions[0].issue, null);
   assert.equal(config.setup.llm_configured, true);
   assert.equal(JSON.stringify(config).includes('anthropic-private-key'), false);
+});
+
+test('saved LLM profile schema 2 selects the active profile without blocking server startup', async t => {
+  const root = await fixture(t, { llmKeyFile: 'missing-key.txt' });
+  await writeFile(join(root, 'config/local/server.local-llm.json'), JSON.stringify({ schema: 2,
+    selected_profile_id: 'active-profile', profiles: [
+      { id: 'other-profile', name: 'Other', config: { base_url: 'https://other.example', model: 'other-model', api_key_env: '' }, api_key: null },
+      { id: 'active-profile', name: 'Active', config: { base_url: 'https://api.anthropic.com/v1', model: 'user-chosen-claude', api_key_env: '' }, api_key: 'anthropic-private-key' },
+    ] }));
+  const config = await loadConfiguration(root, { env: { PATH: process.env.PATH } });
+  const metadata = await readServerConfig(join(root, 'config/server.local.toml'));
+  assert.equal(config.definitions[0].issue, null);
+  assert.equal(metadata.llm.base_url, 'https://api.anthropic.com/v1');
+  assert.equal(metadata.llm.model, 'user-chosen-claude');
+  assert.equal(metadata.llm.key_saved, true);
+  assert.equal(config.setup.llm_configured, true);
+  assert.equal(JSON.stringify(config).includes('anthropic-private-key'), false);
+});
+
+test('empty saved LLM profile collection falls back to TOML so first-time setup can start', async t => {
+  const root = await fixture(t, { llmKeyFile: 'missing-key.txt' });
+  await writeFile(join(root, 'config/local/server.local-llm.json'), JSON.stringify({ schema: 2,
+    selected_profile_id: null, profiles: [] }));
+  const config = await loadConfiguration(root, { env: { PATH: process.env.PATH } });
+  assert.equal(config.definitions[0].issue, null);
+  assert.equal(config.setup.llm_configured, false);
 });

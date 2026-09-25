@@ -170,7 +170,7 @@ async fn live_super_chat_older_than_chat_ttl_preserves_amount_and_complete_speec
     );
     drop(decisions);
     let expected = format!(
-        "感谢观众甲的198元SC。留言说：{}。{}",
+        "感谢观众甲的198元SC。{}。{}",
         "猫".repeat(500),
         "答".repeat(500)
     );

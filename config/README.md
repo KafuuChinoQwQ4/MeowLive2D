@@ -2,6 +2,8 @@
 
 ## 观众记忆数据库环境
 
+Windows App 用户请先看 [数据库下载与启用](windows-database.md)：包含官方下载入口、配套容器初始化、连接变量、观众存储开关和验证步骤。下文自动准备行为指 Linux / WSL 源码启动器。
+
 `databases.compose.yaml` 为观众记忆功能提供独立数据库环境。PostgreSQL 默认保存观众身份、幂等事件、陪伴积分和记忆；控制面板用户直接拥有管理权限，无需另行登录。独立模型提取和 Neo4j 图投影按需配置。
 
 | 服务 | 本项目地址 | 数据与账号 |
@@ -93,7 +95,7 @@ Agent 启动始终暂停。`[agent]` 的 `persona` 为 1–2000 个 Unicode 字�
 
 获取列表仅使用当前草稿，不保存配置、不生成回答。连接信息改变时旧列表与选择失效；已有保存的模型可继续显示和使用，主动刷新后若模型已不在目录中则须重新选择。空列表、不支持列表接口、鉴权失败或超时会明确提示。供应商没有可用列表接口时无法通过此页面新增选择，不会用猜测的模型名称替代。目录请求总超时 30 秒，累计响应最多 1 MiB、最多 10 页和 1000 项；超过上限明确失败，不静默展示不完整列表。
 
-`GET /api/llm/settings` 读取待启用设置与密钥存在标记，`POST /api/llm/models` 获取连接草稿的模型目录，`POST /api/llm/reasoning` 在本地解析模型推理档位，`POST /api/llm/settings` 保存，`POST /api/llm/test` 对当前草稿的所选模型执行一次连接测试。保存后重启主服务生效，页面会提示待重启状态。测试不保存且不播放声音。面板保存位置为 TOML 同级 `local/<文件名去掉扩展名>-llm.json`，例如 `config/local/server.local-llm.json`，优先于 `[llm]`；密钥以本机明文保存，Unix 文件权限 `0600`，查询及日志不公开密钥。移走该文件并重启可恢复 TOML 配置。密钥留空仅保留相同服务商、格式和规范化 API 地址的密钥；根地址与 `/v1` 等不同路径仍视为不同连接，更换目标必须重新填写或明确清除。复用已保存密钥时只查询原 API 路径下的模型目录，不跨路径自动探测。模型目录和连接测试共享单个请求名额，目录请求不跟随重定向、不使用环境代理、不公开供应商错误正文。
+`GET /api/llm/settings` 读取待启用设置与密钥存在标记，`POST /api/llm/models` 获取连接草稿的模型目录，`POST /api/llm/reasoning` 在本地解析模型推理档位，`POST /api/llm/settings` 保存当前配置，`POST /api/llm/profiles` 新建配置，`POST /api/llm/profiles/select` 切换配置，`POST /api/llm/profiles/rename` 重命名，`POST /api/llm/profiles/delete` 删除，`POST /api/llm/test` 对当前草稿的所选模型执行一次连接测试。配置面板支持保存多组服务商连接；保存会覆盖当前项，另存为会保留当前项并创建新项，标题可单独重命名。首次保存默认名为“配置1”，后续自动编号；每项各自保存连接和密钥。切换所选项会保存当前选择，重启主服务后生效，页面会提示待重启状态。旧版单项配置会迁移为“配置1”。测试不保存且不播放声音。面板保存位置为 TOML 同级 `local/<文件名去掉扩展名>-llm.json`，例如 `config/local/server.local-llm.json`，优先于 `[llm]`；密钥以本机明文保存，Unix 文件权限 `0600`，查询及日志不公开密钥。移走该文件并重启可恢复 TOML 配置。密钥留空仅保留相同服务商、格式和规范化 API 地址的密钥；根地址与 `/v1` 等不同路径仍视为不同连接，更换目标必须重新填写或明确清除。复用已保存密钥时只查询原 API 路径下的模型目录，不跨路径自动探测。模型目录和连接测试共享单个请求名额，目录请求不跟随重定向、不使用环境代理、不公开供应商错误正文。
 
 `mode` 默认 `cloud`；设为 `local` 时 LLM/TTS 地址必须使用回环 IP，`api_key_env` 必须为空，`max_tokens` 不超过 1024，`max_retries=0`。这些约束不等于完整离线验收；面板测量真实 LLM→TTS 的耗时及显存，并在重启、训练或启用新版本后清除旧验证标记。
 
@@ -101,7 +103,7 @@ Agent 使用统一运行层处理四种原生协议的流式输出、只读工�
 
 Agent HTTP 接口为 `GET /api/agent`，`POST /api/agent/settings`、`/api/agent/pause`、`/api/agent/resume`，以及 `POST /api/events`（`{"events":[...]}`，每批 1–100 条，256 KiB 上限，整体校验后接收）。这些入口沿用主服务来源校验；原 `/api/stop` 会同时暂停 Agent。
 
-面板点击“保存设置并暂停”后，人设、话题、冷却时间、主动发言选项和互动策略保存到 TOML 同级 `local/<文件名去掉扩展名>-agent.json`，例如 `config/local/server.local-agent.json`。保存成功即生效，重启时优先于 `[agent]` 的对应字段和 `[agent.interaction]`；队列容量等调度上限仍读取 TOML。旧文件缺少 `interaction` 时使用默认策略。文件原子替换，Unix 权限为 `0600`，保存失败保留当前设置并向面板报错。未保存的草稿不写入文件。重启恢复配置但保持暂停，不恢复旧的待播事件。移走该文件并重启可恢复 TOML 配置；文件损坏时启动会报错，不会静默覆盖。
+面板点击“保存设置并暂停”后，人设、系统提示词、话题、冷却时间、主动发言选项和互动策略保存到 TOML 同级 `local/<文件名去掉扩展名>-agent.json`，例如 `config/local/server.local-agent.json`。保存成功即生效，重启时优先于 `[agent]` 的对应字段和 `[agent.interaction]`；队列容量等调度上限仍读取 TOML。旧文件缺少 `system_prompt` 或 `interaction` 时使用默认值。文件原子替换，Unix 权限为 `0600`，保存失败保留当前设置并向面板报错。未保存的草稿不写入文件。重启恢复配置但保持暂停，不恢复旧的待播事件。移走该文件并重启可恢复 TOML 配置；文件损坏时启动会报错，不会静默覆盖。
 
 ### 弹幕、SC与欢迎策略
 
@@ -117,9 +119,11 @@ Agent HTTP 接口为 `GET /api/agent`，`POST /api/agent/settings`、`/api/agent
 | `welcome_cooldown_ms` | `30000` | 全局欢迎间隔，1000–3600000 毫秒 |
 | `welcome_viewer_cooldown_ms` | `600000` | 同一观众欢迎间隔，1000–86400000 毫秒 |
 
+`[agent]` 的 `system_prompt`（默认空字符串，最多 4000 个字符）可在 Agent 互动页编辑。它作为用户自定义系统提示词发送给模型，适合补充语气、互动规则和回复偏好；固定 JSON 输出、事件选择、工具权限和数据处理规则仍由程序维护。
+
 三个繁忙阈值达到任一个就启用繁忙策略；最近 60 秒为滚动窗口，重复和已过期事件不计入。当前官方接入没有可靠的实时在线人数，不把热度、累计观看量当成人数；大房间即使暂时安静，也可手动关闭欢迎。
 
-逐条模式每轮先读昵称与原始弹幕，再说模型回复；挑选模式只朗读被选中的原文并回复。模型返回合法的“不回复”时，逐条弹幕、SC 和欢迎仍有固定播报兜底。模型报错、事件过期、暂停、停止和容量限制仍可能阻止播报，“逐条”不等于无条件保证全部播完。
+逐条模式每轮直接读原始弹幕，再说模型回复；挑选模式只朗读被选中的原文并回复。普通弹幕不会自动添加“观众昵称说”前缀，SC 只保留感谢昵称和金额后直接读正文。模型返回合法的“不回复”时，逐条弹幕、SC 和欢迎仍有固定播报兜底。模型报错、事件过期、暂停、停止和容量限制仍可能阻止播报，“逐条”不等于无条件保证全部播完。
 
 SC 接收 `LIVE_OPEN_PLATFORM_SUPER_CHAT`，保存人民币元金额、完整正文和 UTC 毫秒起止时间。每条 SC 优先单独处理，先说“感谢昵称的金额元SC”，读正文，再回应留言；有效期使用平台展示结束时间，不套普通弹幕 TTL。收到时或模型返回时已过期就不再开始排队；已经排入语音队列的播报允许完整结束，不在展示到期时截断。重传按房间和 SC `message_id` 去重。SC 撤回通知 `LIVE_OPEN_PLATFORM_SUPER_CHAT_DEL` 尚未接入，撤回不会自动取消待播或正在播放的内容。
 
@@ -166,7 +170,7 @@ Windows 开关直接读取 `target/windows-client/desktop.local.toml`，无需�
 
 ## 启用观众档案与持久事件
 
-`[viewers].enabled` 默认是 `true`，`[auth].enabled` 默认是 `false`；控制面板用户就是软件管理者，可以直接查看和管理观众、事件、陪伴积分、记忆及关系。`scope_id` 表示稳定逻辑角色，重启、重新开播、换音色或 Live2D 外观时保持一致。旧配置若显式写了 `viewers.enabled=false` 或 `auth.enabled=true`，分别改为 `true` 和 `false`，重启主服务即可使用默认体验。
+源码配置的 `[viewers].enabled` 默认是 `true`；Windows App 首次生成的独立配置为 `false`，需按 [补齐步骤](windows-database.md) 准备数据库再启用。`[auth].enabled` 默认是 `false`；控制面板用户就是软件管理者，可以直接查看和管理观众、事件、陪伴积分、记忆及关系。`scope_id` 表示稳定逻辑角色，重启、重新开播、换音色或 Live2D 外观时保持一致。旧配置若显式写了 `viewers.enabled=false` 或 `auth.enabled=true`，分别改为 `true` 和 `false`，重启主服务即可使用默认体验。
 
 通过面板或 `npm run start:server -- --config config/server.local.toml` 启动时：
 

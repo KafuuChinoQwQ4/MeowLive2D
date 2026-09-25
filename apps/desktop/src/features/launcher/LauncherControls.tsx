@@ -21,7 +21,7 @@ export function LauncherControls({ controller }: { controller: ReturnType<typeof
   return <section className="panel launcher-panel" aria-labelledby="launcher-heading">
       <div className="section-title"><div><h2 id="launcher-heading">启动与运行</h2></div>
         <button onClick={refresh} disabled={busy}>刷新服务状态</button></div>
-      <p className="muted">启动顺序：主服务 → TTS → Windows 执行端。</p>
+      <p className="muted">主服务会自动启动，也可用开关关闭；就绪后自动开启 TTS 和 Windows 执行端。切换语音模型时会暂停 TTS，切换完成后自动恢复。</p>
       <div className="launcher-services">
         {services.map(({ id, title, description }) => {
           const service = snapshot?.services.find(value => value.id === id);
@@ -34,7 +34,8 @@ export function LauncherControls({ controller }: { controller: ReturnType<typeof
             <div className="launcher-state-line"><span className={`task-status task-${service?.state ?? "unknown"}`}>{stale || !service ? "状态待确认" : launcherStateLabel(id, service.state)}</span>
               <span className="server-address">{service?.url}</span></div>
             <p className="launcher-message" role={service?.state === "failed" ? "alert" : undefined}>{stale ? "正在等待启动管理响应…" : service?.message}</p>
-            {service?.state === "external" && <p className="field-hint">{id === "windows" ? "此连接由其他设备管理，请先在原设备退出。" : "请回其他终端停止该服务，再由此开关启动。"}</p>}
+            {id === "server" && service?.state === "failed" && <p className="field-hint">请查看日志、处理错误后重新打开应用或启动器。</p>}
+            {service?.state === "external" && <p className="field-hint">{id === "windows" ? "此连接由其他设备管理，请先在原设备退出。" : "正在使用其他终端启动的服务，请回原终端管理。"}</p>}
             {service && <details className="launcher-log"><summary>查看日志位置</summary><code>{service.log_path}</code></details>}
           </article>;
         })}

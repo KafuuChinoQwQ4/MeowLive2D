@@ -2,16 +2,14 @@
 
 Agent 测试公共夹具
 
-本文件由 `npm run tree:update` 生成，覆盖当前目录的全部受维护子目录。每项右侧为大致用途。
+本文件由 `npm run tree:update` 生成，只列本目录的直接子目录；进入对应子目录查看下一层。每项右侧为大致用途。
 
 ```text
 agent_support/  # Agent 测试公共夹具
-├── DIRECTORY.md  # 本目录递归目录树、文件用途与同步指纹（自动生成）
-└── mod.rs  # 事件、决策、会话和播放任务测试构造
 ```
 
 用途说明源：`scripts/directory-descriptions.json`。新增、删除、移动文件或调整职责时先同步说明源，再运行生成命令。
 
-已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
+文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: c05baa41d2dc90aa0f0a827a07dddb364bbb3cd3b233964e459e49f5402d2404 -->
+<!-- directory-tree-sha256: 98c423b1380c8a78fcfb12775e090dd4fb6be9b0de7bdc8758e4170085a71333 -->

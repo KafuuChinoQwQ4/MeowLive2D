@@ -5,6 +5,7 @@
 export interface DesktopStatus {
   config_path: string;
   server_url: string;
+  server: { ready: boolean; managed: boolean; last_error: string | null; log_path: string };
   runtime: { running: boolean; simulation: boolean; last_error: string | null };
 }
 
@@ -12,8 +13,10 @@ export function readDesktopStatus(value: unknown): DesktopStatus {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid desktop status");
   const status = value as Record<string, unknown>;
   const runtime = status.runtime as Record<string, unknown> | undefined;
+  const server = status.server as Record<string, unknown> | undefined;
+  if (!server || typeof server.ready !== "boolean" || typeof server.managed !== "boolean" || typeof server.log_path !== "string" || !(server.last_error === null || typeof server.last_error === "string")) throw new Error("Invalid desktop server status");
   if (typeof status.config_path !== "string" || typeof status.server_url !== "string" || !validOrigin(status.server_url) || !runtime || typeof runtime.running !== "boolean" || typeof runtime.simulation !== "boolean" || !(runtime.last_error === null || typeof runtime.last_error === "string")) throw new Error("Invalid desktop status");
-  return { config_path: status.config_path, server_url: status.server_url, runtime: runtime as DesktopStatus["runtime"] };
+  return { config_path: status.config_path, server_url: status.server_url, server: server as DesktopStatus["server"], runtime: runtime as DesktopStatus["runtime"] };
 }
 
 function validOrigin(value: string): boolean {

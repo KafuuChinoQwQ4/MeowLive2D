@@ -11,6 +11,7 @@ pub struct ConversationTurn {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DecisionRequest {
     pub persona: String,
+    pub system_prompt: String,
     pub topic: String,
     pub events: Vec<LiveEvent>,
     pub history: Vec<ConversationTurn>,

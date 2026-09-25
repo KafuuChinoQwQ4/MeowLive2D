@@ -8,7 +8,8 @@ pub fn run() -> Result<(), String> {
 #[cfg(windows)]
 pub fn run() -> Result<(), String> {
     use crate::{
-        commands::{DesktopState, desktop_status},
+        commands::DesktopState,
+        managed_server::ServerHandle,
         startup::{load_configuration, parse_arguments},
     };
     use meowlive_desktop_runtime::host::RuntimeHandle;
@@ -29,16 +30,31 @@ pub fn run() -> Result<(), String> {
                 &app.path().app_config_dir()?,
             )
             .map_err(std::io::Error::other)?;
+            let executable = std::env::current_exe()?.with_file_name("meowlive-server.exe");
+            let server = ServerHandle::start(
+                executable,
+                loaded
+                    .config_path
+                    .parent()
+                    .ok_or_else(|| std::io::Error::other("配置目录不存在"))?
+                    .to_owned(),
+                loaded.server_url.clone(),
+            )
+            .map_err(std::io::Error::other)?;
             let runtime = RuntimeHandle::start(loaded.config, options.simulation)
                 .map_err(std::io::Error::other)?;
             app.manage(DesktopState {
+                server: Mutex::new(server),
                 runtime: Mutex::new(runtime),
                 config_path: loaded.config_path.to_string_lossy().into_owned(),
                 server_url: loaded.server_url,
             });
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![desktop_status])
+        .invoke_handler(tauri::generate_handler![
+            crate::commands::desktop_status,
+            crate::commands::open_dependency_page
+        ])
         .build(tauri::generate_context!())
         .map_err(|error| error.to_string())?;
     application.run(|app, event| {
@@ -52,6 +68,11 @@ pub fn run() -> Result<(), String> {
                 {
                     eprintln!("desktop shutdown failed: {error}");
                 }
+                state
+                    .server
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .shutdown();
             }
         }
     });

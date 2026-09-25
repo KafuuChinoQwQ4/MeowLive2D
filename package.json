@@ -32,6 +32,7 @@
     "test": "npm run test:tooling && npm run test:rust-cache && npm run test:launcher && npm run test:acceptance && npm run test:training && npm run test:rust && npm run test:frontend",
     "test:training": "PYTHONDONTWRITEBYTECODE=1 python3 scripts/training_test.py && PYTHONDONTWRITEBYTECODE=1 python3 scripts/asr_selection_test.py && PYTHONDONTWRITEBYTECODE=1 python3 scripts/model_runtime_test.py",
     "desktop:dev": "npm run desktop:dev --workspace @meowlive/desktop --",
+    "desktop:build": "node scripts/build-windows.mjs",
     "acceptance:observe": "node scripts/acceptance.mjs",
     "test:acceptance": "node --test scripts/acceptance.test.mjs",
     "start": "node scripts/start-control-panel.mjs",

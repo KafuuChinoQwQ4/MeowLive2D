@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const indexName = "DIRECTORY.md";
-const indexPurpose = "本目录递归目录树、文件用途与同步指纹（自动生成）";
+const indexPurpose = "本目录直接子目录用途与递归同步指纹（自动生成）";
 const excludedDirectories = new Set([".git", "node_modules", "target", "dist", ".vite", "coverage", ".venv", "__pycache__"]);
 const errors = [];
 const outputs = [];
@@ -94,26 +94,21 @@ function collect(tree, catalogPath) {
     if (node.children) node.children.forEach(fingerprint);
   }
   fingerprint(tree);
+  const directories = tree.children.filter((node) => ["directory", "boundary"].includes(node.type));
   const lines = [`${tree.name}/  # ${tree.purpose}`];
-  function render(children, prefix) {
-    children.forEach((node, index) => {
-      const last = index === children.length - 1;
-      const suffix = ["directory", "boundary"].includes(node.type) ? "/" : "";
-      lines.push(`${prefix}${last ? "└──" : "├──"} ${node.name}${suffix}  # ${node.purpose}`);
-      if (node.children) render(node.children, prefix + (last ? "    " : "│   "));
-    });
-  }
-  render(tree.children, "");
-  const childLinks = tree.children
-    .filter((node) => ["directory", "boundary"].includes(node.type))
+  directories.forEach((node, index) => {
+    const last = index === directories.length - 1;
+    lines.push(`${last ? "└──" : "├──"} ${node.name}/  # ${node.purpose}`);
+  });
+  const childLinks = directories
     .map((node) => `- [${node.name}/](${encodeURIComponent(node.name)}/${indexName})：${node.purpose}`);
   const content = [
     `# ${tree.name} 目录索引`, "", tree.purpose, "",
-    "本文件由 `npm run tree:update` 生成，覆盖当前目录的全部受维护子目录。每项右侧为大致用途。", "",
+    "本文件由 `npm run tree:update` 生成，只列本目录的直接子目录；进入对应子目录查看下一层。每项右侧为大致用途。", "",
     "```text", ...lines, "```", "",
     ...(childLinks.length ? ["可继续查看各子目录的索引：", "", ...childLinks, ""] : []),
     `用途说明源：\`${catalogPath}\`。新增、删除、移动文件或调整职责时先同步说明源，再运行生成命令。`, "",
-    "已有文件内容变化也会更新下方指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。", "",
+    "文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。", "",
     `<!-- directory-tree-sha256: ${hash.digest("hex")} -->`, "",
   ].join("\n");
   const filename = path.join(tree.fullPath, indexName);

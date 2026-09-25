@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import type { LlmModelOption, LlmModelsRequest, LlmSettings, LlmSettingsRequest, LlmSettingsSnapshot } from "@meowlive/contracts";
+import type { LlmModelOption, LlmModelsRequest, LlmProfileCreateRequest, LlmSettings, LlmSettingsRequest, LlmSettingsSnapshot } from "@meowlive/contracts";
 import { createLlmClient, reasoningEfforts, type LlmClient } from "../../services/server/llm";
 import { useReasoningPreview } from "./useReasoningPreview";
 import { LlmRuntimePanel } from "../llm-runtime/LlmRuntimePanel";
@@ -79,19 +79,40 @@ function validate(settings: LlmSettings): string | null {
   return null;
 }
 
+function nextProfileName(profiles: LlmSettingsSnapshot["profiles"]): string {
+  for (let number = 1; number <= profiles.length + 1; number += 1) {
+    const name = `配置${number}`;
+    if (!profiles.some(profile => profile.name === name)) return name;
+  }
+  return `配置${profiles.length + 1}`;
+}
+
+function emptySettings(): LlmSettings {
+  return {
+    provider: "custom", api_format: "openai_chat", base_url: "", model: "", mode: "cloud",
+    timeout_seconds: 30, max_tokens: 1024, json_mode: true, reasoning_effort: "default",
+  };
+}
+
 export function LlmPanel({ client = defaultClient, runtimeClient }: { client?: LlmClient; runtimeClient?: LlmRuntimeClient }) {
   const feedback = useFeedback();
   const [snapshot, setSnapshot] = useState<LlmSettingsSnapshot | null>(null);
   const [draft, setDraft] = useState<LlmSettings | null>(null);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const [profileName, setProfileName] = useState("");
+  const [editingProfileName, setEditingProfileName] = useState(false);
+  const [profilesExpanded, setProfilesExpanded] = useState(false);
   const [apiKey, setApiKey] = useState("");
   const [clearApiKey, setClearApiKey] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<"save" | "test" | "models" | null>(null);
+  const [profilePending, setProfilePending] = useState<"select" | "create" | "rename" | "delete" | "new" | null>(null);
   const [models, setModels] = useState<LlmModelOption[] | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const actions = useRef(new Set<AbortController>());
+  const profileNameInput = useRef<HTMLInputElement>(null);
   const modelsAction = useRef<AbortController | null>(null);
   const modelsRequestId = useRef(0);
   const reasoning = useReasoningPreview(client, draft);
@@ -103,7 +124,10 @@ export function LlmPanel({ client = defaultClient, runtimeClient }: { client?: L
     setLoading(true); setPending(null); setError(""); setMessage(""); setModels(null);
     void client.getSettings(controller.signal).then(value => {
       if (controller.signal.aborted) return;
-      setSnapshot(value); setDraft(value.settings); setApiKey(""); setClearApiKey(false);
+      setSnapshot(value); setDraft(value.settings); setSelectedProfileId(value.selected_profile_id);
+      setProfileName(value.profiles.find(profile => profile.id === value.selected_profile_id)?.name ?? nextProfileName(value.profiles));
+      setEditingProfileName(false); setProfilesExpanded(false);
+      setApiKey(""); setClearApiKey(false);
       feedback.clearIssue("llm:configuration");
       if (loadAttempt > 0) feedback.success("LLM 配置已加载", "已读取保存的连接配置。");
     }).catch(reason => {
@@ -134,6 +158,11 @@ export function LlmPanel({ client = defaultClient, runtimeClient }: { client?: L
     } : current);
     setError(""); setMessage("");
   };
+  const applySnapshot = (value: LlmSettingsSnapshot) => {
+    setSnapshot(value); setDraft(value.settings); setSelectedProfileId(value.selected_profile_id);
+    setProfileName(value.profiles.find(profile => profile.id === value.selected_profile_id)?.name ?? nextProfileName(value.profiles));
+    setApiKey(""); setClearApiKey(false); setModels(null);
+  };
   const changeProvider = (provider: string) => {
     const preset = providerPresets.find(item => item.value === provider)!;
     resetModels();
@@ -155,6 +184,13 @@ export function LlmPanel({ client = defaultClient, runtimeClient }: { client?: L
     if (!checkRequest(true)) return null;
     if (reasoningBlocked) return null;
     return { settings: { ...draft, provider: draft.provider.trim(), base_url: draft.base_url.trim(), model: draft.model.trim() }, api_key: apiKey || null, clear_api_key: clearApiKey };
+  };
+  const profileRequest = (): LlmProfileCreateRequest | null => {
+    const request = buildRequest();
+    if (!request) return null;
+    const name = profileName.trim();
+    if (!name || [...name].length > 64) { setError("配置标题必须为 1 到 64 个字符。"); return null; }
+    return { ...request, name };
   };
   const fetchModels = async () => {
     if (pending || !draft || !checkRequest(false)) return;
@@ -195,7 +231,7 @@ export function LlmPanel({ client = defaultClient, runtimeClient }: { client?: L
       if (kind === "save") {
         const value = await client.saveSettings(request, controller.signal);
         if (controller.signal.aborted) return;
-        setSnapshot(value); setDraft(value.settings); setApiKey(""); setClearApiKey(false);
+        applySnapshot(value);
         setMessage(value.restart_required ? "配置已保存。重启主服务后，新配置才会生效。" : "配置已保存并已生效。");
         feedback.success("LLM 配置已保存", value.restart_required ? "重启主服务后，新配置才会生效。" : "配置已保存并已生效。");
       } else {
@@ -211,8 +247,118 @@ export function LlmPanel({ client = defaultClient, runtimeClient }: { client?: L
       if (!controller.signal.aborted) setPending(null);
     }
   };
-  const submit = (event: FormEvent) => { event.preventDefault(); void run("save"); };
-  const disabled = loading || pending === "save" || pending === "test" || !draft;
+  const selectProfile = async (id: string) => {
+    if (!id || id === selectedProfileId || pending || profilePending) return;
+    const controller = new AbortController(); actions.current.add(controller);
+    setProfilePending("select"); setError(""); setMessage("");
+    try {
+      const value = await client.selectProfile({ id }, controller.signal);
+      if (controller.signal.aborted) return;
+      applySnapshot(value);
+      setProfilesExpanded(false); setEditingProfileName(false);
+      setMessage(value.restart_required ? "已切换配置。重启主服务后，新配置才会生效。" : "已切换配置并生效。");
+      feedback.success("LLM 配置已切换", value.restart_required ? "重启主服务后，新配置才会生效。" : "配置已切换并生效。");
+    } catch (reason) {
+      if (!controller.signal.aborted) { setError(reason instanceof Error ? reason.message : "切换 LLM 配置失败。"); feedback.error("切换 LLM 配置失败", reason); }
+    } finally {
+      actions.current.delete(controller);
+      if (!controller.signal.aborted) { setProfilePending(null); }
+    }
+  };
+  const createProfile = async () => {
+    if (pending || profilePending || snapshot?.storage_available === false) return;
+    const request = profileRequest();
+    if (!request) return;
+    const controller = new AbortController(); actions.current.add(controller);
+    setProfilePending("create"); setError(""); setMessage("");
+    try {
+      const value = await client.createProfile(request, controller.signal);
+      if (controller.signal.aborted) return;
+      applySnapshot(value);
+      setMessage(value.restart_required ? "新配置已保存。重启主服务后，新配置才会生效。" : "新配置已保存并已生效。");
+      feedback.success("LLM 配置已另存", value.restart_required ? "重启主服务后，新配置才会生效。" : "新配置已保存并已生效。");
+    } catch (reason) {
+      if (!controller.signal.aborted) { setError(reason instanceof Error ? reason.message : "另存 LLM 配置失败。"); feedback.error("另存 LLM 配置失败", reason); }
+    } finally {
+      actions.current.delete(controller);
+      if (!controller.signal.aborted) setProfilePending(null);
+    }
+  };
+  const renameProfile = async () => {
+    if (!selectedProfileId || pending || profilePending) return;
+    const name = profileName.trim();
+    const currentName = snapshot?.profiles.find(profile => profile.id === selectedProfileId)?.name;
+    if (!name || [...name].length > 64) {
+      setError("配置标题必须为 1 到 64 个字符。"); setEditingProfileName(true); return;
+    }
+    if (name === currentName) { setProfileName(currentName); setEditingProfileName(false); return; }
+    const controller = new AbortController(); actions.current.add(controller);
+    setProfilePending("rename"); setError(""); setMessage("");
+    try {
+      const value = await client.renameProfile({ id: selectedProfileId, name }, controller.signal);
+      if (controller.signal.aborted) return;
+      setSnapshot(value); setSelectedProfileId(value.selected_profile_id); setProfileName(name);
+      setEditingProfileName(false);
+      setMessage("配置标题已更新。"); feedback.success("配置标题已更新", name);
+    } catch (reason) {
+      if (!controller.signal.aborted) { setEditingProfileName(true); setError(reason instanceof Error ? reason.message : "重命名 LLM 配置失败。"); feedback.error("重命名 LLM 配置失败", reason); }
+    } finally {
+      actions.current.delete(controller);
+      if (!controller.signal.aborted) setProfilePending(null);
+    }
+  };
+  const startNewProfile = async () => {
+    if (pending || profilePending || snapshot?.storage_available === false || !draft || !snapshot) return;
+    const hasDraft = Boolean(selectedProfileId || draft.provider !== "custom" || draft.base_url.trim() || draft.model.trim() || apiKey || clearApiKey);
+    const request = selectedProfileId ? buildRequest() : hasDraft ? profileRequest() : null;
+    if (hasDraft && !request) return;
+    const controller = hasDraft ? new AbortController() : null;
+    if (controller) actions.current.add(controller);
+    setProfilePending(hasDraft ? "new" : null); setError(""); setMessage("");
+    try {
+      const value = !request ? snapshot
+        : selectedProfileId
+          ? await client.saveSettings(request, controller!.signal)
+          : await client.createProfile(request as LlmProfileCreateRequest, controller!.signal);
+      if (controller?.signal.aborted) return;
+      resetModels();
+      setSnapshot(value); setSelectedProfileId(null); setDraft(emptySettings());
+      setProfileName(nextProfileName(value.profiles)); setEditingProfileName(false); setProfilesExpanded(false);
+      setApiKey(""); setClearApiKey(false);
+      const detail = hasDraft
+        ? value.restart_required ? "当前配置已保存，重启主服务后生效；已进入新配置草稿。" : "当前配置已保存，已进入新配置草稿。"
+        : "已进入新配置草稿。";
+      setMessage(detail); feedback.success("新配置", detail);
+    } catch (reason) {
+      if (!controller?.signal.aborted) { setError(reason instanceof Error ? reason.message : "新建 LLM 配置失败。"); feedback.error("新建 LLM 配置失败", reason); }
+    } finally {
+      if (controller) actions.current.delete(controller);
+      if (!controller?.signal.aborted) setProfilePending(null);
+    }
+  };
+  const deleteProfile = async () => {
+    if (!selectedProfileId || pending || profilePending || !window.confirm("删除当前 LLM 配置？此操作不可撤销。")) return;
+    const controller = new AbortController(); actions.current.add(controller);
+    setProfilePending("delete"); setError(""); setMessage("");
+    try {
+      const value = await client.deleteProfile({ id: selectedProfileId }, controller.signal);
+      if (controller.signal.aborted) return;
+      applySnapshot(value);
+      setProfilesExpanded(false); setEditingProfileName(false);
+      setMessage("配置已删除。"); feedback.success("LLM 配置已删除", "已回到其他配置或未保存草稿。");
+    } catch (reason) {
+      if (!controller.signal.aborted) { setError(reason instanceof Error ? reason.message : "删除 LLM 配置失败。"); feedback.error("删除 LLM 配置失败", reason); }
+    } finally {
+      actions.current.delete(controller);
+      if (!controller.signal.aborted) setProfilePending(null);
+    }
+  };
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (!selectedProfileId) void createProfile();
+    else void run("save");
+  };
+  const disabled = loading || Boolean(pending) || Boolean(profilePending) || !draft;
   const actionDisabled = disabled || pending === "models";
   const savedKeyAvailable = snapshot?.key_configured && draft && identity(draft) === identity(snapshot.settings);
 
@@ -226,6 +372,39 @@ export function LlmPanel({ client = defaultClient, runtimeClient }: { client?: L
     {snapshot && !snapshot.storage_available && <p className="availability-note">此主服务未启用配置保存，可测试连接；请使用项目主服务启动入口后保存。</p>}
     <section className="panel">
       <form onSubmit={submit} noValidate>
+        <div className="profile-toolbar">
+          <label htmlFor="llm-profile-name">配置标题</label>
+          <div className="profile-picker">
+            <div className="profile-picker-control">
+              <input id="llm-profile-name" ref={profileNameInput} value={profileName} maxLength={64} disabled={disabled}
+                readOnly={Boolean(selectedProfileId) && !editingProfileName}
+                onDoubleClick={() => { if (selectedProfileId && !disabled) setEditingProfileName(true); }}
+                onChange={event => setProfileName(event.target.value)}
+                onBlur={() => { if (selectedProfileId && editingProfileName) void renameProfile(); }}
+                onKeyDown={event => { if (event.key === "Enter" && editingProfileName) { event.preventDefault(); event.currentTarget.blur(); } }} />
+              <button type="button" className="profile-toggle" disabled={disabled} aria-expanded={profilesExpanded}
+                aria-controls="llm-profile-menu" onClick={() => setProfilesExpanded(value => !value)}>
+                <span>已保存配置</span><span className="profile-chevron" aria-hidden="true">⌄</span>
+              </button>
+            </div>
+            {profilesExpanded && <div className="profile-list" id="llm-profile-menu" aria-label="已保存配置列表">
+              {snapshot?.profiles.length
+                ? snapshot.profiles.map(profile => <button type="button" className="profile-option" key={profile.id}
+                  aria-pressed={profile.id === selectedProfileId} disabled={disabled}
+                  onClick={() => { void selectProfile(profile.id); }}>
+                  <span className="profile-option-name">{profile.name}</span>
+                  <span className="profile-option-detail">{profile.settings.provider} / {profile.settings.model || "未选择模型"}</span>
+                </button>)
+                : <p className="field-hint">暂无已保存配置</p>}
+              <div className="profile-menu-actions form-actions">
+                {selectedProfileId && <button type="button" disabled={disabled} onClick={() => { void deleteProfile(); }}>删除配置</button>}
+                <button type="button" disabled={disabled || snapshot?.storage_available === false} onClick={() => { void startNewProfile(); }}>
+                  {profilePending === "new" ? "正在保存…" : "新建配置"}
+                </button>
+              </div>
+            </div>}
+          </div>
+        </div>
         <div className="workspace-columns">
           <div>
             <label htmlFor="llm-base-url">API 地址</label>

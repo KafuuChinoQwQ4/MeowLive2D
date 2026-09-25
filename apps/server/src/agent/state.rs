@@ -64,6 +64,7 @@ impl AppState {
     pub async fn configure_agent(&self, settings: SettingsDto) -> Result<AgentSnapshot, ApiError> {
         let settings = AgentSettings {
             persona: settings.persona,
+            system_prompt: settings.system_prompt,
             topic: settings.topic,
             proactive_enabled: settings.proactive_enabled,
             cooldown_ms: u64::from(settings.cooldown_ms),

@@ -207,18 +207,35 @@ pub async fn run(config_path: &Path) -> Result<(), String> {
     let shutdown_state = state.clone();
     let result = axum::serve(listener, router(state.clone()))
         .with_graceful_shutdown(async move {
-            #[cfg(unix)]
-            {
-                if let Ok(mut terminate) =
-                    tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-                {
-                    tokio::select! {_=tokio::signal::ctrl_c()=>{},_=terminate.recv()=>{}}
-                } else {
-                    let _ = tokio::signal::ctrl_c().await;
+            let parent_closed = async {
+                if std::env::var("MEOWLIVE_DESKTOP_PARENT").as_deref() != Ok("1") {
+                    std::future::pending::<()>().await;
                 }
-            }
-            #[cfg(not(unix))]
-            let _ = tokio::signal::ctrl_c().await;
+                let (closed, receiver) = tokio::sync::oneshot::channel();
+                std::thread::spawn(move || {
+                    use std::io::Read;
+                    let mut input = std::io::stdin().lock();
+                    let mut buffer = [0; 256];
+                    while matches!(input.read(&mut buffer), Ok(count) if count > 0) {}
+                    let _ = closed.send(());
+                });
+                let _ = receiver.await;
+            };
+            let signal = async {
+                #[cfg(unix)]
+                {
+                    if let Ok(mut terminate) =
+                        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+                    {
+                        tokio::select! {_=tokio::signal::ctrl_c()=>{},_=terminate.recv()=>{}}
+                    } else {
+                        let _ = tokio::signal::ctrl_c().await;
+                    }
+                }
+                #[cfg(not(unix))]
+                let _ = tokio::signal::ctrl_c().await;
+            };
+            tokio::select! { _ = parent_closed => {}, _ = signal => {} }
             shutdown_state.shutdown().await;
         })
         .await

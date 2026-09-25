@@ -205,9 +205,12 @@ impl ResourceStore for FileResourceStore {
 
 fn safe_absolute(path: &Path) -> bool {
     path.is_absolute()
-        && path
-            .components()
-            .all(|component| matches!(component, Component::RootDir | Component::Normal(_)))
+        && path.components().all(|component| {
+            matches!(
+                component,
+                Component::Prefix(_) | Component::RootDir | Component::Normal(_)
+            )
+        })
 }
 
 fn ensure_directory(path: &Path, parent: Option<&Path>) -> Result<(), ResourceStoreError> {

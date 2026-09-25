@@ -26,6 +26,7 @@
   },
   "bundle": {
     "active": true,
+    "externalBin": ["../../../target/windows-bundle/meowlive-server"],
     "targets": [
       "nsis"
     ],
@@ -34,6 +35,7 @@
       "icons/icon.png"
     ],
     "windows": {
+      "nsis": { "languages": ["SimpChinese", "English"] },
       "webviewInstallMode": {
         "type": "downloadBootstrapper",
         "silent": true

@@ -34,7 +34,10 @@ async fn configuration_page_can_read_llm_settings_without_exposing_keys() {
     assert_eq!(response.status(), 200);
 }
 
-use meowlive_protocol::llm::{LlmSettings, LlmSettingsRequest};
+use meowlive_protocol::llm::{
+    LlmProfileCreateRequest, LlmProfileIdRequest, LlmProfileRenameRequest, LlmSettings,
+    LlmSettingsRequest,
+};
 use meowlive_server::llm_settings::{LlmSettingsStore, settings_path};
 use std::sync::Arc;
 
@@ -52,6 +55,25 @@ fn request(key: Option<&str>) -> LlmSettingsRequest {
             reasoning_effort: "default".into(),
         },
         api_key: key.map(str::to_owned),
+        clear_api_key: false,
+    }
+}
+
+fn profile_request(name: &str, base_url: &str, model: &str, key: &str) -> LlmProfileCreateRequest {
+    LlmProfileCreateRequest {
+        name: name.into(),
+        settings: LlmSettings {
+            provider: "custom".into(),
+            api_format: "openai_chat".into(),
+            base_url: base_url.into(),
+            model: model.into(),
+            mode: "cloud".into(),
+            timeout_seconds: 10,
+            max_tokens: 256,
+            json_mode: true,
+            reasoning_effort: "default".into(),
+        },
+        api_key: Some(key.into()),
         clear_api_key: false,
     }
 }
@@ -125,6 +147,215 @@ async fn retained_key_is_bound_to_destination_and_can_be_cleared() {
     let mut clear = request(None);
     clear.clear_api_key = true;
     assert!(!store.save(clear).await.unwrap().key_configured);
+}
+
+#[tokio::test]
+async fn named_profiles_switch_without_losing_their_private_keys() {
+    let fixture = Fixture::new();
+    let store = fixture.store();
+
+    let first = store.save(request(Some("openai-key"))).await.unwrap();
+    assert_eq!(first.profiles.len(), 1);
+    assert_eq!(first.profiles[0].name, "配置1");
+    let first_id = first.profiles[0].id.clone();
+
+    let second = store
+        .create_profile(profile_request(
+            "deepseek",
+            "https://deepseek.example.test/v1",
+            "deepseek-chat",
+            "deepseek-key",
+        ))
+        .await
+        .unwrap();
+    assert_eq!(second.profiles.len(), 2);
+    assert_eq!(second.profiles[1].name, "deepseek");
+    assert_eq!(second.settings.model, "deepseek-chat");
+
+    let selected = store
+        .select_profile(LlmProfileIdRequest { id: first_id })
+        .await
+        .unwrap();
+    assert_eq!(selected.settings.model, "test-model");
+    assert!(selected.key_configured);
+    assert_eq!(
+        meowlive_server::llm_settings::load_override(&fixture.config_path())
+            .unwrap()
+            .unwrap()
+            .api_key
+            .as_deref(),
+        Some("openai-key")
+    );
+}
+
+#[tokio::test]
+async fn a_new_profile_for_the_same_api_destination_retains_the_saved_key() {
+    let fixture = Fixture::new();
+    let store = fixture.store();
+    store
+        .save(request(Some("shared-destination-key")))
+        .await
+        .unwrap();
+
+    let mut second = profile_request(
+        "备用配置",
+        "https://llm.example.test/v1",
+        "another-model",
+        "unused-placeholder",
+    );
+    second.api_key = None;
+    let snapshot = store.create_profile(second).await.unwrap();
+
+    assert!(snapshot.key_configured);
+    assert_eq!(
+        meowlive_server::llm_settings::load_override(&fixture.config_path())
+            .unwrap()
+            .unwrap()
+            .api_key
+            .as_deref(),
+        Some("shared-destination-key")
+    );
+}
+
+#[tokio::test]
+async fn blank_new_profile_titles_receive_the_next_configuration_number() {
+    let fixture = Fixture::new();
+    let store = fixture.store();
+    let mut first = profile_request(
+        "",
+        "https://first.example.test/v1",
+        "first-model",
+        "first-key",
+    );
+    first.api_key = None;
+    let snapshot = store.create_profile(first).await.unwrap();
+    assert_eq!(snapshot.profiles[0].name, "配置1");
+
+    let mut second = profile_request(
+        "",
+        "https://second.example.test/v1",
+        "second-model",
+        "second-key",
+    );
+    second.api_key = None;
+    let snapshot = store.create_profile(second).await.unwrap();
+    assert_eq!(snapshot.profiles[1].name, "配置2");
+}
+
+#[tokio::test]
+async fn legacy_single_configuration_is_migrated_to_configuration_one() {
+    let fixture = Fixture::new();
+    let mut config = LlmConfig::default();
+    config.base_url = "https://legacy.example.test/v1".into();
+    config.model = "legacy-model".into();
+    config.api_key_env.clear();
+    let legacy = serde_json::json!({"schema": 1, "config": config, "api_key": "legacy-key"});
+    std::fs::create_dir_all(settings_path(&fixture.config_path()).parent().unwrap()).unwrap();
+    std::fs::write(settings_path(&fixture.config_path()), legacy.to_string()).unwrap();
+
+    let snapshot = fixture.store().snapshot().await.unwrap();
+    assert_eq!(snapshot.profiles.len(), 1);
+    assert_eq!(snapshot.profiles[0].name, "配置1");
+    assert_eq!(snapshot.selected_profile_id.as_deref(), Some("legacy"));
+    assert!(snapshot.key_configured);
+    assert_eq!(snapshot.settings.model, "legacy-model");
+}
+
+#[tokio::test]
+async fn profiles_can_be_renamed_and_deleted_without_deleting_other_profiles() {
+    let fixture = Fixture::new();
+    let store = fixture.store();
+    let first = store.save(request(Some("first-key"))).await.unwrap();
+    let second = store
+        .create_profile(profile_request(
+            "第二个",
+            "https://second.example.test/v1",
+            "second-model",
+            "second-key",
+        ))
+        .await
+        .unwrap();
+    let second_id = second.profiles[1].id.clone();
+
+    let renamed = store
+        .rename_profile(LlmProfileRenameRequest {
+            id: second_id.clone(),
+            name: "我的 DeepSeek".into(),
+        })
+        .await
+        .unwrap();
+    assert_eq!(renamed.profiles[1].name, "我的 DeepSeek");
+
+    let deleted = store
+        .delete_profile(LlmProfileIdRequest { id: second_id })
+        .await
+        .unwrap();
+    assert_eq!(deleted.profiles.len(), 1);
+    assert_eq!(deleted.profiles[0].id, first.profiles[0].id);
+    assert_eq!(deleted.settings.model, "test-model");
+}
+
+#[tokio::test]
+async fn profile_http_actions_return_updated_public_snapshots() {
+    let fixture = Fixture::new();
+    let mut state = support::state();
+    state.llm_settings = Arc::new(fixture.store());
+
+    let (status, first) = support::request(
+        router(state.clone()),
+        "POST",
+        "/api/llm/settings",
+        serde_json::to_value(request(Some("first-key"))).unwrap(),
+    )
+    .await;
+    assert_eq!(status, 200);
+    let first_id = first["profiles"][0]["id"].as_str().unwrap().to_owned();
+
+    let (status, second) = support::request(
+        router(state.clone()),
+        "POST",
+        "/api/llm/profiles",
+        serde_json::to_value(profile_request(
+            "deepseek",
+            "https://deepseek.example.test/v1",
+            "deepseek-chat",
+            "deepseek-key",
+        ))
+        .unwrap(),
+    )
+    .await;
+    assert_eq!(status, 200);
+    let second_id = second["profiles"][1]["id"].as_str().unwrap().to_owned();
+
+    let (status, renamed) = support::request(
+        router(state.clone()),
+        "POST",
+        "/api/llm/profiles/rename",
+        serde_json::json!({"id": second_id, "name": "我的 DeepSeek"}),
+    )
+    .await;
+    assert_eq!(status, 200);
+    assert_eq!(renamed["profiles"][1]["name"], "我的 DeepSeek");
+
+    let (status, selected) = support::request(
+        router(state.clone()),
+        "POST",
+        "/api/llm/profiles/select",
+        serde_json::json!({"id": first_id}),
+    )
+    .await;
+    assert_eq!(status, 200);
+    assert_eq!(selected["settings"]["model"], "test-model");
+
+    let (status, deleted) = support::request(
+        router(state),
+        "POST",
+        "/api/llm/profiles/delete",
+        serde_json::json!({"id": selected["profiles"][1]["id"]}),
+    )
+    .await;
+    assert_eq!(status, 200);
+    assert_eq!(deleted["profiles"].as_array().unwrap().len(), 1);
 }
 
 #[tokio::test]
@@ -290,6 +521,7 @@ async fn bootstrap_selects_the_configured_protocol_for_agent_decisions() {
             .decide(DecisionRequest {
                 memory_context: vec![],
                 persona: "测试主播".into(),
+                system_prompt: String::new(),
                 topic: String::new(),
                 history: vec![],
                 events: vec![],
