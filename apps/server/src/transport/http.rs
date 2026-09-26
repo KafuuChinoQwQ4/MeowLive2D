@@ -93,6 +93,26 @@ pub fn router(state: AppState) -> Router {
         .route("/api/llm/profiles/rename", post(super::llm::rename_profile))
         .route("/api/llm/profiles/delete", post(super::llm::delete_profile))
         .route(
+            "/api/agent/personas",
+            get(super::agent::personas).post(super::agent::create_persona),
+        )
+        .route(
+            "/api/agent/personas/select",
+            post(super::agent::select_persona),
+        )
+        .route(
+            "/api/agent/personas/rename",
+            post(super::agent::rename_persona),
+        )
+        .route(
+            "/api/agent/personas/update",
+            post(super::agent::update_persona),
+        )
+        .route(
+            "/api/agent/personas/delete",
+            post(super::agent::delete_persona),
+        )
+        .route(
             "/api/agent/runtime",
             get(super::llm_runtime::settings)
                 .post(super::llm_runtime::save)

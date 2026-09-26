@@ -9,12 +9,23 @@ import { deferred, jsonResponse, serverStatus } from "../test/server-fixtures";
 afterEach(() => { vi.unstubAllGlobals(); window.history.replaceState(null, "", "/"); });
 
 function server(resourceSource = () => resourceSnapshot()) {
-  const saved = agentStatus();
+  let saved = agentStatus();
+  const personas = {
+    profiles: [{ id: "persona-1", name: "配置1", persona: saved.settings.persona }],
+    selected_profile_id: "persona-1",
+    storage_available: true,
+  };
   const fetcher = vi.fn<typeof fetch>(async (url, init) => {
     const path = new URL(String(url)).pathname;
     if (path === "/api/admin/session") return jsonResponse({ enabled: false, authenticated: false });
     if (path === "/api/resources") return jsonResponse(resourceSource());
-    if (path === "/api/agent/settings" && init?.body) return jsonResponse(agentStatus({ settings: JSON.parse(String(init.body)) }));
+    if (path === "/api/agent/personas/update" && init?.body) {
+      const request = JSON.parse(String(init.body));
+      saved = agentStatus({ settings: { ...saved.settings, persona: request.persona } });
+      personas.profiles[0].persona = saved.settings.persona;
+      return jsonResponse({ ...personas });
+    }
+    if (path === "/api/agent/personas") return jsonResponse(personas);
     if (path === "/api/agent") return jsonResponse(saved);
     return jsonResponse(serverStatus());
   });
@@ -56,6 +67,10 @@ it("ignores a late resource response after returning from the sound page", async
     if (path === "/api/admin/session") return jsonResponse({ enabled: false, authenticated: false });
     if (path === "/api/resources") return ++resourceRequests === 1 ? oldResponse.promise
       : jsonResponse(resourceSnapshot({ voices: [voice(), voice({ id: "voice-2", name: "新声音" })] }));
+    if (path === "/api/agent/personas") return jsonResponse({
+      profiles: [{ id: "persona-1", name: "配置1", persona: agentStatus().settings.persona }],
+      selected_profile_id: "persona-1", storage_available: true,
+    });
     if (path === "/api/agent") return jsonResponse(agentStatus());
     return jsonResponse(serverStatus());
   }));
@@ -77,8 +92,8 @@ it("saving a persona from the character page preserves the latest interaction se
   await userEvent.type(within(editor).getByRole("textbox", { name: "核心身份" }), "新角色人设");
   await userEvent.click(within(editor).getByRole("button", { name: "保存人物卡并暂停 Agent" }));
   await waitFor(() => expect(fetcher.mock.calls.some(([url, init]) =>
-    String(url).endsWith("/api/agent/settings")
+    String(url).endsWith("/api/agent/personas/update")
       && JSON.parse(String(init?.body)).persona === "新角色人设"
-      && JSON.parse(String(init?.body)).topic === agentStatus().settings.topic,
+      && JSON.parse(String(init?.body)).id === "persona-1",
   )).toBe(true));
 });

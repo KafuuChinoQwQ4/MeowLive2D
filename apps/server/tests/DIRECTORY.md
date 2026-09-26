@@ -23,4 +23,4 @@ tests/  # 主服务配置、HTTP、桥接与完整播报集成测试
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 6fe72772b6da7b3edf1ccfe6136b091bd50eecce9f53db1c1f1704b2a07d0f33 -->
+<!-- directory-tree-sha256: 0a694530532813ed4352d8113bd42b8711d8d11a77f7c3de7c76ba27f046db7b -->

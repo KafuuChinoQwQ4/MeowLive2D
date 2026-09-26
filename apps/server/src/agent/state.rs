@@ -1,5 +1,6 @@
 use super::mapping;
 use crate::{
+    agent_settings::PersonaStoreError,
     state::{AppState, Inner},
     transport::error::ApiError,
 };
@@ -8,6 +9,8 @@ use meowlive_application::agent::{AgentSettings, SubmitOutcome};
 use meowlive_domain::speech::{SpeechStatus, SpeechTask};
 use meowlive_protocol::agent::{
     AgentSettings as SettingsDto, AgentSnapshot, EventBatchRequest, EventBatchResult,
+    PersonaProfileCreateRequest, PersonaProfileIdRequest, PersonaProfileRenameRequest,
+    PersonaProfileUpdateRequest, PersonaProfilesSnapshot,
 };
 use tokio_util::sync::CancellationToken;
 
@@ -79,15 +82,91 @@ impl AppState {
                 message,
             )
         })?;
+        self.apply_saved_agent_settings(&mut inner, settings);
+        drop(inner);
+        Ok(self.agent_snapshot().await)
+    }
+    fn apply_saved_agent_settings(&self, inner: &mut Inner, settings: AgentSettings) {
         inner
             .agent
             .configure(settings, self.now_ms())
-            .map_err(invalid)?;
+            .expect("validated Agent settings");
         inner.agent_cancel.cancel();
         inner.agent_cancel = CancellationToken::new();
         self.agent_wake.notify_one();
-        drop(inner);
-        Ok(self.agent_snapshot().await)
+    }
+    pub async fn persona_profiles(&self) -> Result<PersonaProfilesSnapshot, ApiError> {
+        let _inner = self.inner.lock().await;
+        self.agent_settings.profiles().map_err(persona_error)
+    }
+    pub async fn create_persona_profile(
+        &self,
+        request: PersonaProfileCreateRequest,
+    ) -> Result<PersonaProfilesSnapshot, ApiError> {
+        let mut inner = self.inner.lock().await;
+        let current = inner.agent.view(self.now_ms()).settings;
+        let (snapshot, settings) = self
+            .agent_settings
+            .create(&current, request)
+            .map_err(persona_error)?;
+        self.apply_saved_agent_settings(&mut inner, settings);
+        Ok(snapshot)
+    }
+    pub async fn select_persona_profile(
+        &self,
+        request: PersonaProfileIdRequest,
+    ) -> Result<PersonaProfilesSnapshot, ApiError> {
+        let mut inner = self.inner.lock().await;
+        let current = inner.agent.view(self.now_ms()).settings;
+        let (snapshot, settings) = self
+            .agent_settings
+            .select(&current, request)
+            .map_err(persona_error)?;
+        self.apply_saved_agent_settings(&mut inner, settings);
+        Ok(snapshot)
+    }
+    pub async fn rename_persona_profile(
+        &self,
+        request: PersonaProfileRenameRequest,
+    ) -> Result<PersonaProfilesSnapshot, ApiError> {
+        let mut inner = self.inner.lock().await;
+        let current = inner.agent.view(self.now_ms()).settings;
+        self.agent_settings
+            .rename(&current, request)
+            .map_err(persona_error)
+    }
+    pub async fn update_persona_profile(
+        &self,
+        request: PersonaProfileUpdateRequest,
+    ) -> Result<PersonaProfilesSnapshot, ApiError> {
+        let mut inner = self.inner.lock().await;
+        let current = inner.agent.view(self.now_ms()).settings;
+        let (snapshot, settings) = self
+            .agent_settings
+            .update(&current, request)
+            .map_err(persona_error)?;
+        self.apply_saved_agent_settings(&mut inner, settings);
+        Ok(snapshot)
+    }
+    pub async fn delete_persona_profile(
+        &self,
+        request: PersonaProfileIdRequest,
+    ) -> Result<PersonaProfilesSnapshot, ApiError> {
+        let mut inner = self.inner.lock().await;
+        let current = inner.agent.view(self.now_ms()).settings;
+        let (snapshot, settings) = self
+            .agent_settings
+            .delete(&current, request)
+            .map_err(persona_error)?;
+        if let Some(settings) = settings {
+            self.apply_saved_agent_settings(&mut inner, settings);
+        } else if snapshot.selected_profile_id.is_none() {
+            inner.agent.set_paused(true, self.now_ms());
+            inner.agent_cancel.cancel();
+            inner.agent_cancel = CancellationToken::new();
+            self.agent_wake.notify_one();
+        }
+        Ok(snapshot)
     }
     pub async fn pause_agent(&self) -> AgentSnapshot {
         let mut inner = self.inner.lock().await;
@@ -191,4 +270,19 @@ impl AppState {
 }
 fn invalid(message: String) -> ApiError {
     ApiError::new(StatusCode::BAD_REQUEST, "invalid_agent_request", message)
+}
+fn persona_error(error: PersonaStoreError) -> ApiError {
+    match error {
+        PersonaStoreError::Invalid(message) => {
+            ApiError::new(StatusCode::BAD_REQUEST, "invalid_persona_profile", message)
+        }
+        PersonaStoreError::Conflict(message) => {
+            ApiError::new(StatusCode::CONFLICT, "persona_profile_changed", message)
+        }
+        PersonaStoreError::Storage(message) => ApiError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "persona_profiles_unavailable",
+            message,
+        ),
+    }
 }

@@ -26,6 +26,35 @@ function agentSnapshot(overrides: Partial<AgentSnapshot> = {}): AgentSnapshot {
 }
 
 describe("Agent HTTP 请求", () => {
+  it("读取和选择本地人物卡配置，拒绝无效配置列表", async () => {
+    const profiles = { profiles: [
+      { id: "card-1", name: "魔女", persona: "月见镇魔女" },
+      { id: "card-2", name: "侦探", persona: "冷静的侦探" },
+    ], selected_profile_id: "card-1", storage_available: true };
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse(profiles))
+      .mockResolvedValueOnce(jsonResponse({ ...profiles, selected_profile_id: "card-2" }))
+      .mockResolvedValueOnce(jsonResponse({ ...profiles, selected_profile_id: "missing" }));
+    const client = createAgentClient({ fetcher });
+
+    await expect(client.getPersonaProfiles()).resolves.toEqual(profiles);
+    await expect(client.selectPersonaProfile({ id: "card-2" })).resolves.toMatchObject({ selected_profile_id: "card-2" });
+    expect(fetcher).toHaveBeenNthCalledWith(1, "http://127.0.0.1:19600/api/agent/personas", expect.objectContaining({ method: "GET" }));
+    expect(fetcher).toHaveBeenNthCalledWith(2, "http://127.0.0.1:19600/api/agent/personas/select", expect.objectContaining({
+      method: "POST", body: JSON.stringify({ id: "card-2" }),
+    }));
+    await expect(client.getPersonaProfiles()).rejects.toThrow("无效的人物卡配置");
+  });
+
+  it("以人物卡 ID 原子更新标题和内容", async () => {
+    const profiles = { profiles: [{ id: "card-1", name: "旧名", persona: "旧设定" }], selected_profile_id: "card-1", storage_available: true };
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({ ...profiles, profiles: [{ id: "card-1", name: "新名", persona: "新设定" }] }));
+    await expect(createAgentClient({ fetcher }).updatePersonaProfile({ id: "card-1", name: "新名", persona: "新设定" })).resolves.toMatchObject({ selected_profile_id: "card-1" });
+    expect(fetcher).toHaveBeenCalledWith("http://127.0.0.1:19600/api/agent/personas/update", expect.objectContaining({
+      method: "POST", body: JSON.stringify({ id: "card-1", name: "新名", persona: "新设定" }),
+    }));
+  });
+
   it("读取 Agent 状态", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(agentSnapshot()));
     const client = createAgentClient({ baseUrl: "http://localhost:19700/", fetcher });

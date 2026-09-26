@@ -7,6 +7,11 @@ import type {
   EventBatchRequest,
   EventBatchResult,
   LiveEventInput,
+  PersonaProfileCreateRequest,
+  PersonaProfileIdRequest,
+  PersonaProfileRenameRequest,
+  PersonaProfileUpdateRequest,
+  PersonaProfilesSnapshot,
 } from "@meowlive/contracts";
 import { readServerError, ServerRequestError } from "./responses";
 import { createAuthenticatedFetch } from "./auth";
@@ -16,12 +21,18 @@ export interface AgentClient {
   readonly baseUrl: string;
   getStatus(signal?: AbortSignal): Promise<AgentSnapshot>;
   saveSettings(settings: AgentSettings, signal?: AbortSignal): Promise<AgentSnapshot>;
+  getPersonaProfiles(signal?: AbortSignal): Promise<PersonaProfilesSnapshot>;
+  createPersonaProfile(request: PersonaProfileCreateRequest, signal?: AbortSignal): Promise<PersonaProfilesSnapshot>;
+  selectPersonaProfile(request: PersonaProfileIdRequest, signal?: AbortSignal): Promise<PersonaProfilesSnapshot>;
+  renamePersonaProfile(request: PersonaProfileRenameRequest, signal?: AbortSignal): Promise<PersonaProfilesSnapshot>;
+  updatePersonaProfile(request: PersonaProfileUpdateRequest, signal?: AbortSignal): Promise<PersonaProfilesSnapshot>;
+  deletePersonaProfile(request: PersonaProfileIdRequest, signal?: AbortSignal): Promise<PersonaProfilesSnapshot>;
   pause(signal?: AbortSignal): Promise<AgentSnapshot>;
   resume(signal?: AbortSignal): Promise<AgentSnapshot>;
   submitEvents(batch: EventBatchRequest, signal?: AbortSignal): Promise<EventBatchResult>;
 }
 
-type RequestBody = AgentSettings | EventBatchRequest;
+type RequestBody = AgentSettings | EventBatchRequest | PersonaProfileCreateRequest | PersonaProfileIdRequest | PersonaProfileRenameRequest | PersonaProfileUpdateRequest;
 
 const phases: AgentPhase[] = ["paused", "waiting", "deciding", "speaking"];
 const eventStatuses: AgentEventStatus[] = [
@@ -100,6 +111,29 @@ function readAgentSnapshot(value: unknown): AgentSnapshot {
   return value as AgentSnapshot;
 }
 
+function readPersonaProfiles(value: unknown): PersonaProfilesSnapshot {
+  if (!isRecord(value) || Object.keys(value).sort().join() !== "profiles,selected_profile_id,storage_available"
+    || !Array.isArray(value.profiles) || value.profiles.length > 32
+    || typeof value.storage_available !== "boolean") {
+    throw new ServerRequestError("invalid_response", "主服务返回了无效的人物卡配置。");
+  }
+  const ids = new Set<string>();
+  for (const profile of value.profiles) {
+    if (!isRecord(profile) || Object.keys(profile).sort().join() !== "id,name,persona"
+      || !boundedText(profile.id, 1, 64) || !boundedText(profile.name, 1, 64)
+      || !boundedText(profile.persona, 1, 2_000)
+      || /[\u0000-\u001f\u007f]/u.test(profile.id) || /[\u0000-\u001f\u007f]/u.test(profile.name)
+      || ids.has(profile.id)) {
+      throw new ServerRequestError("invalid_response", "主服务返回了无效的人物卡配置。");
+    }
+    ids.add(profile.id);
+  }
+  if (value.selected_profile_id !== null && (typeof value.selected_profile_id !== "string" || !ids.has(value.selected_profile_id))) {
+    throw new ServerRequestError("invalid_response", "主服务返回了无效的人物卡配置。");
+  }
+  return value as PersonaProfilesSnapshot;
+}
+
 function readBatchResult(value: unknown): EventBatchResult {
   if (!isRecord(value)
     || !isUint32(value.accepted)
@@ -166,6 +200,12 @@ export function createAgentClient(options: { baseUrl?: string; fetcher?: typeof 
     baseUrl,
     getStatus: (signal) => request("/api/agent", "GET", readAgentSnapshot, signal),
     saveSettings: (body, signal) => request("/api/agent/settings", "POST", readAgentSnapshot, signal, body),
+    getPersonaProfiles: (signal) => request("/api/agent/personas", "GET", readPersonaProfiles, signal),
+    createPersonaProfile: (body, signal) => request("/api/agent/personas", "POST", readPersonaProfiles, signal, body),
+    selectPersonaProfile: (body, signal) => request("/api/agent/personas/select", "POST", readPersonaProfiles, signal, body),
+    renamePersonaProfile: (body, signal) => request("/api/agent/personas/rename", "POST", readPersonaProfiles, signal, body),
+    updatePersonaProfile: (body, signal) => request("/api/agent/personas/update", "POST", readPersonaProfiles, signal, body),
+    deletePersonaProfile: (body, signal) => request("/api/agent/personas/delete", "POST", readPersonaProfiles, signal, body),
     pause: (signal) => request("/api/agent/pause", "POST", readAgentSnapshot, signal),
     resume: (signal) => request("/api/agent/resume", "POST", readAgentSnapshot, signal),
     submitEvents: (body, signal) => request("/api/events", "POST", readBatchResult, signal, body),

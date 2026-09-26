@@ -89,7 +89,9 @@ pub(super) fn payload(
             json!({"systemInstruction":{"parts":[{"text":system}]},"generationConfig":{"maxOutputTokens":config.max_tokens},"contents":[{"role":"user","parts":[{"text":history},{"text":user.to_string()}]}]})
         }
     };
-    if !tools.is_empty() {
+    if !tools.is_empty()
+        && !(format == ApiFormat::GeminiGenerateContent && options.tool_choice_none)
+    {
         body["tools"] = if format == ApiFormat::GeminiGenerateContent {
             json!([{"functionDeclarations":tools}])
         } else {
@@ -100,9 +102,12 @@ pub(super) fn payload(
         match format {
             ApiFormat::OpenaiChat => body["response_format"] = json!({"type":"json_object"}),
             ApiFormat::OpenaiResponses => body["text"] = json!({"format":{"type":"json_object"}}),
-            // Gemini models differ on combining JSON MIME mode and tools. The
-            // trusted system prompt plus final domain validation remains enforced.
-            ApiFormat::GeminiGenerateContent if options.tools.is_empty() => {
+            // Gemini models differ on combining JSON MIME mode and tool calls.
+            // Keep the tool-calling round flexible, but require JSON once the
+            // runtime has disabled further calls for the final decision.
+            ApiFormat::GeminiGenerateContent
+                if options.tools.is_empty() || options.tool_choice_none =>
+            {
                 body["generationConfig"]["responseMimeType"] = json!("application/json")
             }
             _ => {}
@@ -117,9 +122,7 @@ pub(super) fn payload(
                 body["tool_choice"] = json!("none")
             }
             ApiFormat::AnthropicMessages => body["tool_choice"] = json!({"type":"none"}),
-            ApiFormat::GeminiGenerateContent => {
-                body["toolConfig"] = json!({"functionCallingConfig":{"mode":"NONE"}})
-            }
+            ApiFormat::GeminiGenerateContent => {}
         }
     }
     if matches!(format, ApiFormat::OpenaiChat | ApiFormat::OpenaiResponses)

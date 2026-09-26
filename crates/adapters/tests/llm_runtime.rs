@@ -337,6 +337,52 @@ async fn split_sse_frames_finish_and_emit_only_public_progress_and_usage() {
     }
 }
 #[tokio::test]
+async fn streamed_room_enter_accepts_a_single_fenced_json_decision() {
+    let id = "bilibili:26731217:room-enter-test";
+    let content =
+        format!("```json\n{{\"reply_to\":[\"{id}\"],\"text\":\"欢迎回来\",\"topic\":null}}\n```");
+    let body = [
+        frame(json!({"choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]})),
+        frame(json!({"choices":[{"index":0,"delta":{"content":content},"finish_reason":null}]})),
+        frame(json!({"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]})),
+        "data: [DONE]\r\n\r\n".into(),
+    ]
+    .concat();
+    let (adapter, _, task) = fixture(vec![body], true).await;
+    let mut event = llm_support::chat(id, "");
+    event.kind = meowlive_domain::event::EventKind::RoomEnter;
+
+    let decision = adapter
+        .turn(llm_support::request(vec![event]), options(true))
+        .await
+        .unwrap()
+        .decision
+        .unwrap();
+    assert_eq!(decision.reply_to, [id]);
+    assert_eq!(decision.text.as_deref(), Some("欢迎回来"));
+    task.abort();
+}
+
+#[tokio::test]
+async fn fenced_decision_still_rejects_prose_and_unknown_event_ids() {
+    for content in [
+        "Here is the answer:\n```json\n{\"reply_to\":[\"room-1\"],\"text\":\"欢迎\",\"topic\":null}\n```",
+        "```json\n{\"reply_to\":[\"unknown\"],\"text\":\"欢迎\",\"topic\":null}\n```",
+    ] {
+        let mut raw = response(ApiFormat::OpenaiChat, false);
+        raw["choices"][0]["message"]["content"] = json!(content);
+        let (adapter, _, task) = fixture(vec![raw.to_string()], false).await;
+        let mut event = llm_support::chat("room-1", "");
+        event.kind = meowlive_domain::event::EventKind::RoomEnter;
+        let error = adapter
+            .turn(llm_support::request(vec![event]), options(false))
+            .await
+            .unwrap_err();
+        assert_eq!(error.message, "LLM model returned an invalid decision");
+        task.abort();
+    }
+}
+#[tokio::test]
 async fn unfinished_streams_are_errors_but_report_received_usage() {
     for format in formats() {
         let (adapter, _, task) =
@@ -740,7 +786,7 @@ async fn malformed_utf8_after_a_complete_usage_frame_keeps_that_usage() {
 }
 
 #[tokio::test]
-async fn final_round_disables_calls_without_losing_tools_or_continuation() {
+async fn final_round_disables_calls_and_preserves_continuation() {
     for format in formats() {
         let (adapter, seen, task) = fixture_for(
             format,
@@ -778,16 +824,24 @@ async fn final_round_disables_calls_without_losing_tools_or_continuation() {
         {
             let seen = seen.lock().unwrap();
             let body = &seen[1];
-            assert_eq!(seen[0]["tools"], body["tools"]);
             match format {
                 ApiFormat::OpenaiChat | ApiFormat::OpenaiResponses => {
+                    assert_eq!(seen[0]["tools"], body["tools"]);
                     assert_eq!(body["tool_choice"], "none")
                 }
                 ApiFormat::AnthropicMessages => {
+                    assert_eq!(seen[0]["tools"], body["tools"]);
                     assert_eq!(body["tool_choice"], json!({"type":"none"}))
                 }
                 ApiFormat::GeminiGenerateContent => {
-                    assert_eq!(body["toolConfig"]["functionCallingConfig"]["mode"], "NONE")
+                    assert!(!seen[0]["tools"].is_null());
+                    assert!(seen[0]["generationConfig"]["responseMimeType"].is_null());
+                    assert!(body["tools"].is_null());
+                    assert!(body["toolConfig"].is_null());
+                    assert_eq!(
+                        body["generationConfig"]["responseMimeType"],
+                        "application/json"
+                    )
                 }
             }
         }

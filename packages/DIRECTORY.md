@@ -17,4 +17,4 @@ packages/  # TypeScript 共享工作区包
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: ad77a4f4d737eac80666ee7d6fecf0b797f8ee6b9376438f0e65a24fa5e21e58 -->
+<!-- directory-tree-sha256: 1edb06ff75c4044b418d683079a2e67c9961c9d7907f33ebe1bb323bc2645cda -->

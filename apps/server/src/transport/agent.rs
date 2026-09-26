@@ -6,7 +6,11 @@ use axum::{
     extract::{State, rejection::JsonRejection},
     http::StatusCode,
 };
-use meowlive_protocol::agent::{AgentSettings, AgentSnapshot, EventBatchRequest, EventBatchResult};
+use meowlive_protocol::agent::{
+    AgentSettings, AgentSnapshot, EventBatchRequest, EventBatchResult, PersonaProfileCreateRequest,
+    PersonaProfileIdRequest, PersonaProfileRenameRequest, PersonaProfileUpdateRequest,
+    PersonaProfilesSnapshot,
+};
 
 pub async fn status(State(state): State<AppState>) -> Json<AgentSnapshot> {
     Json(state.agent_snapshot().await)
@@ -23,6 +27,56 @@ pub async fn settings(
 ) -> Result<Json<AgentSnapshot>, ApiError> {
     let Json(settings) = body.map_err(|_| invalid())?;
     state.configure_agent(settings).await.map(Json)
+}
+pub async fn personas(
+    State(state): State<AppState>,
+) -> Result<Json<PersonaProfilesSnapshot>, ApiError> {
+    state.persona_profiles().await.map(Json)
+}
+pub async fn create_persona(
+    State(state): State<AppState>,
+    body: Result<Json<PersonaProfileCreateRequest>, JsonRejection>,
+) -> Result<Json<PersonaProfilesSnapshot>, ApiError> {
+    state
+        .create_persona_profile(body.map_err(|_| invalid())?.0)
+        .await
+        .map(Json)
+}
+pub async fn select_persona(
+    State(state): State<AppState>,
+    body: Result<Json<PersonaProfileIdRequest>, JsonRejection>,
+) -> Result<Json<PersonaProfilesSnapshot>, ApiError> {
+    state
+        .select_persona_profile(body.map_err(|_| invalid())?.0)
+        .await
+        .map(Json)
+}
+pub async fn rename_persona(
+    State(state): State<AppState>,
+    body: Result<Json<PersonaProfileRenameRequest>, JsonRejection>,
+) -> Result<Json<PersonaProfilesSnapshot>, ApiError> {
+    state
+        .rename_persona_profile(body.map_err(|_| invalid())?.0)
+        .await
+        .map(Json)
+}
+pub async fn update_persona(
+    State(state): State<AppState>,
+    body: Result<Json<PersonaProfileUpdateRequest>, JsonRejection>,
+) -> Result<Json<PersonaProfilesSnapshot>, ApiError> {
+    state
+        .update_persona_profile(body.map_err(|_| invalid())?.0)
+        .await
+        .map(Json)
+}
+pub async fn delete_persona(
+    State(state): State<AppState>,
+    body: Result<Json<PersonaProfileIdRequest>, JsonRejection>,
+) -> Result<Json<PersonaProfilesSnapshot>, ApiError> {
+    state
+        .delete_persona_profile(body.map_err(|_| invalid())?.0)
+        .await
+        .map(Json)
 }
 pub async fn events(
     State(state): State<AppState>,

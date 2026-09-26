@@ -12,4 +12,4 @@ src/  # 从 Rust 生成的 TypeScript 协议类型和版本常量
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: cba27dbe47c7cb9cb67849c2247eed5139708112e93eb05a935527bdaddb96a8 -->
+<!-- directory-tree-sha256: 78f107416c3742fab0df8a87a840f786b404219dc7434af2458012e381e75244 -->

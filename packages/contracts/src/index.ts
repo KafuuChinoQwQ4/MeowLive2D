@@ -280,6 +280,18 @@ export type LiveSettingsRequest = { enabled: boolean, app_id: string, access_key
 
 export type AgentSettings = { persona: string, system_prompt: string, topic: string, proactive_enabled: boolean, cooldown_ms: number, interaction: InteractionSettings, };
 
+export type PersonaProfileSummary = { id: string, name: string, persona: string, };
+
+export type PersonaProfilesSnapshot = { profiles: Array<PersonaProfileSummary>, selected_profile_id: string | null, storage_available: boolean, };
+
+export type PersonaProfileCreateRequest = { name: string, persona: string, };
+
+export type PersonaProfileIdRequest = { id: string, };
+
+export type PersonaProfileRenameRequest = { id: string, name: string, };
+
+export type PersonaProfileUpdateRequest = { id: string, name: string, persona: string, };
+
 export type EventPayload = { "type": "chat", text: string, } | { "type": "gift", name: string, count: number, } | { "type": "super_chat", text: string, amount_cny: number, start_at_ms: number, end_at_ms: number, } | { "type": "room_enter" };
 
 export type ViewerIdentityKind = "open_id" | "uid";

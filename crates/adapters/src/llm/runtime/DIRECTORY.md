@@ -12,4 +12,4 @@ runtime/  # 四协议工具调用、流式响应、缓存和用量的统一适�
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: bbbcecf64e53756948eda31ff467ce8a953d66b6dc1c85dcc1a3484b1f785afc -->
+<!-- directory-tree-sha256: 61031e5e84f50b32cfc28bef60684c38c965f17c3bc09d7497f769aeb644b8de -->

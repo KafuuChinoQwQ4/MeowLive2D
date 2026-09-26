@@ -21,4 +21,4 @@ llm/  # 云端及本地 LLM 的协议适配
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 6338c2bf50c40326da6af75a1f5b544ecde4b238347d85cc4fc2be340556690a -->
+<!-- directory-tree-sha256: 0418b45146b654d19db074ad1b723fb703e8bcbb6bc440bed9dfb2f66f155827 -->

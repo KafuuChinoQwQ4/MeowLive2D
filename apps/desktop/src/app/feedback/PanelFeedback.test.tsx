@@ -25,6 +25,12 @@ import type { ModelLibraryClient } from "../../services/model-library";
 import type { ResourcesClient } from "../../services/server/resources";
 import type { LlmClient } from "../../services/server/llm";
 
+const personaMethods = () => ({
+  getPersonaProfiles: vi.fn(), createPersonaProfile: vi.fn(), selectPersonaProfile: vi.fn(),
+  renamePersonaProfile: vi.fn(), deletePersonaProfile: vi.fn(),
+  updatePersonaProfile: vi.fn(),
+});
+
 it("reports a failed connection snapshot as failure even when the request resolves", async () => {
   const client: LiveClient = { baseUrl: "test", getSettings: vi.fn().mockResolvedValue(liveSettingsSnapshot()), saveSettings: vi.fn(), getStatus: vi.fn().mockResolvedValue(liveSnapshot()), connect: vi.fn().mockResolvedValue(liveSnapshot({ phase: "failed", last_error: "平台拒绝连接" })), disconnect: vi.fn() };
   const { result } = renderHook(() => useConnectionController(client, 1000), { wrapper: FeedbackProvider });
@@ -64,7 +70,7 @@ it("acknowledges queued speech then reports the later playback failure once", as
 });
 
 it("reports Agent pause success and an explicit resume failure", async () => {
-  const client: AgentClient = { baseUrl: "test", getStatus: vi.fn().mockResolvedValue(agentStatus()), pause: vi.fn().mockResolvedValue(agentStatus()), resume: vi.fn().mockRejectedValue(new Error("LLM 未配置")), saveSettings: vi.fn(), submitEvents: vi.fn() };
+  const client: AgentClient = { baseUrl: "test", getStatus: vi.fn().mockResolvedValue(agentStatus()), pause: vi.fn().mockResolvedValue(agentStatus()), resume: vi.fn().mockRejectedValue(new Error("LLM 未配置")), saveSettings: vi.fn(), submitEvents: vi.fn(), ...personaMethods() };
   const { result } = renderHook(() => useAgentController(client, 1000), { wrapper: FeedbackProvider });
   await act(async () => {});
   await act(async () => { await result.current.pause(); });
@@ -74,7 +80,7 @@ it("reports Agent pause success and an explicit resume failure", async () => {
 });
 
 it("does not claim Agent resumed when the returned state is still paused", async () => {
-  const client: AgentClient = { baseUrl: "test", getStatus: vi.fn().mockResolvedValue(agentStatus()), pause: vi.fn(), resume: vi.fn().mockResolvedValue(agentStatus()), saveSettings: vi.fn(), submitEvents: vi.fn() };
+  const client: AgentClient = { baseUrl: "test", getStatus: vi.fn().mockResolvedValue(agentStatus()), pause: vi.fn(), resume: vi.fn().mockResolvedValue(agentStatus()), saveSettings: vi.fn(), submitEvents: vi.fn(), ...personaMethods() };
   const { result } = renderHook(() => useAgentController(client, 1000), { wrapper: FeedbackProvider });
   await act(async () => {});
   await act(async () => { await result.current.resume(); });
@@ -84,7 +90,7 @@ it("does not claim Agent resumed when the returned state is still paused", async
 it("reports a new Agent event failure once without reopening historical failures", async () => {
   vi.useFakeTimers();
   let snapshot = agentStatus({ events: [agentEvent()] });
-  const client: AgentClient = { baseUrl: "test", getStatus: vi.fn(async () => snapshot), pause: vi.fn(), resume: vi.fn(), saveSettings: vi.fn(), submitEvents: vi.fn() };
+  const client: AgentClient = { baseUrl: "test", getStatus: vi.fn(async () => snapshot), pause: vi.fn(), resume: vi.fn(), saveSettings: vi.fn(), submitEvents: vi.fn(), ...personaMethods() };
   renderHook(() => useAgentController(client, 1000), { wrapper: FeedbackProvider });
   await act(async () => {});
   snapshot = agentStatus({ events: [agentEvent({ status: "failed", error: "语音引擎不可用" })] });

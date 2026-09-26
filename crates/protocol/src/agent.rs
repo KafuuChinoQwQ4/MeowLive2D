@@ -16,6 +16,50 @@ pub struct AgentSettings {
     pub interaction: InteractionSettings,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[serde(deny_unknown_fields)]
+pub struct PersonaProfileSummary {
+    pub id: String,
+    pub name: String,
+    pub persona: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[serde(deny_unknown_fields)]
+pub struct PersonaProfilesSnapshot {
+    pub profiles: Vec<PersonaProfileSummary>,
+    pub selected_profile_id: Option<String>,
+    pub storage_available: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[serde(deny_unknown_fields)]
+pub struct PersonaProfileCreateRequest {
+    pub name: String,
+    pub persona: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[serde(deny_unknown_fields)]
+pub struct PersonaProfileIdRequest {
+    pub id: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[serde(deny_unknown_fields)]
+pub struct PersonaProfileRenameRequest {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[serde(deny_unknown_fields)]
+pub struct PersonaProfileUpdateRequest {
+    pub id: String,
+    pub name: String,
+    pub persona: String,
+}
+
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq, TS)]
 #[serde(rename_all = "snake_case")]
 pub enum ChatReadMode {

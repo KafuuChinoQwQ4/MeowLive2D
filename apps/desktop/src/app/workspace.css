@@ -393,6 +393,9 @@
 .training-result-actions button:focus-visible { outline: 3px solid #bd8fa5; outline-offset: 3px; }
 
 .persona-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-top: 22px; }
+.persona-card-panel .profile-picker-control { width: 100%; }
+.persona-card-panel .profile-picker-control .profile-toggle { justify-content: center; }
+.persona-card-panel .persona-rename-button { margin-top: 8px; font-size: 11px; }
 .studio-shell .persona-card-heading h3 { margin: 0; color: #604452; }
 .persona-card-heading .field-hint { margin-top: 4px; }
 .persona-card-count { flex-shrink: 0; padding: 3px 8px; border-radius: 999px; background: #f6e6ee; color: #8b687b; font-size: 10px; font-variant-numeric: tabular-nums; }

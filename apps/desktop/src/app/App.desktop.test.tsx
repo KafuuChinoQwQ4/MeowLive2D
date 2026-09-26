@@ -21,6 +21,10 @@ it("waits for desktop configuration and uses its address in every panel", async 
     const path = new URL(String(url)).pathname;
     if (path === "/api/admin/session") return jsonResponse({ enabled: false, authenticated: false });
     if (path === "/api/agent") return jsonResponse(agentStatus());
+    if (path === "/api/agent/personas") return jsonResponse({
+      profiles: [{ id: "persona-1", name: "配置1", persona: agentStatus().settings.persona }],
+      selected_profile_id: "persona-1", storage_available: true,
+    });
     if (path === "/api/agent/scheduler") return jsonResponse({ ready: false, phase: "waiting", block_reason: "no_eligible_events", message: "正在等待新的可回应事件", remaining_ms: null, pending_events: 0, deciding_events: 0, active_speeches: 0, updated_at_ms: 1 });
     if (path === "/api/agent/traces") return jsonResponse({ traces: [], storage_available: true, truncated: false });
     if (path === "/api/live/settings") return jsonResponse(liveSettingsSnapshot());

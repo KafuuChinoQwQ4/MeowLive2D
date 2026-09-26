@@ -131,7 +131,10 @@ async fn custom_interaction_preferences_survive_restart_without_resuming_agent()
         let saved: Value =
             serde_json::from_slice(&std::fs::read(settings_path(&fixture.config)).unwrap())
                 .unwrap();
-        assert_eq!(saved, json!({"schema":1,"settings":custom}));
+        assert_eq!(saved["schema"], 2);
+        assert_eq!(saved["settings"], custom);
+        assert_eq!(saved["profiles"][0]["persona"], custom["persona"]);
+        assert_eq!(saved["selected_profile_id"], saved["profiles"][0]["id"]);
         assert_eq!(std::fs::read(&fixture.config).unwrap(), original);
     }
 }
@@ -211,7 +214,10 @@ async fn saves_preferences_without_changing_toml_or_runtime_limits() {
     assert!(restored.paused);
     let path = settings_path(&fixture.config);
     let saved: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
-    assert_eq!(saved, json!({"schema":1,"settings":settings()}));
+    assert_eq!(saved["schema"], 2);
+    assert_eq!(saved["settings"], settings());
+    assert_eq!(saved["profiles"][0]["persona"], settings()["persona"]);
+    assert_eq!(saved["selected_profile_id"], saved["profiles"][0]["id"]);
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;

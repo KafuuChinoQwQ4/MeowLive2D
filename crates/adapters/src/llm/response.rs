@@ -57,9 +57,23 @@ pub(super) fn parse_decision_content(
     content: &str,
     request: &DecisionRequest,
 ) -> Result<AgentDecision, LlmError> {
-    if content.trim().is_empty() {
+    let content = content.trim();
+    if content.is_empty() {
         return Err(invalid_response());
     }
+    let content = if let Some(fenced) = content
+        .strip_prefix("```json")
+        .or_else(|| content.strip_prefix("```"))
+    {
+        fenced
+            .strip_prefix("\r\n")
+            .or_else(|| fenced.strip_prefix('\n'))
+            .and_then(|body| body.strip_suffix("```"))
+            .map(str::trim)
+            .ok_or_else(invalid_response)?
+    } else {
+        content
+    };
     let decision: Decision = serde_json::from_str(content).map_err(|_| invalid_response())?;
     validate_decision(decision, request)
 }

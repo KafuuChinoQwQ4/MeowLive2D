@@ -10,6 +10,8 @@ function setup(persona = "猫咪主播") {
     baseUrl: "http://127.0.0.1:19600",
     getStatus: vi.fn(async () => snapshot),
     saveSettings: vi.fn(async settings => { snapshot = agentStatus({ settings }); return snapshot; }),
+    getPersonaProfiles: vi.fn(async () => ({ profiles: [{ id: "card-1", name: "配置1", persona: snapshot.settings.persona }], selected_profile_id: "card-1", storage_available: true })),
+    updatePersonaProfile: vi.fn(async ({ persona }) => { snapshot = agentStatus({ settings: { ...snapshot.settings, persona } }); return { profiles: [{ id: "card-1", name: "配置1", persona }], selected_profile_id: "card-1", storage_available: true }; }),
   } as unknown as AgentClient;
   render(<PersonaCardPanel client={client} />);
   return client;
@@ -45,7 +47,7 @@ it("表情字符计数按 Unicode 字符，不误报 2000 字内容", async () =
   const client = setup("🐈".repeat(2000));
   expect(await screen.findByLabelText("核心身份")).not.toHaveAttribute("aria-invalid", "true");
   fireEvent.click(screen.getByRole("button", { name: "保存人物卡并暂停 Agent" }));
-  await waitFor(() => expect(client.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ persona: "🐈".repeat(2000) }), expect.anything()));
+  await waitFor(() => expect(client.updatePersonaProfile).toHaveBeenCalledWith(expect.objectContaining({ persona: "🐈".repeat(2000) }), expect.anything()));
 });
 
 it("以人物卡标题开头的旧自由文本仍原样保存", async () => {
@@ -53,5 +55,5 @@ it("以人物卡标题开头的旧自由文本仍原样保存", async () => {
   const client = setup(persona);
   await screen.findByLabelText("核心身份");
   fireEvent.click(screen.getByRole("button", { name: "保存人物卡并暂停 Agent" }));
-  await waitFor(() => expect(client.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ persona }), expect.anything()));
+  await waitFor(() => expect(client.updatePersonaProfile).toHaveBeenCalledWith(expect.objectContaining({ persona }), expect.anything()));
 });
