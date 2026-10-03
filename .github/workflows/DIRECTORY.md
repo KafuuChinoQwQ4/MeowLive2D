@@ -12,4 +12,4 @@ workflows/  # 持续集成与 Windows 发布工作流
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 8c342f540d39aa6eeb3943fffc7257afa8d23557394db07e58d944ed167fc4b4 -->
+<!-- directory-tree-sha256: 7bbffb6a47a3a071b2773b09237dc75c0189d8bc676efe8fab9ea62297dd9dcb -->

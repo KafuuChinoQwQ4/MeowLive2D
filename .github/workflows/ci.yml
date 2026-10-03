@@ -35,6 +35,8 @@ jobs:
       - uses: Swatinem/rust-cache@49a0bdc70d2e1b713ca9e2869b211fcce03d3c1c # v2
       - run: npm ci
       - run: npm run check
+        env:
+          CARGO_INCREMENTAL: '1'
       - run: npm run build
 
   windows:
