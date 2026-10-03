@@ -2221,7 +2221,7 @@ dependencies = [
 
 [[package]]
 name = "meowlive-adapters"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "axum",
  "brotli",
@@ -2246,14 +2246,14 @@ dependencies = [
 
 [[package]]
 name = "meowlive-application"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "meowlive-domain",
 ]
 
 [[package]]
 name = "meowlive-desktop"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "meowlive-desktop-runtime",
  "meowlive-protocol",
@@ -2267,7 +2267,7 @@ dependencies = [
 
 [[package]]
 name = "meowlive-desktop-runtime"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "base64 0.22.1",
  "cpal",
@@ -2284,11 +2284,11 @@ dependencies = [
 
 [[package]]
 name = "meowlive-domain"
-version = "0.1.2"
+version = "0.1.3"
 
 [[package]]
 name = "meowlive-protocol"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2297,7 +2297,7 @@ dependencies = [
 
 [[package]]
 name = "meowlive-server"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "axum",
  "chrono",

@@ -17,4 +17,4 @@ contracts/  # 供前端使用的跨端协议类型出口
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: eecec55c0d717ff939e2fb3e7c6b34025c39e47ffaa9cf8eea29665a308321e5 -->
+<!-- directory-tree-sha256: fef4e39b3318743ba99c60ee4158a4702e7a11eac224e151f77329bafa64994f -->

@@ -8,6 +8,7 @@ fn explicit_configuration_is_resolved_against_its_own_directory() {
     let path = directory.join("desktop.toml");
     std::fs::write(&path, "server_url='ws://localhost:19601'\nmodel_directory='models'\n[vtube_studio]\ntoken_path='private/token.json'").unwrap();
     let loaded = load_configuration(Some(&path), &directory.join("unused")).unwrap();
+    let directory = directory.canonicalize().unwrap();
     assert_eq!(loaded.server_url, "http://localhost:19601");
     assert_eq!(
         loaded.config.model_directory,
