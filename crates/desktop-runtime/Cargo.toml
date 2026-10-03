@@ -10,19 +10,19 @@ license.workspace = true
 meowlive-protocol.workspace = true
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-toml = "0.8"
+toml = "1.1"
 tokio = { version = "1", features = ["macros", "rt", "net", "time", "signal", "sync", "process"] }
 tokio-tungstenite = "0.29"
 futures-util = "0.3"
 url = "2"
-base64 = "0.22"
-sha2 = "0.10"
+base64 = "0.23"
+sha2 = "0.11"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["io-util", "test-util"] }
 
 [target.'cfg(windows)'.dependencies]
-cpal = "0.15"
+cpal = "0.18"
 
 [lints]
 workspace = true
