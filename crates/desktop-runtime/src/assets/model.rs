@@ -334,7 +334,9 @@ pub fn install_model_package(
         if copied != file.bytes {
             return Err(AssetError::SourceChanged);
         }
-        fs::File::open(&target_file)
+        fs::OpenOptions::new()
+            .write(true)
+            .open(&target_file)
             .and_then(|file| file.sync_all())
             .map_err(|_| AssetError::Io)?;
     }

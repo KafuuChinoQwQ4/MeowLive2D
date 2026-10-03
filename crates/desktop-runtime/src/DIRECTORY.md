@@ -27,4 +27,4 @@ src/  # 播放、连接、口型、VTS、OBS 与模型导入的执行源码
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: cafdd1a21ceeccb417087ad32daf8b33b97581c0fa428bd0d9f20c9fb0190dbb -->
+<!-- directory-tree-sha256: e690aabe203ba7e84c3cd2c0a47b7066b4f411d3a35a978f16475806fc4ad80b -->

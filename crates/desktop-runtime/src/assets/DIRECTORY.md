@@ -12,4 +12,4 @@ assets/  # Live2D 导出模型包的本地校验与安装
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 0c6b3e2af4c01cead22b4bc13bfc5bba6078d22a64d49a5c96f86cfe959467f3 -->
+<!-- directory-tree-sha256: c699e5f5752d956d0f9d2788c72aa61d100114a0325af00ef9706066a2d2b805 -->

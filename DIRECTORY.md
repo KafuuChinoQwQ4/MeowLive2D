@@ -35,4 +35,4 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 2eeedb9f89a3fbd04461633371317d97a8fe96c15c0353d4f8e53d95abf5e8d6 -->
+<!-- directory-tree-sha256: 330f598b1db178a363992fa82c20a85156a0cd18b516efdaddbc40bd27afd1b7 -->
