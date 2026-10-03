@@ -125,8 +125,32 @@ async fn stalled_vts_response_does_not_delay_stop_receipt_or_zero_reset() {
     server.await.unwrap();
     assert!(client.await.unwrap().is_err());
     // Keep acknowledging shutdown resets while the driver finishes.
-    tokio::select! {
-        _ = driver.shutdown() => {},
-        _ = async { loop { assert_eq!(injected(&mut socket).await, 0.0); } } => unreachable!(),
-    }
+    timeout(Duration::from_secs(3), async {
+        let shutdown = driver.shutdown();
+        tokio::pin!(shutdown);
+        loop {
+            tokio::select! {
+                _ = &mut shutdown => break,
+                message = socket.next() => {
+                    match message {
+                        Some(Ok(Message::Text(text))) => {
+                            let request: serde_json::Value = serde_json::from_str(&text).unwrap();
+                            assert_eq!(request["messageType"], "InjectParameterDataRequest");
+                            assert_eq!(request["data"]["parameterValues"][0]["value"].as_f64(), Some(0.0));
+                            respond(&mut socket, &request, "InjectParameterDataResponse", json!({})).await;
+                        }
+                        None | Some(Ok(Message::Close(_)))
+                        | Some(Err(tokio_tungstenite::tungstenite::Error::Protocol(
+                            tokio_tungstenite::tungstenite::error::ProtocolError::ResetWithoutClosingHandshake,
+                        ))) => {
+                            // The worker may close before the outer shutdown task completes.
+                            shutdown.await;
+                            break;
+                        }
+                        other => panic!("unexpected shutdown message: {other:?}"),
+                    }
+                }
+            }
+        }
+    }).await.expect("avatar shutdown must finish");
 }

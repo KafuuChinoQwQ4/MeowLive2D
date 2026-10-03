@@ -17,4 +17,4 @@ scripts/  # 开发工具、目录用途登记与索引同步检查
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 6c7058b3084410a2f3e12da741933e7f4340e0387ef01a6c4eb3a278975a1984 -->
+<!-- directory-tree-sha256: 2b32c13f52dc39aecc569e3d22669d8e078b5f23af98652f8a2c5a252be7efbe -->

@@ -23,4 +23,4 @@ tests/  # 桌面执行运行时独立集成测试
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 82f24164d7da9d52076ef08802b2d613b1175788ce5cf4bf334d8c633487beca -->
+<!-- directory-tree-sha256: b8753c0cd1b4173404c1e9183a778d9ee6b5c893175db144434dd9fdc7c72b3a -->

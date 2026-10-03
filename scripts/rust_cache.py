@@ -156,6 +156,32 @@ def unit(entry):
     return f'{entry["profile"]}:{entry["hash"]}'
 
 
+def retire_superseded_context_entries(state):
+    """A later successful observation replaces the same recipe across command contexts.
+
+    Keep distinct features, profiles, targets and compilers (all are in recipe).
+    Ties remain protected; filesystem age never establishes a replacement.
+    """
+    latest = {}
+    for context in state["contexts"].values():
+        for entry in context["entries"]:
+            recipe = entry["recipe"]
+            stamp = context["used_at"]
+            if recipe not in latest or stamp > latest[recipe][0]:
+                latest[recipe] = (stamp, {unit(entry)})
+            elif stamp == latest[recipe][0]:
+                latest[recipe][1].add(unit(entry))
+    for context in state["contexts"].values():
+        kept = []
+        for entry in context["entries"]:
+            if unit(entry) in latest[entry["recipe"]][1]:
+                kept.append(entry)
+            else:
+                state["retired"].append(entry)
+        context["entries"] = kept
+    state["contexts"] = {k: c for k, c in state["contexts"].items() if c["entries"]}
+
+
 def size_and_files(p, inodes):
     if p.is_symlink():
         return 0, 0
@@ -197,6 +223,7 @@ def prune(target, root, *, dry_run=False, bootstrap=True):
     if target.resolve() != (root.resolve() / "target"):
         raise ValueError("cleanup is restricted to this project's target directory")
     state = load_state(target)
+    retire_superseded_context_entries(state)
     live = [e for c in state["contexts"].values() for e in c["entries"]]
     protected = {unit(e) for e in live}
     profiles = {e["profile"] for e in live}

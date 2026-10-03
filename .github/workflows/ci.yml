@@ -67,7 +67,7 @@ jobs:
       - run: npm ci
       - run: npm run desktop:build
       - name: Test desktop configuration and runtime
-        run: python scripts/rust_cache.py test -p meowlive-desktop -p meowlive-desktop-runtime --target x86_64-pc-windows-msvc --locked
+        run: cargo test -p meowlive-desktop -p meowlive-desktop-runtime --target x86_64-pc-windows-msvc --locked
       - name: Create checksums and build information
         shell: pwsh
         run: |

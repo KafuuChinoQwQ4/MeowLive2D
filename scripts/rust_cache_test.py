@@ -79,19 +79,54 @@ class CacheTests(unittest.TestCase):
         self.assertTrue(Path(current["executable"]).exists())
         self.assertFalse(Path(obsolete["executable"]).exists())
 
-    def test_preserves_outputs_used_by_another_command_context(self):
+    def test_retires_same_recipe_across_command_contexts(self):
         workspace = self.artifact("1111111111111111")
         package = self.artifact("2222222222222222")
         self.record("workspace", [workspace])
         self.record("package", [package])
         self.prune()
-        self.assertTrue(Path(workspace["executable"]).exists())
+        self.assertFalse(Path(workspace["executable"]).exists())
         self.assertTrue(Path(package["executable"]).exists())
         newest = self.artifact("3333333333333333")
         self.record("workspace", [newest])
         self.prune()
-        self.assertFalse(Path(workspace["executable"]).exists())
-        self.assertTrue(Path(package["executable"]).exists())
+        self.assertFalse(Path(package["executable"]).exists())
+        self.assertTrue(Path(newest["executable"]).exists())
+
+    def test_distinct_recipes_remain_protected_across_contexts(self):
+        artifacts = [self.artifact("1111111111111111"),
+                     self.artifact("2222222222222222", profile=2),
+                     self.artifact("3333333333333333", feature='["extra"]')]
+        for i, artifact in enumerate(artifacts):
+            self.record(str(i), [artifact])
+        self.prune()
+        for artifact in artifacts:
+            self.assertTrue(Path(artifact["executable"]).exists())
+
+    def test_context_migration_dry_run_does_not_change_inventory(self):
+        old = self.artifact("1111111111111111")
+        current = self.artifact("2222222222222222")
+        self.record("workspace", [old])
+        self.record("package", [current])
+        state_file = self.target / ".rust-cache/state.json"
+        before = state_file.read_bytes()
+        self.assertGreater(self.prune(dry_run=True)["bytes"], 0)
+        self.assertEqual(state_file.read_bytes(), before)
+        self.assertTrue(Path(old["executable"]).exists())
+
+    def test_equal_success_timestamps_do_not_guess_a_winner(self):
+        first = self.artifact("1111111111111111")
+        second = self.artifact("2222222222222222")
+        self.record("first", [first])
+        self.record("second", [second])
+        state = cache.load_state(self.target)
+        stamp = max(c["used_at"] for c in state["contexts"].values())
+        for context in state["contexts"].values():
+            context["used_at"] = stamp
+        cache.save_state(self.target, state)
+        self.prune()
+        self.assertTrue(Path(first["executable"]).exists())
+        self.assertTrue(Path(second["executable"]).exists())
 
     def test_only_retires_previously_recorded_incremental_directories(self):
         old = self.artifact("1111111111111111")
