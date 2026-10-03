@@ -53,7 +53,7 @@ export function Workspace({ overview, pages, setup, ready, status, notice, admin
         <div className="studio-system-status" aria-label="系统运行状态">{status.map(item => <span key={item.label} className={`studio-status ${item.available === null ? "neutral" : item.available ? "online" : "offline"}`}><i />{item.label}</span>)}</div>
       </header>
       <main id="studio-main" className="studio-content" ref={content} tabIndex={-1}>
-        <div className="studio-page-header"><div><h1>{page.title}</h1><p>{page.description}</p></div>{active !== "guide" && <button className="studio-help-button" onClick={() => navigate("guide")}><WorkspaceIcon name="guide" />使用帮助</button>}</div>
+        <div className="studio-page-header"><div><h1>{page.title}</h1></div>{active !== "guide" && <button className="studio-help-button" onClick={() => navigate("guide")}><WorkspaceIcon name="guide" />使用帮助</button>}</div>
         <section className="studio-page" aria-label="运行总览" hidden={active !== "overview"}>
           {overview}
           <div className="studio-shortcuts" aria-label="常用功能">
@@ -62,8 +62,9 @@ export function Workspace({ overview, pages, setup, ready, status, notice, admin
         </section>
         <section className="studio-page studio-page-setup" aria-label="环境与模型" hidden={active !== "setup"}>{visited.has("setup") && <FeedbackScope name="setup"><DatabaseSetupPanel />{setup}</FeedbackScope>}</section>
         <section className="studio-page studio-page-guide" aria-label="使用指南" hidden={active !== "guide"}>{visited.has("guide") && <GuidePanel onNavigate={navigate} />}</section>
-        {active !== "overview" && active !== "setup" && active !== "guide" && !ready && <section className="panel studio-unavailable"><WorkspaceIcon name="overview" /><h2>正在等待主服务</h2><p>主服务自动就绪后即可使用；启动异常可在运行页查看。</p><button className="primary-button" onClick={() => navigate("overview")}>前往启动与运行</button></section>}
-        {ready && workspacePages.filter(item => item.id !== "overview" && item.id !== "setup" && item.id !== "guide").map(item => {
+        {active !== "overview" && active !== "setup" && active !== "guide" && active !== "logs" && !ready && <section className="panel studio-unavailable"><WorkspaceIcon name="overview" /><h2>正在等待主服务</h2><p>主服务自动就绪后即可使用；启动异常可在运行页查看。</p><button className="primary-button" onClick={() => navigate("overview")}>前往启动与运行</button></section>}
+        <section className="studio-page studio-page-logs" aria-label="运行日志" hidden={active !== "logs"}>{visited.has("logs") && pages.logs}</section>
+        {ready && workspacePages.filter(item => item.id !== "overview" && item.id !== "setup" && item.id !== "guide" && item.id !== "logs").map(item => {
           const id = item.id as keyof WorkspaceProps["pages"];
           return <section key={id} className={`studio-page studio-page-${id}`} aria-label={item.label} hidden={active !== id}>
             {visited.has(id) && (adminClient

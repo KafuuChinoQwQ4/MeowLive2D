@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  checks:
+    name: Linux checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.11'
+      - name: Set up Rust
+        run: rustup update stable --no-self-update && rustup default stable && rustup component add rustfmt
+      - uses: Swatinem/rust-cache@49a0bdc70d2e1b713ca9e2869b211fcce03d3c1c # v2
+      - run: npm ci
+      - run: npm run check
+      - run: npm run build
+
+  windows:
+    name: Windows installer
+    runs-on: windows-2022
+    timeout-minutes: 60
+    env:
+      CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUSTFLAGS: -C target-feature=+crt-static
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.11'
+      - name: Set up Rust
+        run: |
+          rustup update stable --no-self-update
+          rustup default stable
+          rustup target add x86_64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@49a0bdc70d2e1b713ca9e2869b211fcce03d3c1c # v2
+        with:
+          key: windows-installer
+      - run: npm ci
+      - run: npm run desktop:build
+      - name: Test desktop configuration and runtime
+        run: python scripts/rust_cache.py test -p meowlive-desktop -p meowlive-desktop-runtime --target x86_64-pc-windows-msvc --locked
+      - name: Create checksums and build information
+        shell: pwsh
+        run: |
+          $bundle = 'target/x86_64-pc-windows-msvc/release/bundle/nsis'
+          $installers = @(Get-ChildItem "$bundle/*-setup.exe")
+          if ($installers.Count -ne 1) { throw 'Expected exactly one Windows installer' }
+          $hash = (Get-FileHash $installers[0].FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $($installers[0].Name)" | Set-Content "$bundle/SHA256SUMS.txt" -Encoding utf8
+          @{ commit = $env:GITHUB_SHA; run = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"; version = (Get-Content apps/desktop/src-tauri/tauri.conf.json | ConvertFrom-Json).version } | ConvertTo-Json | Set-Content "$bundle/build-info.json" -Encoding utf8
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: windows-installer
+          path: |
+            target/x86_64-pc-windows-msvc/release/bundle/nsis/*-setup.exe
+            target/x86_64-pc-windows-msvc/release/bundle/nsis/SHA256SUMS.txt
+            target/x86_64-pc-windows-msvc/release/bundle/nsis/build-info.json
+          if-no-files-found: error
+          retention-days: 14

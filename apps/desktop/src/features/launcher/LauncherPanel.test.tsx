@@ -9,13 +9,12 @@ function client(status = launcherSnapshot()): LauncherClient {
   return { getStatus: vi.fn().mockResolvedValue(status), setEnabled: vi.fn().mockResolvedValue(status) };
 }
 
-it("shows automatic startup and lets the user stop the main service from its switch", async () => {
+it("lets the user stop the running main service from its switch", async () => {
   const api = client(launcherSnapshot("running"));
   vi.mocked(api.setEnabled).mockResolvedValueOnce(launcherSnapshot("stopped"));
   render(<LauncherPanel client={api}><h2>文字播报</h2></LauncherPanel>);
-  await screen.findByText(/主服务会自动启动/);
   const toggle = screen.getByRole("switch", { name: "主服务" });
-  expect(toggle).toBeChecked();
+  await waitFor(() => expect(toggle).toBeChecked());
   await userEvent.click(toggle);
   expect(api.setEnabled).toHaveBeenLastCalledWith("server", false, "a".repeat(64), expect.any(AbortSignal));
   await waitFor(() => expect(toggle).not.toBeChecked());

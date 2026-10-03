@@ -36,7 +36,6 @@ export function AgentActivityPanel({ client, pollIntervalMs = 1000 }: { client: 
     {error && <p className="field-hint">暂时无法更新活动，连接恢复后会自动刷新。</p>}
     {activity && <>
       <p className="muted">{elapsed !== null && `耗时 ${elapsed.toFixed(1)} 秒 · `}工具轮次 {activity.tool_round} · 已接收 {activity.output_characters.toLocaleString("zh-CN")} 字符</p>
-      <p className="field-hint">完整回复校验完成后才会播报。</p>
       {activity.tools.length > 0 && <ul className="runtime-tool-list">{activity.tools.map((tool, index) => <li key={`${index}-${tool.name}`}>
         <div className="runtime-section-heading"><strong>{toolLabels[tool.name] ?? "读取资料"}</strong><span>{statusLabels[tool.status]} · {(tool.elapsed_ms / 1000).toFixed(1)} 秒</span></div>
         {tool.sources.length > 0 && <div className="runtime-sources"><span>来源</span>{tool.sources.map((source, sourceIndex) => <a key={`${sourceIndex}-${source}`} href={source} title={source} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">{new URL(source).hostname}</a>)}</div>}

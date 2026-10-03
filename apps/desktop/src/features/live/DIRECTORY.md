@@ -12,4 +12,4 @@ live/  # 直播工作台、弹幕观察与播报控制
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: f6d30a20d9c4e6f5bda0b5dd4a85066f283bb21e13960d3a5346f0a30105e4d7 -->
+<!-- directory-tree-sha256: 140908e5d6e698d6bb614798d559ebb1ed464fe06f6947d7932485b6c4b0954f -->

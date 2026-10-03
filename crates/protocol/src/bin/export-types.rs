@@ -1,6 +1,6 @@
 use meowlive_protocol::{
     agent::*, agent_observability::*, audio::*, auth::*, control::*, execution::*, launcher::*,
-    live::*, llm::*, llm_runtime::*, model_library::*, obs::*, resources::*, training::*,
+    live::*, llm::*, llm_runtime::*, log::*, model_library::*, obs::*, resources::*, training::*,
     training_runtime::*,
 };
 use meowlive_protocol::{companionship, memory, relationships, viewer_merge, viewers};
@@ -58,6 +58,10 @@ fn main() -> ExitCode {
         LlmUsageTotals::decl(),
         LlmUsageGroup::decl(),
         LlmUsageSnapshot::decl(),
+        RuntimeLogLevel::decl(),
+        RuntimeLogEntry::decl(),
+        RuntimeLogListResponse::decl(),
+        RuntimeLogRequest::decl(),
         AgentToolActivity::decl(),
         AgentActivitySnapshot::decl(),
         AgentSchedulerBlockReason::decl(),

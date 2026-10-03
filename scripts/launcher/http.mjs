@@ -38,6 +38,17 @@ export function createLauncherMiddleware(manager, port = 1420, models) {
       if (path === '/api/launcher/status' && request.method === 'GET') {
         json(response, 200, await manager.snapshot()); return;
       }
+      if (path === '/api/launcher/logs' && request.method === 'GET') {
+        const query = new URL(request.url, `http://${request.headers.host}`).searchParams;
+        const allowed = new Set(['level', 'source', 'category', 'query', 'limit']);
+        if ([...query.keys()].some(key => !allowed.has(key)) || [...query.values()].some(value => value.length > 512)) { json(response, 400, { message: '日志筛选参数无效。' }); return; }
+        const limit = query.get('limit');
+        if (limit !== null && (!/^\d+$/u.test(limit) || Number(limit) < 1 || Number(limit) > 1000)) { json(response, 400, { message: '日志数量参数无效。' }); return; }
+        const level = query.get('level');
+        if (level !== null && !['debug', 'info', 'warn', 'error'].includes(level)) { json(response, 400, { message: '日志级别参数无效。' }); return; }
+        const store = manager.events;
+        json(response, 200, store ? await store.list({ level, source: query.get('source'), category: query.get('category'), query: query.get('query'), limit: limit ? Number(limit) : 100 }) : { entries: [], storage_available: false, truncated: false }); return;
+      }
       if (models && path === '/api/launcher/models' && request.method === 'GET') {
         json(response, 200, await models.snapshot()); return;
       }

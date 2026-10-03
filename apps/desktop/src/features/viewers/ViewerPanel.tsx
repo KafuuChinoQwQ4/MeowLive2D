@@ -73,7 +73,6 @@ export function ViewerPanel({ client = defaultClient }: { client?: ViewerClient 
     <details className="connection-card viewer-collapsible" open>
       <summary><h2 id="viewer-records-heading">观众与事件</h2></summary>
       <div className="viewer-records-body viewer-records-status">
-        <p className="server-address">{client.baseUrl}</p>
         <div className="live-status-actions"><span className="connection-pill disconnected">未确认接收缺口 {events ? events.unconfirmed_events : "未读取"}</span><button type="button" className="secondary-button" onClick={() => setRefresh(value => value + 1)} disabled={loading}>刷新记录</button></div>
       </div>
     </details>

@@ -112,6 +112,7 @@ pub async fn control(
                                 if let Some(journal)=state.receipt_journal.clone(){
                                     let scope=state.config.viewers.scope_id.clone();let speech=receipt.utterance_id.clone();let now=crate::viewers::utc_ms();
                                     if !matches!(tokio::task::spawn_blocking(move||journal.put(&scope,&speech,now)).await,Ok(Ok(()))){
+                                        state.logs.record(crate::logs::LogEvent::ReceiptFailed);
                                         state.receipt_failures.fetch_add(1,std::sync::atomic::Ordering::Relaxed);
                                         state.disconnect(&id).await;break;
                                     }
@@ -122,7 +123,16 @@ pub async fn control(
                         if inner.bridge.as_ref().is_none_or(|b| b.id != id) { break; }
                         // Device errors are user-facing summaries, never arbitrary executable data.
                         let error = receipt.error.map(|s| s.chars().take(256).collect());
-                        inner.queue.apply_receipt(&receipt.utterance_id, receipt.generation, mapping::receipt(receipt.status), error);
+                        if inner.queue.apply_receipt(&receipt.utterance_id, receipt.generation, mapping::receipt(receipt.status), error) {
+                            use meowlive_protocol::execution::ExecutionStatus;
+                            let event = match receipt.status {
+                                ExecutionStatus::Completed => Some(crate::logs::LogEvent::ExecutionCompleted),
+                                ExecutionStatus::Failed => Some(crate::logs::LogEvent::ExecutionFailed),
+                                ExecutionStatus::Cancelled => Some(crate::logs::LogEvent::ExecutionCancelled),
+                                ExecutionStatus::Started => None,
+                            };
+                            if let Some(event) = event { state.logs.record(event); }
+                        }
                         // Commit the Agent result with the device receipt, before
                         // a later Stop can prune the speech queue's short history.
                         state.sync_agent(&mut inner);
@@ -156,6 +166,7 @@ pub async fn audio(
             return;
         }
         inner.queue.set_connected(true);
+        state.logs.record(crate::logs::LogEvent::BridgeConnected);
     }
     let mut heartbeat = tokio::time::interval(Duration::from_secs(10));
     let mut last_received = tokio::time::Instant::now();

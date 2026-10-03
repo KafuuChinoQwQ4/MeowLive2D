@@ -144,6 +144,11 @@ impl CallGuard {
             return;
         }
         self.finished = true;
+        self.state.logs.record(match status {
+            "completed" => crate::logs::LogEvent::LlmCompleted,
+            "failed" => crate::logs::LogEvent::LlmFailed,
+            _ => crate::logs::LogEvent::LlmCancelled,
+        });
         let mut inner = self.store.inner.lock().unwrap();
         let Some(mut record) = inner.pending.remove(&self.id) else {
             return;

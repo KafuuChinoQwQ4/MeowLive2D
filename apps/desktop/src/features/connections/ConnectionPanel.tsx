@@ -37,7 +37,6 @@ export function ConnectionPanel({ client = defaultClient, pollIntervalMs = 1_000
       <div className="connection-card live-status-card">
         <div>
           <h2 id="live-connection-heading">{status ? phaseLabels[status.phase] : "正在读取直播连接状态…"}</h2>
-          <p className="server-address">{client.baseUrl}</p>
         </div>
         <div className="live-status-actions">
           {status && <div className="connection-indicators" aria-label="直播连接信息">

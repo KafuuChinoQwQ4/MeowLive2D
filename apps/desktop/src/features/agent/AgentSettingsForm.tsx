@@ -75,7 +75,6 @@ export function AgentSettingsForm({ settings, disabled, onSave }: {
   return (
     <section className="panel" aria-labelledby="agent-settings-heading">
       <h2 id="agent-settings-heading">互动设置</h2>
-      <p className="muted">人物卡在<a href="#resources">角色与人物卡</a>设置。保存互动设置会暂停 Agent；配置保存在本机，下次打开仍保留。</p>
       <form noValidate onSubmit={(event) => { void submit(event); }}>
         <label htmlFor="agent-topic">直播话题</label>
         <input id="agent-topic" value={topic} disabled={disabled}
@@ -84,7 +83,6 @@ export function AgentSettingsForm({ settings, disabled, onSave }: {
         <textarea id="agent-system-prompt" rows={6} maxLength={4000} value={systemPrompt} disabled={disabled}
           placeholder="补充主播的语气、互动规则和回复偏好"
           onChange={(event) => setSystemPrompt(event.target.value)} />
-        <p className="field-hint">这段内容会作为自定义系统提示词发送给模型；固定输出格式和安全规则仍由程序维护。</p>
         <label htmlFor="agent-cooldown">冷却时间（秒）</label>
         <input id="agent-cooldown" type="number" min="1" max="3600" step="1" value={cooldownSeconds} disabled={disabled}
           onChange={(event) => setCooldownSeconds(event.target.value)} />
@@ -102,13 +100,11 @@ export function AgentSettingsForm({ settings, disabled, onSave }: {
           <option value="all">全部：逐条读出并回复</option>
           <option value="selective">选择：由 Agent 挑选弹幕回应</option>
         </select>
-        <p className="field-hint">SC 优先读出昵称、金额和留言，再回复；暂停、过期、处理失败或队列已满可能导致未播报。</p>
         <label className="checkbox-field">
           <input type="checkbox" checked={welcomeEnabled} disabled={disabled}
             onChange={(event) => setWelcomeEnabled(event.target.checked)} />
           <span>欢迎进房观众</span>
         </label>
-        <p className="field-hint">进房稀疏时按昵称欢迎，繁忙时暂停欢迎。当前依据收到的事件判断活跃程度，并非实时在线人数；大直播间可手动关闭欢迎。</p>
         <div className="compact-fields">
           <div><label htmlFor="agent-busy-chat">每分钟弹幕阈值</label>
             <input id="agent-busy-chat" type="number" min="1" max="1000" step="1" value={busyChatCount} disabled={disabled} onChange={(event) => setBusyChatCount(event.target.value)} /></div>

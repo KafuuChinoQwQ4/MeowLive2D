@@ -162,6 +162,10 @@ pub async fn run(config_path: &Path) -> Result<(), String> {
             .directory
             .join("agent-runtime/traces"),
     )?);
+    state.logs = Arc::new(crate::logs::RuntimeLogStore::open(
+        state.config.resources.directory.join("runtime-logs.jsonl"),
+    ));
+    state.logs.record(crate::logs::LogEvent::ServerStarted);
     state.live_settings = Arc::new(crate::live_settings::LiveSettingsStore::new(
         crate::live_settings::settings_path(config_path),
     ));
@@ -258,6 +262,9 @@ pub async fn run(config_path: &Path) -> Result<(), String> {
     let _ = memory.await;
     let _ = expiry.await;
     let _ = graph.await;
+    if result.is_err() {
+        state.logs.record(crate::logs::LogEvent::ServerFailed);
+    }
     result
 }
 

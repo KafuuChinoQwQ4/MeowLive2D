@@ -124,6 +124,7 @@ export class ModelLibrary {
     let asrCanonical; try { asrCanonical = await realpath(this.asrPath); } catch { /* Missing selections stay unavailable. */ }
     this.asrSelected = this.installed.find(item => item.purpose === 'asr' && item.path === asrCanonical && item.ready)?.id ?? null;
     this.markSelected();
+    void this.supervisor.emit?.('info', 'model_scan_completed', 'models');
   }
 
   markSelected() { this.installed.forEach(item => { item.selected = item.id === (item.purpose === 'asr' ? this.asrSelected : this.selected); }); }
@@ -158,6 +159,7 @@ export class ModelLibrary {
       this.selected = item?.id ?? null; this.markSelected();
       return definition;
     }, { restart: persist });
+    if (persist) void this.supervisor.emit?.('info', 'model_selected', 'tts');
   }
 
   async applyAsrSelection(item) {
@@ -170,6 +172,7 @@ export class ModelLibrary {
     await writeFile(`${path}.tmp`, JSON.stringify(selection), { mode: 0o600 });
     await rename(`${path}.tmp`, path);
     this.asrSelection = selection; this.asrSelected = item.id; this.asrError = null; this.markSelected();
+    void this.supervisor.emit?.('info', 'model_selected', 'asr');
   }
 
   async snapshot() {
@@ -204,6 +207,7 @@ export class ModelLibrary {
       const job = { id: randomUUID(), model_id: id, state: 'downloading', message: '正在获取官方文件清单…',
         downloaded_bytes: 0, total_bytes: 0, path: join(this.storage, id), controller: new AbortController() };
       this.jobs = [...this.jobs.filter(entry => entry.model_id !== id).slice(-19), job];
+      void this.supervisor.emit?.('info', 'model_download_started', model.purpose === 'asr' ? 'asr' : 'models');
       job.completion = this.runDownload(model, job);
     });
     this.queue = result.catch(() => {});
@@ -234,6 +238,9 @@ export class ModelLibrary {
             ? '无法读写模型文件，请检查下方下载目录及其权限后重试。' : error.message?.startsWith('Command failed')
           ? '中文模型解压失败，请检查 Python 和磁盘空间后重试。' : /fetch failed|timeout|aborted/i.test(error.message)
             ? '无法连接官方模型源或连接超时，请检查 WSL 网络后重试，也可打开官方页面手动下载。' : error.message;
+    } finally {
+      const code = { completed: 'model_download_completed', failed: 'model_download_failed', cancelled: 'model_download_cancelled' }[job.state];
+      if (code) void this.supervisor.emit?.(job.state === 'failed' ? 'error' : 'info', code, model.purpose === 'asr' ? 'asr' : 'models');
     }
   }
 

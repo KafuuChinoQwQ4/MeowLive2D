@@ -91,7 +91,6 @@ export function RuntimeSettingsPanel({ client, connection, active, onSaved }: { 
     {!snapshot.storage_available && <p className="availability-note">当前主服务的持久保存不可用，运行配置暂不能保存。</p>}
     <fieldset disabled={pending} className="runtime-fieldset">
       <div className="runtime-toggle-grid">{toggles.map(([field, label]) => <label key={field} className="checkbox-field"><input type="checkbox" checked={draft[field]} onChange={event => update(field, event.target.checked)} /><span>{label}</span></label>)}</div>
-      <p className="field-hint">缓存命中由供应商决定；兼容接口不支持时可关闭缓存优化或流式接收。环境读取仅包括时间、直播、播放和 OBS 状态。</p>
       {!draft.tools_enabled && <p className="availability-note">模型主动查询工具已关闭；环境快照仍由“附带当前环境”开关控制。</p>}
       <div className="runtime-fields">
         <label>最多工具轮次<input type="number" min={1} max={3} value={draft.max_tool_rounds} onChange={event => update("max_tool_rounds", Number(event.target.value))} /></label>
@@ -103,7 +102,6 @@ export function RuntimeSettingsPanel({ client, connection, active, onSaved }: { 
       </div>
       <label>搜索 API 密钥<input type="password" value={key} maxLength={4096} autoComplete="new-password" disabled={clearKey} placeholder={snapshot.search_key_configured && sameSearch ? "已保存；同一连接留空则保留" : "输入新的搜索密钥"} onChange={event => { setKey(event.target.value); setMessage(""); }} /></label>
       {snapshot.search_key_configured && <label className="checkbox-field"><input type="checkbox" checked={clearKey} onChange={event => { setClearKey(event.target.checked); if (event.target.checked) setKey(""); }} /><span>移除已保存搜索密钥</span></label>}
-      <p className="field-hint">搜索需要 Brave API 密钥，或支持 JSON 查询的 SearXNG。密钥不会回显；地址或服务变化后须重新填写或明确移除。</p>
       <details className="runtime-price-details"><summary>模型价格</summary>
         <p className="muted">单位：USD / 百万 tokens。价格按服务商、API 地址和模型精确匹配；请填写全部四项，仅免费部分填写 0。费用是本地估算，实际账单以供应商为准。</p>
         <p className="field-hint">未单独计费的缓存写入请填写普通输入单价；不清楚缓存读取折扣时，也可填写普通输入单价，按不打折估算。供应商未报告缓存明细且单价不同时，该次费用会显示为未计价。</p>

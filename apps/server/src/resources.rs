@@ -31,6 +31,29 @@ impl AppState {
         &self,
         operation: DesktopResourceOperation,
     ) -> Result<DesktopResourceResult, ApiError> {
+        let obs = matches!(
+            &operation,
+            DesktopResourceOperation::Obs { .. }
+                | DesktopResourceOperation::ObsSettings
+                | DesktopResourceOperation::SaveObsSettings { .. }
+        );
+        let result = self.desktop_resource_request(operation).await;
+        let failed = result
+            .as_ref()
+            .map_or(true, |r| matches!(r, DesktopResourceResult::Error { .. }));
+        self.logs.record(match (obs, failed) {
+            (true, true) => crate::logs::LogEvent::ObsFailed,
+            (true, false) => crate::logs::LogEvent::ObsCompleted,
+            (false, true) => crate::logs::LogEvent::ResourceFailed,
+            (false, false) => crate::logs::LogEvent::ResourceCompleted,
+        });
+        result
+    }
+
+    async fn desktop_resource_request(
+        &self,
+        operation: DesktopResourceOperation,
+    ) -> Result<DesktopResourceResult, ApiError> {
         let _permit = self.resource_requests.try_acquire().map_err(|_| {
             ApiError::new(
                 StatusCode::CONFLICT,

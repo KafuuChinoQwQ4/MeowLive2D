@@ -72,3 +72,17 @@ it("waits for the bundled service and displays startup errors without polling bu
   expect(await screen.findByRole("heading", { name: "正在等待主服务" })).toBeInTheDocument();
   expect(fetcher).not.toHaveBeenCalled();
 });
+
+it("keeps native lifecycle logs visible while the bundled server HTTP is offline", async () => {
+  window.history.replaceState(null, "", "#logs");
+  vi.mocked(getDesktopStatus).mockResolvedValue({ config_path: "desktop.toml", server_url: "http://127.0.0.1:19777",
+    server: { ready: false, managed: true, last_error: "raw-secret", log_path: "server.log" },
+    runtime: { running: false, simulation: false, last_error: "raw-secret" },
+    runtime_logs: { entries: [{ id: "native-safe-1", timestamp: "2026-10-03T00:00:00Z", level: "error", source: "desktop", category: "lifecycle", code: "server_failed", summary: "桌面主服务启动失败" }], storage_available: false, truncated: false },
+  });
+  vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockRejectedValue(new Error("connection refused raw-secret")));
+  render(<App />);
+  expect(await screen.findByText("桌面主服务启动失败")).toBeVisible();
+  expect(screen.getByRole("region", { name: "日志列表" })).not.toHaveTextContent("raw-secret");
+  expect(screen.queryByRole("heading", { name: "正在等待主服务" })).not.toBeInTheDocument();
+});

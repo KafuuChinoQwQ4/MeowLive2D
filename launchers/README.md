@@ -4,7 +4,7 @@
 
 ## 第一次使用
 
-当前提供源码，尚无安装包。先准备以下环境：
+本页说明源码启动方式；Windows 安装版见 [Windows App 说明](../apps/desktop/src-tauri/README.md)。源码运行先准备以下环境：
 
 - Linux / WSL2：Rust 1.85+、Node.js 22.12+、npm 10+、Python 3.11+，以及 GPT-SoVITS 引擎和对应的 Python 环境。
 - Windows：VTube Studio，以及下面说明的 Windows 执行程序。需要推流时再安装 OBS。
@@ -36,7 +36,7 @@ cargo build -p meowlive-desktop-runtime --bin meowlive-client --release --locked
 1. 在实际克隆位置打开本文件夹；在 WSL 项目根目录运行 `explorer.exe ./launchers` 即可定位，无需固定发行版、用户名或绝对路径。
 2. 双击 **start-windows.cmd**。程序检查 WSL2，然后打开控制面板。保持启动窗口打开。
 3. 页面中先确认“环境与模型”，再到“启动与运行”等待三个服务自动就绪。主服务就绪后自动启动 TTS 和 Windows 执行端，TTS 自动加载已选语音模型；环境或模型缺失时按提示补齐。在本地模型中切换声音生成模型时，自动暂停 TTS、释放旧模型，切换完成后自动启动。训练前仍可在“声音训练”关闭模型以释放内存。
-4. 在“角色与音色”上传自己的参考录音，填写对应文字并设为当前音色，然后去“语音播报”试播。训练是可选步骤，新检出不包含预置音色或训练结果。
+4. 在“声音训练 → 音色管理”上传自己的参考录音，填写对应文字并设为当前音色，然后去“语音播报”试播。训练是可选步骤，新检出不包含预置音色或训练结果。
 
 启动器会自动运行上面准备好的 `target/windows-client/meowlive-client.exe`，并读取同目录的 `desktop.local.toml`，声音输出到 Windows 默认扬声器。
 

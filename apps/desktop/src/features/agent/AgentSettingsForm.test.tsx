@@ -12,7 +12,6 @@ it("互动设置保存话题与冷却时间，并保留现有人设", async () =
   fireEvent.change(screen.getByLabelText("冷却时间（秒）"), { target: { value: "45" } });
   fireEvent.click(screen.getByRole("button", { name: "保存设置并暂停" }));
   await waitFor(() => expect(onSave).toHaveBeenCalledWith({ ...settings, topic: "动作游戏", cooldown_ms: 45_000 }));
-  expect(screen.getByRole("link", { name: "角色与人物卡" })).toHaveAttribute("href", "#resources");
 });
 
 it("话题长度与冷却时间错误时保留草稿", async () => {

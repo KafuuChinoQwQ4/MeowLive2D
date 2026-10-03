@@ -6,24 +6,28 @@ MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控制面板
 
 ```text
 MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控制面板
+├── .github/  # GitHub 自动检查、发布与依赖更新配置
 ├── apps/  # 可执行应用入口与依赖组装
 ├── config/  # 独立数据库部署配置与 Linux、Windows 配置示例
 ├── crates/  # 按职责与单向依赖隔离的 Rust 库
 ├── docs/  # 本地架构与规划文档；完整树见 docs/DIRECTORY.md，Git 忽略且可不存在
 ├── launchers/  # 面向用户的 Windows 双击与 Linux 启动入口及 Windows 进程管理脚本
 ├── packages/  # TypeScript 共享工作区包
+├── releases/  # 各版本公开发布说明
 ├── scripts/  # 开发工具、目录用途登记与索引同步检查
 └── tests/  # 业务测试归属说明与回放数据入口
 ```
 
 可继续查看各子目录的索引：
 
+- [.github/](.github/DIRECTORY.md)：GitHub 自动检查、发布与依赖更新配置
 - [apps/](apps/DIRECTORY.md)：可执行应用入口与依赖组装
 - [config/](config/DIRECTORY.md)：独立数据库部署配置与 Linux、Windows 配置示例
 - [crates/](crates/DIRECTORY.md)：按职责与单向依赖隔离的 Rust 库
 - [docs/](docs/DIRECTORY.md)：本地架构与规划文档；完整树见 docs/DIRECTORY.md，Git 忽略且可不存在
 - [launchers/](launchers/DIRECTORY.md)：面向用户的 Windows 双击与 Linux 启动入口及 Windows 进程管理脚本
 - [packages/](packages/DIRECTORY.md)：TypeScript 共享工作区包
+- [releases/](releases/DIRECTORY.md)：各版本公开发布说明
 - [scripts/](scripts/DIRECTORY.md)：开发工具、目录用途登记与索引同步检查
 - [tests/](tests/DIRECTORY.md)：业务测试归属说明与回放数据入口
 
@@ -31,4 +35,4 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: c6a0cbd23ddaf0e8fcd4345f468900f89608127dce4027f099e6c35b6fb9b72d -->
+<!-- directory-tree-sha256: 8d23809ae6ec470e550cd72ede2bcdf1565550c73b3a4316a77a89e2714d4ba0 -->

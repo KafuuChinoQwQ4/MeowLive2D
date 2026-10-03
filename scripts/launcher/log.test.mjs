@@ -19,3 +19,15 @@ test('redacts secrets split across chunks and keeps actionable CUDA diagnostics'
   assert.match(data, /REDACTED/);
   assert.match(diagnostic, /显存不足/);
 });
+
+test('stderr observation is a single static event and database diagnostics never echo output', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'meow-log-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const child = spawn(process.execPath, ['-e', "process.stderr.write('PostgreSQL 启动失败 token=PRIVATE\\n'); setTimeout(() => process.stderr.write('raw prompt PRIVATE\\n'), 10)"], { stdio: ['ignore', 'pipe', 'pipe'] });
+  let count = 0, diagnostic = '';
+  captureOutput(child, { logPath: join(root, 'service.log'), env: {} }, value => { diagnostic = value; }, () => { count++; });
+  await new Promise(resolve => child.once('close', resolve));
+  assert.equal(count, 1);
+  assert.equal(diagnostic.includes('PRIVATE'), false);
+  assert.match(diagnostic, /PostgreSQL/);
+});

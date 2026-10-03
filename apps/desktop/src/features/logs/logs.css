@@ -1,0 +1,20 @@
+.runtime-logs-workspace { display: grid; gap: 18px; }
+.runtime-logs-filters .form-grid { margin-top: 14px; }
+.runtime-logs-actions { display: flex; gap: 10px; margin-top: 16px; }
+.runtime-log-rows { display: grid; gap: 1px; }
+.runtime-log-row { display: grid; grid-template-columns: 170px 54px 100px 100px 170px minmax(0, 1fr); gap: 10px; align-items: center; padding: 11px 12px; border-bottom: 1px solid var(--studio-border); font-size: 12px; }
+.runtime-log-row time, .runtime-log-row span { color: var(--studio-muted); }
+.runtime-log-row strong { font-size: 11px; }
+.runtime-log-row p { margin: 0; overflow-wrap: anywhere; }
+.runtime-log-row code { overflow-wrap: anywhere; }
+@media (max-width: 900px) { .runtime-log-row { grid-template-columns: 1fr 1fr; } .runtime-log-row p { grid-column: 1 / -1; } }
+.runtime-log-filters-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+.runtime-log-filters-grid label { display: grid; gap: 7px; font-size: 12px; color: var(--studio-muted); }
+.runtime-logs-actions { flex-wrap: wrap; align-items: center; }
+.runtime-log-row small { display: block; font-size: 10px; opacity: .75; overflow-wrap: anywhere; }
+.runtime-log-row.level-error strong { color: #b03e5a; }
+.runtime-log-row.level-warn strong { color: #9a6923; }
+.runtime-log-row.level-info strong { color: #387969; }
+.runtime-log-row.level-debug strong { color: #777; }
+@media (max-width: 900px) { .runtime-log-filters-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .runtime-log-filters-grid { grid-template-columns: 1fr; } }

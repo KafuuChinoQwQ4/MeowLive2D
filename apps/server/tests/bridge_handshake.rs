@@ -33,6 +33,9 @@ async fn requires_audio_pair_and_rejects_duplicate_execution_client() {
     assert!(connect_async(format!("{base}/ws/control")).await.is_err());
     audio.close(None).await.unwrap();
     support::await_connected(&state, false).await;
+    let logs = state.logs.list(None, Some("bridge"), None, None, 100);
+    assert!(logs.entries.iter().any(|e| e.code == "bridge_connected"));
+    assert!(logs.entries.iter().any(|e| e.code == "bridge_disconnected"));
     server.abort();
 }
 

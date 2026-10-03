@@ -122,6 +122,7 @@ export async function loadConfiguration(root, { env = process.env } = {}) {
   const llmConfigured = Boolean(metadata?.llm?.base_url && metadata?.llm?.model && (metadata.llm.key_saved || !keyName || serverEnv[keyName]));
   const ttsEnv = Object.fromEntries(Object.entries(env).filter(([name]) => name !== keyName && name !== metadata?.viewers?.database_url_env && !/KEY|TOKEN|PASSWORD|SECRET/i.test(name)));
   return {
+    eventLogPath: join(root, 'logs/control-panel/events.jsonl'),
     modelSettings: { root, home, engine, python, environment, hfHome: env.HF_HOME,
       asrPython: metadata?.training?.python || python, asrEngine: metadata?.training?.engine_root || engine,
       asrModel: metadata?.training?.asr_model || env.MEOWLIVE_ASR_MODEL || '', asrSelection: env.MEOWLIVE_ASR_SELECTION },

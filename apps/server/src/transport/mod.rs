@@ -10,6 +10,8 @@ pub mod http;
 pub mod live;
 pub mod llm;
 pub mod llm_runtime;
+pub mod logging;
+pub mod logs;
 pub mod mapping;
 pub mod obs;
 pub mod origin;

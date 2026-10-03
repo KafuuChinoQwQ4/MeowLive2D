@@ -364,7 +364,7 @@ export function LlmPanel({ client = defaultClient, runtimeClient }: { client?: L
 
   return <div className="live-workspace" aria-labelledby="llm-heading">
     <section className="connection-card">
-      <div><h2 id="llm-heading">LLM 接入配置</h2><p className="server-address">{client.baseUrl}</p></div>
+      <div><h2 id="llm-heading">LLM 接入配置</h2></div>
       <span className={`connection-pill ${snapshot?.active_model ? "connected" : "disconnected"}`}>{snapshot?.active_model || (loading ? "正在读取" : "尚未配置")}</span>
     </section>
     {error && <div className="error-banner" role="alert">{error}{!snapshot && !loading && <div className="form-actions"><button type="button" onClick={() => setLoadAttempt(value => value + 1)}>重新加载</button></div>}</div>}
@@ -384,7 +384,7 @@ export function LlmPanel({ client = defaultClient, runtimeClient }: { client?: L
                 onKeyDown={event => { if (event.key === "Enter" && editingProfileName) { event.preventDefault(); event.currentTarget.blur(); } }} />
               <button type="button" className="profile-toggle" disabled={disabled} aria-expanded={profilesExpanded}
                 aria-controls="llm-profile-menu" onClick={() => setProfilesExpanded(value => !value)}>
-                <span>已保存配置</span><span className="profile-chevron" aria-hidden="true">⌄</span>
+                <span>已保存配置</span><svg className="profile-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
               </button>
             </div>
             {profilesExpanded && <div className="profile-list" id="llm-profile-menu" aria-label="已保存配置列表">
@@ -425,21 +425,20 @@ export function LlmPanel({ client = defaultClient, runtimeClient }: { client?: L
             <div id="llm-model-help" aria-live="polite">
               {pending === "models" ? <p className="field-hint">正在读取供应商可用模型…</p>
                 : models !== null ? <><p className="field-hint">已获取 {models.length} 个模型。</p>{models.length === 0 && <p className="field-hint">供应商未返回可选模型，请检查地址、密钥权限或高级设置后重试。</p>}</>
-                  : <p className="field-hint">填写地址和密钥后获取模型，再从列表选择。获取模型不会保存配置。</p>}
+                  : <p className="field-hint">填写地址和密钥后获取模型。</p>}
             </div>
             <label htmlFor="llm-reasoning">推理强度</label>
             <select id="llm-reasoning" value={draft?.reasoning_effort ?? "default"} disabled={actionDisabled || !draft?.model} onChange={event => update("reasoning_effort", event.target.value)} aria-describedby="llm-reasoning-help">
               {reasoningEfforts.map(effort => <option key={effort} value={effort}>{effort === "default" ? "default（模型默认）" : effort}</option>)}
             </select>
             <div id="llm-reasoning-help" aria-live="polite" aria-busy={reasoning.pending}>
-              <p className="field-hint">default 保留模型默认行为；其余档位按当前模型能力映射。保存后重启主服务生效。</p>
               {!draft?.model ? <p className="field-hint">选择模型后可查看实际生效档位。</p>
                 : reasoning.pending ? <p className="field-hint">正在确认模型推理能力…</p>
                   : reasoning.result && <>
-                    <p className="field-hint">实际生效：{reasoning.result.effective && reasoning.result.effective !== "default" ? reasoning.result.effective : "模型默认（不覆盖）"}</p>
+                    {draft?.reasoning_effort !== "default" && <p className="field-hint">实际生效：{reasoning.result.effective && reasoning.result.effective !== "default" ? reasoning.result.effective : "模型默认（不覆盖）"}</p>}
                     {reasoning.result.supported.length > 0 && <p className="field-hint">支持档位：{reasoning.result.supported.join(" / ")}</p>}
                     {reasoning.result.budget_tokens !== null && <p className="field-hint">推理预算：{reasoning.result.budget_tokens} tokens（包含在最大输出上限内）</p>}
-                    {reasoning.result.note && <p className="field-hint">{reasoning.result.note}</p>}
+                    {draft?.reasoning_effort !== "default" && reasoning.result.note && <p className="field-hint">{reasoning.result.note}</p>}
                     {reasoning.result.error && <p className="field-error" role="alert">{reasoning.result.error}</p>}
                   </>}
               {reasoning.error && <><p className="field-error" role="alert">{reasoning.error}</p><button type="button" disabled={actionDisabled} onClick={reasoning.retry}>重新预览</button></>}
@@ -459,7 +458,6 @@ export function LlmPanel({ client = defaultClient, runtimeClient }: { client?: L
               <select id="llm-format" value={draft?.api_format ?? "openai_chat"} disabled={disabled} onChange={event => update("api_format", event.target.value as ApiFormat)}>
                 {(Object.keys(formatLabels) as ApiFormat[]).map(value => <option key={value} value={value}>{formatLabels[value]}</option>)}
               </select>
-              <p className="field-hint">兼容网关可手动调整 API 格式；再次修改地址时会重新识别。</p>
             </div>
             <div>
               <label htmlFor="llm-mode">运行模式</label>

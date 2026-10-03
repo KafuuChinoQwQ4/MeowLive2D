@@ -72,6 +72,9 @@ pub async fn run_memory(state: AppState) {
                                 }
                             }
                             Err(_) => {
+                                state
+                                    .logs
+                                    .record_throttled(crate::logs::LogEvent::MemoryFailed);
                                 let _ = store
                                     .fail_job(&state.config.viewers.scope_id, &job, now)
                                     .await;
@@ -98,6 +101,10 @@ pub async fn run_memory(state: AppState) {
                                     crate::viewers::utc_ms() as i64,
                                 )
                                 .await;
+                        } else {
+                            state
+                                .logs
+                                .record_throttled(crate::logs::LogEvent::MemoryFailed);
                         }
                     }
                 }

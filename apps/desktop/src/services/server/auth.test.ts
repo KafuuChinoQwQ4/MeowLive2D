@@ -134,3 +134,25 @@ describe("管理员会话服务", () => {
     expect((fetcher.mock.calls[2][1]?.headers as Headers).get("authorization")).toBeNull();
   });
 });
+
+it("reports failures without request data and excludes log requests and cancellations", async () => {
+  const listener = vi.fn();
+  window.addEventListener("meowlive:request-failed", listener);
+  try {
+    const fetcher = vi.fn<typeof fetch>()
+      .mockRejectedValueOnce(new DOMException("cancel", "AbortError"))
+      .mockRejectedValueOnce(new Error("token=secret"))
+      .mockResolvedValueOnce(jsonResponse({ message: "secret" }, 500))
+      .mockResolvedValueOnce(jsonResponse({ message: "secret" }, 500));
+    const request = createAuthenticatedFetch("http://127.0.0.1:19990", fetcher);
+    await request("/api/live?token=secret").catch(() => {});
+    expect(listener).not.toHaveBeenCalled();
+    await request("/api/logs").catch(() => {});
+    expect(listener).not.toHaveBeenCalled();
+    await request("/api/logs");
+    expect(listener).not.toHaveBeenCalled();
+    await request("/api/live?token=secret");
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener.mock.calls[0][0]).not.toHaveProperty("detail");
+  } finally { window.removeEventListener("meowlive:request-failed", listener); }
+});

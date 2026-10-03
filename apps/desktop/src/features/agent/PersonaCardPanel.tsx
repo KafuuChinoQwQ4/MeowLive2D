@@ -154,7 +154,7 @@ export function PersonaCardPanel({ client = defaultClient }: { client?: AgentCli
   }
 
   return <section className="panel persona-card-panel" aria-labelledby="persona-card-heading">
-    <div className="section-title"><div><h2 id="persona-card-heading">主播人物卡</h2><p className="field-hint">人物卡保存在本机。当前选中卡用于 Agent；切换左侧角色形象不会自动切换人物卡。</p></div></div>
+    <div className="section-title"><div><h2 id="persona-card-heading">主播人物卡</h2></div></div>
     {error && <p className="error-banner" role="alert">{error}</p>}
     {!settings && (error ? <button type="button" onClick={() => setAttempt(value => value + 1)}>重新读取人物卡</button> : <p role="status">正在读取人物卡…</p>)}
     {settings && profiles && <>
@@ -162,9 +162,10 @@ export function PersonaCardPanel({ client = defaultClient }: { client?: AgentCli
       <div className="profile-toolbar">
         <label htmlFor="persona-profile-name">人物卡标题</label>
         <div className="profile-picker">
+          <div className="persona-profile-dropdown">
           <div className="profile-picker-control">
             <input id="persona-profile-name" value={profileName} maxLength={64} disabled={busy || !profiles.storage_available} onChange={event => setProfileName(event.target.value)} />
-            <button type="button" className="profile-toggle" aria-expanded={profilesExpanded} aria-controls="persona-profile-menu" disabled={busy} onClick={() => setProfilesExpanded(value => !value)}>已保存人物卡 <span className="profile-chevron" aria-hidden="true">⌄</span></button>
+            <button type="button" className="profile-toggle" aria-expanded={profilesExpanded} aria-controls="persona-profile-menu" disabled={busy} onClick={() => setProfilesExpanded(value => !value)}>已保存人物卡 <svg className="profile-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></button>
           </div>
           {profilesExpanded && <div className="profile-list" id="persona-profile-menu" aria-label="已保存人物卡列表">
             {profiles.profiles.length ? profiles.profiles.map(profile => <button type="button" className="profile-option" key={profile.id} aria-pressed={profile.id === profiles.selected_profile_id} disabled={busy || !profiles.storage_available} onClick={() => { void selectProfile(profile.id); }}>
@@ -175,6 +176,7 @@ export function PersonaCardPanel({ client = defaultClient }: { client?: AgentCli
               <button type="button" disabled={busy || !profiles.storage_available} onClick={startNew}>新建人物卡</button>
             </div>
           </div>}
+          </div>
           {profileId && <button type="button" className="persona-rename-button" disabled={busy || !profiles.storage_available || profileName.trim() === profiles.profiles.find(profile => profile.id === profileId)?.name} onClick={() => { void renameProfile(); }}>重命名人物卡</button>}
         </div>
       </div>
@@ -199,16 +201,16 @@ function PersonaCardEditor({ card, onChange, disabled, onSave }: { card: Persona
     void onSave(serialized.trim());
   }
   return <form noValidate onSubmit={submit}>
-    <div className="persona-card-heading"><p className="field-hint">先写核心身份，再按需补充表达方式和互动边界。</p>
-      <span className={length > 2_000 ? "persona-card-count is-over" : "persona-card-count"}>{length} / 2000</span></div>
     <label htmlFor="persona-identity">核心身份</label>
+    <div className="persona-identity-field">
     <textarea id="persona-identity" rows={4} value={card.identity} disabled={disabled}
       aria-invalid={!card.identity.trim() || length > 2_000}
       placeholder="例如：你是一位在 bilibili 直播的魔法少女，声音温柔治愈。"
       onChange={event => change("identity", event.target.value)} />
+      <span className={length > 2_000 ? "persona-card-count is-over" : "persona-card-count"}>{length} / 2000</span>
+    </div>
     <details className="persona-card-details" open={expanded} onToggle={event => setExpanded(event.currentTarget.open)}>
       <summary>{expanded ? "收起人物卡" : "展开人物卡"}</summary>
-      <p className="field-hint">以下均为可选项。用具体描述和示例，比堆叠形容词更容易得到稳定表现。</p>
       <div className="persona-card-grid">{details.map(field => <label htmlFor={`persona-${field.key}`} key={field.key}>{field.label}
         {field.lines
           ? <textarea id={`persona-${field.key}`} rows={field.lines} value={card[field.key]} disabled={disabled} placeholder={field.hint} onChange={event => change(field.key, event.target.value)} />

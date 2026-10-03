@@ -12,4 +12,4 @@ launcher/  # 前端访问本机启动管理器的服务适配层
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 4447a6e3acb0359109ae882f13ef2e779924fe7d714a9e2e9411512d27a2f9c9 -->
+<!-- directory-tree-sha256: 5abbf7461d83fbeb1ecb6fabeb98d10a28a8b26b07eebd62bbad2e03458f04da -->

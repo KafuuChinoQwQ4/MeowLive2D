@@ -27,4 +27,4 @@ src/  # 主服务启动、配置解析及 HTTP / WebSocket 适配源码
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 334ea1c88da670a420511c155b6c64823b5c432d4018c53e2079ebf1ef801b9e -->
+<!-- directory-tree-sha256: 71c3585ad1aab87a8b261770293ba9776bf9603fba6735d0347fea175ca930a6 -->

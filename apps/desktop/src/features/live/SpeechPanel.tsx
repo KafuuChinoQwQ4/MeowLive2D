@@ -40,7 +40,6 @@ export function SpeechPanel({ client = defaultClient, pollIntervalMs = 1_000 }: 
       <section className="connection-card" aria-labelledby="connection-heading">
         <div>
           <h2 id="connection-heading">连接状态</h2>
-          <p className="server-address">{client.baseUrl}</p>
         </div>
         <div className="connection-indicators" role="status" aria-live="polite">
           <span className={`connection-pill ${status && !connectionError ? "connected" : "disconnected"}`}>

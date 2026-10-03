@@ -12,4 +12,4 @@ llm/  # LLM 接入配置功能
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 7c4730188c3c12a8ecdb3e73068cf2816195b93d88875f614080817439d879eb -->
+<!-- directory-tree-sha256: 9e6260a32e22afe90164083e7664419e377a0a508f7bc89952dcf1819bd5cd9a -->

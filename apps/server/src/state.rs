@@ -20,6 +20,7 @@ pub struct AppState {
     pub auth: Arc<AdminAuth>,
     pub llm_runtime: Arc<crate::llm_runtime::RuntimeStore>,
     pub agent_observability: Arc<crate::agent_observability::AgentTraceStore>,
+    pub logs: Arc<crate::logs::RuntimeLogStore>,
     pub llm_settings: Arc<crate::llm_settings::LlmSettingsStore>,
     pub live_settings: Arc<crate::live_settings::LiveSettingsStore>,
     pub agent_settings: Arc<crate::agent_settings::AgentSettingsStore>,
@@ -120,6 +121,7 @@ impl AppState {
             agent_settings: Arc::new(crate::agent_settings::AgentSettingsStore::default()),
             llm_runtime: Arc::new(crate::llm_runtime::RuntimeStore::memory()),
             agent_observability: Arc::new(crate::agent_observability::AgentTraceStore::memory()),
+            logs: Arc::new(crate::logs::RuntimeLogStore::memory()),
             llm_settings: Arc::new(crate::llm_settings::LlmSettingsStore::new(
                 config.llm.clone(),
                 None,
@@ -189,6 +191,7 @@ impl AppState {
             .as_ref()
             .is_some_and(|bridge| bridge.id == bridge_id)
         {
+            self.logs.record(crate::logs::LogEvent::BridgeDisconnected);
             self.sync_agent(&mut inner);
             let pending = self.agent_speech(&mut inner);
             if let Some(bridge) = inner.bridge.take() {
@@ -236,6 +239,9 @@ impl AppState {
     }
 
     pub async fn shutdown(&self) {
+        if !self.stopping.is_cancelled() {
+            self.logs.record(crate::logs::LogEvent::ServerStopping);
+        }
         self.stopping.cancel();
         self.disconnect_live().await;
         self.pause_agent().await;

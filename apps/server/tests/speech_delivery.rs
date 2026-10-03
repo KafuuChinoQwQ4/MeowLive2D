@@ -38,6 +38,14 @@ async fn completion_requires_device_receipt_after_pcm_delivery() {
     })
     .await
     .unwrap();
+    let logs = state.logs.list(None, None, Some("execution"), None, 100);
+    assert_eq!(
+        logs.entries
+            .iter()
+            .filter(|e| e.code == "execution_completed")
+            .count(),
+        1
+    );
     worker.abort();
     server.abort();
 }

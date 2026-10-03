@@ -29,6 +29,9 @@ pub async fn run_receipts(state: AppState) {
                 Ok(Ok(records)) => records,
                 _ => {
                     state.receipt_failures.fetch_add(1, Ordering::Relaxed);
+                    state
+                        .logs
+                        .record_throttled(crate::logs::LogEvent::ReceiptFailed);
                     Vec::new()
                 }
             }
@@ -64,6 +67,9 @@ pub async fn run_receipts(state: AppState) {
                 .is_ok();
             if !success {
                 state.receipt_failures.fetch_add(1, Ordering::Relaxed);
+                state
+                    .logs
+                    .record_throttled(crate::logs::LogEvent::ReceiptFailed);
                 delay = Duration::from_secs(1);
             }
             if let Some(journal) = state.receipt_journal.clone() {
@@ -78,6 +84,9 @@ pub async fn run_receipts(state: AppState) {
                 .await;
                 if !matches!(result, Ok(Ok(()))) {
                     state.receipt_failures.fetch_add(1, Ordering::Relaxed);
+                    state
+                        .logs
+                        .record_throttled(crate::logs::LogEvent::ReceiptFailed);
                 }
             } else if !success {
                 fallback.push_back((id, time));

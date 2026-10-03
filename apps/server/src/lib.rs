@@ -10,6 +10,7 @@ pub mod live;
 pub mod live_settings;
 pub mod llm_runtime;
 pub mod llm_settings;
+pub mod logs;
 pub mod resources;
 pub mod state;
 pub mod transport;

@@ -7,15 +7,17 @@ import { inspectEndpoint } from './health.mjs';
 import { captureOutput } from './log.mjs';
 import { displayPath } from './paths.mjs';
 import { createMemoryReader, memoryPressure } from './memory.mjs';
+import { LauncherEventStore } from './events.mjs';
 
 export class Supervisor {
-  constructor({ definitions, setup, startupMs = 300_000, stopMs = 8000, pollMs = 1500, readMemory = createMemoryReader() }) {
+  constructor({ definitions, setup, eventLogPath, startupMs = 300_000, stopMs = 8000, pollMs = 1500, readMemory = createMemoryReader() }) {
     this.setup = setup;
     this.token = randomBytes(32).toString('hex');
     this.startupMs = startupMs;
     this.stopMs = stopMs;
     this.closed = false;
     this.readMemory = readMemory;
+    this.events = eventLogPath ? new LauncherEventStore(eventLogPath) : null;
     this.records = new Map(definitions.map(def => [def.id, { def, state: 'stopped', message: def.issue ?? '尚未启动。',
       child: null, occupied: false, queue: Promise.resolve(), completion: Promise.resolve(), timer: null }]));
     this.timer = setInterval(() => void this.refresh(), pollMs);
@@ -23,7 +25,10 @@ export class Supervisor {
   }
 
   async locked(record, work) {
-    const result = record.queue.then(work);
+    const result = record.queue.then(async () => {
+      try { return await work(); }
+      finally { this.observe(record); }
+    });
     record.queue = result.catch(() => {});
     return result;
   }
@@ -49,6 +54,16 @@ export class Supervisor {
   startFailed(id, error) {
     const record = this.records.get(id);
     if (record && !this.closed && !record.child) { record.state = 'failed'; record.message = error.message; }
+    void this.emit('error', 'service_failed', id);
+  }
+
+  emit(level, code, category) { return this.events?.record(level, code, category); }
+
+  observe(record) {
+    if (record.loggedState === record.state) return;
+    record.loggedState = record.state;
+    const code = { running: 'service_ready', external: 'service_external', failed: 'service_failed', stopped: 'service_exited' }[record.state];
+    if (code) void this.emit(record.state === 'failed' ? 'error' : 'info', code, record.def.id);
   }
 
   async waitUntilReady(id) {
@@ -143,7 +158,11 @@ export class Supervisor {
     record.message = record.def.id === 'tts' ? '正在启动 TTS 并自动加载所选语音模型，请稍候。' : '正在检查编译并启动主服务，请稍候。';
     record.finalState = null;
     record.diagnostic = null;
-    captureOutput(child, record.def, value => { record.diagnostic = value; });
+    void this.emit('info', 'service_started', record.def.id);
+    captureOutput(child, record.def, value => {
+      if (record.diagnostic !== value) void this.emit('warn', 'output_diagnostic', record.def.id);
+      record.diagnostic = value;
+    }, () => { void this.emit('info', 'output_stderr', record.def.id); });
     child.once('error', error => {
       record.diagnostic = error.code === 'ENOENT' ? '未找到启动命令，请检查 Rust / Python 是否安装并可执行。' : '无法创建服务进程，请检查本机执行权限。';
     });
@@ -154,6 +173,7 @@ export class Supervisor {
         record.occupied = false;
         record.state = record.finalState ?? 'failed';
         record.message = record.finalMessage ?? record.diagnostic ?? `服务进程退出（${code ?? signal ?? '未知原因'}），请查看运行日志后重试。`;
+        this.observe(record);
       }
       resolve();
     }));
@@ -200,6 +220,7 @@ export class Supervisor {
     record.message = '正在停止并释放资源…';
     record.finalState = finalState;
     record.finalMessage = finalMessage;
+    void this.emit('info', 'service_stopping', record.def.id);
     const signal = name => {
       if (record.child !== child || !child.pid) return;
       try { process.kill(-child.pid, name); }
@@ -217,5 +238,6 @@ export class Supervisor {
       if (record.child && record.state !== 'stopping') this.terminate(record, 'stopped', '控制面板退出，服务已停止。');
       await record.completion;
     })));
+    await this.events?.queue;
   }
 }

@@ -110,7 +110,6 @@ export function EventSimulator({ disabled, onSubmit }: {
   return (
     <section className="panel event-simulator" aria-labelledby="event-simulator-heading">
       <h2 id="event-simulator-heading">直播事件</h2>
-      <p className="muted">这里发送模拟事件，用于检查播报和互动策略。SC 金额单位为人民币元。</p>
       <div className="segmented-control" aria-label="模拟事件类型">
         <button type="button" aria-pressed={mode === "chat"} onClick={() => setMode("chat")}>聊天</button>
         <button type="button" aria-pressed={mode === "gift"} onClick={() => setMode("gift")}>礼物</button>

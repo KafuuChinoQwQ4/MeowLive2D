@@ -112,6 +112,14 @@ export type LlmUsageGroup = { provider: string, base_url: string, model: string,
 
 export type LlmUsageSnapshot = { totals: LlmUsageTotals, groups: Array<LlmUsageGroup>, records: Array<LlmUsageRecord>, storage_available: boolean, truncated: boolean, };
 
+export type RuntimeLogLevel = "debug" | "info" | "warn" | "error";
+
+export type RuntimeLogEntry = { id: string, timestamp: string, level: RuntimeLogLevel, source: string, category: string, code: string, summary: string, };
+
+export type RuntimeLogListResponse = { entries: Array<RuntimeLogEntry>, storage_available: boolean, truncated: boolean, };
+
+export type RuntimeLogRequest = { code: string, };
+
 export type AgentToolActivity = { name: string,
 /**
  * running / completed / failed

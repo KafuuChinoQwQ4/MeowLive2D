@@ -26,6 +26,7 @@ pub(super) async fn run(
         let result = source.connect().await;
         let error = match result {
             Ok(mut connection) => {
+                state.logs.record(crate::logs::LogEvent::LiveConnected);
                 let ingestion_session = format!("live:{}", uuid::Uuid::new_v4());
                 {
                     let mut inner = state.inner.lock().await;
@@ -82,6 +83,11 @@ pub(super) async fn run(
         let Some(error) = error else {
             break;
         };
+        state.logs.record(if error.retryable {
+            crate::logs::LogEvent::LiveRetrying
+        } else {
+            crate::logs::LogEvent::LiveFailed
+        });
         state.pause_agent().await;
         if !error.retryable {
             terminal_error = Some(error.message);
@@ -121,6 +127,7 @@ pub(super) async fn run(
         };
         inner.live.snapshot.last_error = terminal_error;
     }
+    state.logs.record(crate::logs::LogEvent::LiveDisconnected);
     let _ = done.send(true);
 }
 

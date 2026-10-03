@@ -28,6 +28,11 @@ pub async fn run_graph(state: AppState) {
                 }
             }
         }
+        if graph.is_none() {
+            state
+                .logs
+                .record_throttled(crate::logs::LogEvent::GraphFailed);
+        }
         let mut delay = Duration::from_secs(10);
         if let Some(graph) = graph {
             delay = Duration::from_millis(500);
@@ -45,6 +50,9 @@ pub async fn run_graph(state: AppState) {
                         )
                         .await;
                 } else {
+                    state
+                        .logs
+                        .record_throttled(crate::logs::LogEvent::GraphFailed);
                     let _ = store
                         .fail_outbox(
                             &state.config.viewers.scope_id,

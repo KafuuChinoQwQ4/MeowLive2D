@@ -12,4 +12,4 @@ model-library/  # 环境检查、本地语音模型选择与官方模型下载�
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 43207c1955d6f64b78a8044d5070d3e3df400d0635ffab89cc9d73a221f351f5 -->
+<!-- directory-tree-sha256: 51424a66d4134eead48e13d5ba9cba0e0f92be21732e206af433f8a02a9791ea -->

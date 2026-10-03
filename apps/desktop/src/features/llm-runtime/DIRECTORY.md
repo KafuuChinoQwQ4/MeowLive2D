@@ -12,4 +12,4 @@ llm-runtime/  # 模型运行能力、用量费用与 Agent 实时活动界面
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 8d32811691b8ee01339fbe99973ed23a29ad70bf12f201231d821d88347a727d -->
+<!-- directory-tree-sha256: 93f8d7b442ff7ceeae6a9351a3380a6b6f91e6c1a8526d22afa3f73ccc0e859a -->

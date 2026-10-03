@@ -12,4 +12,4 @@ launcher/  # 控制面板服务开关、启动状态及新人引导
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 4a9fb7036a87104591dcf8912695eba1946f1866b39211ef783d4c9667e7a1d7 -->
+<!-- directory-tree-sha256: 87ba694a22d88e2ed61702d5c1d432114808a263abd8025f853e64e6ca69b259 -->

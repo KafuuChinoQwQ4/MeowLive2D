@@ -13,7 +13,7 @@ export function InstalledModels({ models, purpose, disabled, select, browse }: {
       {items.length ? <div className="model-local-list">{items.map(model => <article className="model-local-card" key={model.id}>
         <div><div className="model-card-title"><h3>{model.name}</h3>
           <span className={`model-badge ${model.ready ? "is-ready" : "is-pending"}`}>{model.selected ? "当前使用" : model.ready ? "可以使用" : "尚未就绪"}</span>
-        </div><p>{model.message}</p><code className="model-path">{model.path}</code></div>
+        </div><p>{model.message}</p><code className="model-path">{model.path.replace(/^(?:\.\.?[\\/])+/u, "")}</code></div>
         <button className={model.ready && !model.selected ? "primary-button" : ""} disabled={disabled || !model.ready || model.selected}
           onClick={() => select(model.id)}>{model.selected ? (asr ? "当前转写模型" : "当前使用")
             : model.ready ? (asr ? "用于自动转写" : "选择此模型") : "尚未就绪"}</button>

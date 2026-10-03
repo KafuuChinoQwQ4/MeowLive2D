@@ -110,9 +110,17 @@ export function createAuthenticatedFetch(baseUrl: string, fetcher: Fetcher = glo
     const attachedSession = authenticatedApi && session && !headers.has("authorization") ? session : undefined;
     if (attachedSession) headers.set("authorization", `Bearer ${attachedSession.token}`);
 
-    const response = request
-      ? await fetcher(new Request(request, { headers, redirect: "error" }))
-      : await fetcher(url.href, { ...init, headers, redirect: "error" });
+    let response: Response;
+    try {
+      response = request
+        ? await fetcher(new Request(request, { headers, redirect: "error" }))
+        : await fetcher(url.href, { ...init, headers, redirect: "error" });
+    } catch (error) {
+      if (!request?.signal.aborted && !init?.signal?.aborted && !(error && typeof error === "object" && "name" in error && error.name === "AbortError")
+        && authenticatedApi && url.pathname !== "/api/logs" && typeof window !== "undefined") window.dispatchEvent(new Event("meowlive:request-failed"));
+      throw error;
+    }
+    if (!response.ok && authenticatedApi && url.pathname !== "/api/logs" && typeof window !== "undefined") window.dispatchEvent(new Event("meowlive:request-failed"));
     if (response.status === 401 && attachedSession) clearSession(origin, attachedSession);
     return response;
   };

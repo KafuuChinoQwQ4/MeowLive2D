@@ -12,4 +12,4 @@ connections/  # 直播平台凭据配置、连接控制与运行状态展示
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: d7d607efcc177cab494b192240d55dae49048b10ba2a7bb26e7480b1c5a469b4 -->
+<!-- directory-tree-sha256: 8da5afef17e5deb5e639bf8dd2af0048ad5ea37eb2e0a35ba4806f1e15c301d5 -->

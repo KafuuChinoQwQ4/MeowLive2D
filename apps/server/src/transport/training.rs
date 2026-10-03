@@ -138,6 +138,7 @@ pub async fn create(
         })
         .collect();
     let training = state.training.clone();
+    let logs = state.logs.clone();
     let (send, receive) = tokio::sync::oneshot::channel();
     // The task, not the HTTP connection, owns the lease and accepted training lifecycle.
     tokio::task::spawn_blocking(move || {
@@ -147,9 +148,20 @@ pub async fn create(
         match accepted {
             Ok(job) => {
                 let _ = send.send(Ok(job_dto(&job)));
-                let _ = training.run(&job.id);
+                let event = match training.run(&job.id) {
+                    Ok(job) if job.state == TrainingState::Succeeded => {
+                        crate::logs::LogEvent::TrainingCompleted
+                    }
+                    Ok(job) if job.state == TrainingState::Cancelled => {
+                        crate::logs::LogEvent::TrainingCancelled
+                    }
+                    Err(TrainingError::Cancelled) => crate::logs::LogEvent::TrainingCancelled,
+                    _ => crate::logs::LogEvent::TrainingFailed,
+                };
+                logs.record(event);
             }
             Err(error) => {
+                logs.record(crate::logs::LogEvent::TrainingFailed);
                 let _ = send.send(Err(training_error(error)));
             }
         }

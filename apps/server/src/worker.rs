@@ -48,6 +48,7 @@ pub async fn run_worker(state: AppState) {
                     Ok(Err(error)) => error.message,
                     _ => "语音合成超时".into(),
                 };
+                state.logs.record(crate::logs::LogEvent::SpeechFailed);
                 state
                     .inner
                     .lock()
@@ -66,6 +67,7 @@ pub async fn run_worker(state: AppState) {
             || audio.samples.len() % usize::from(audio.channels.max(1)) != 0
             || audio.samples.len() > state.config.speech.max_audio_bytes / 2
         {
+            state.logs.record(crate::logs::LogEvent::SpeechFailed);
             state.inner.lock().await.queue.fail(
                 &task.id,
                 task.generation,
@@ -73,6 +75,7 @@ pub async fn run_worker(state: AppState) {
             );
             continue;
         }
+        state.logs.record(crate::logs::LogEvent::SpeechReady);
         let knowledge_gate = state.knowledge_gate.read().await;
         if !state.speech_knowledge_current(&task.id).await {
             state

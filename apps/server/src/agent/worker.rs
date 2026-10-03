@@ -133,6 +133,7 @@ pub async fn run_agent(state: AppState) {
                     .knowledge_epoch
                     .load(std::sync::atomic::Ordering::Acquire)
         {
+            state.logs.record(crate::logs::LogEvent::AgentFailed);
             inner.agent.fail(
                 work.id,
                 "观众资料已更新，本次生成作废".into(),
@@ -303,6 +304,7 @@ pub async fn run_agent(state: AppState) {
                             .finish_trace(&trace_id, status, message);
                     }
                     Err(error) => {
+                        state.logs.record(crate::logs::LogEvent::AgentFailed);
                         inner.agent.fail(work.id, error, now);
                         state.agent_observability.append_step(
                             &trace_id,

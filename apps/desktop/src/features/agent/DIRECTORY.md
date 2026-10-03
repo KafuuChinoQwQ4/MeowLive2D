@@ -12,4 +12,4 @@ agent/  # Agent 人设、系统提示词、话题和互动策略设置
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: b21a050b7ac5e933c781f15a2b22071fa4ccbf4a1d714c1738d27e8cfefd6f8d -->
+<!-- directory-tree-sha256: b022c4123aa7510547753ce49200b0d52387800bd94f83bffe5a3fdf53083825 -->

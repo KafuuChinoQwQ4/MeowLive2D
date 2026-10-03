@@ -9,6 +9,7 @@ const pages: WorkspaceProps["pages"] = {
   speech: <label>播报草稿<input /></label>, resources: <p>角色工作区</p>,
   agent: <p>互动工作区</p>, viewers: <p>观众工作区</p>, llm: <p>模型连接工作区</p>,
   "agent-observability": <p>Agent 观察工作区</p>,
+  logs: <p>运行日志工作区</p>,
   live: <p>直播工作区</p>, obs: <p>录制工作区</p>, training: <p>训练工作区</p>,
 };
 
@@ -44,4 +45,13 @@ it("returns from the guide to the current feature without losing its draft", asy
     window.dispatchEvent(new PopStateEvent("popstate"));
   });
   expect(screen.getByRole("heading", { level: 1, name: "使用指南" })).toBeVisible();
+});
+
+it("opens logs while the main service and admin session are unavailable", async () => {
+  window.history.replaceState(null, "", "#logs");
+  render(<Workspace pages={pages} overview={<p>运行开关</p>} setup={<p>环境检查</p>} ready={false} status={[]}
+    adminClient={{ baseUrl: "http://test", status: async () => { throw new Error("offline"); }, login: async () => { throw new Error(); }, logout: async () => {}, subscribe: () => () => {} }} />);
+  expect(await screen.findByText("运行日志工作区")).toBeVisible();
+  expect(screen.queryByRole("heading", { name: "正在等待主服务" })).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "运行日志" })).toHaveAttribute("aria-current", "page");
 });

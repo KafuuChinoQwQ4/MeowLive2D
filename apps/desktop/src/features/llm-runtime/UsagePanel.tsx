@@ -47,8 +47,6 @@ export function UsagePanel({ client, active, revision }: { client: LlmRuntimeCli
     setQuery({ since_ms: sinceMs, until_ms: untilMs, provider: provider.trim() || undefined, model: model.trim() || undefined });
   };
   return <div className="runtime-usage">
-    <p className="muted">统计 Agent 回复生成与工具后续轮次的模型调用，包括重试、失败和取消时已报告的用量。金额按当前单价估算，实际账单以供应商为准。</p>
-    <p className="field-hint">搜索服务费用、连接测试、独立记忆提取和嵌入调用不计入本页。供应商余额请在供应商平台查看。</p>
     <form onSubmit={submit} className="runtime-usage-filter">
       <div className="runtime-fields"><label>起始日期<input type="date" value={since} onChange={event => setSince(event.target.value)} /></label><label>结束日期<input type="date" value={until} onChange={event => setUntil(event.target.value)} /></label>
         <label>筛选服务商<input value={provider} maxLength={64} placeholder="全部服务商" onChange={event => setProvider(event.target.value)} /></label><label>筛选模型<input value={model} maxLength={128} placeholder="全部模型" onChange={event => setModel(event.target.value)} /></label></div>
@@ -61,7 +59,6 @@ export function UsagePanel({ client, active, revision }: { client: LlmRuntimeCli
       <section className="runtime-summary" role="group" aria-label="用量汇总">
         <div className="runtime-section-heading"><h3>{snapshot.totals.calls.toLocaleString("zh-CN")} 次模型调用</h3><strong>{estimate(snapshot.totals)}</strong></div>
         <TokenTotals totals={snapshot.totals} />
-        <p className="field-hint">仅累加已报告 tokens。缓存读取 / 写入包含在输入中，推理包含在输出中，请勿重复相加。</p>
         {(snapshot.totals.unpriced_calls > 0 || snapshot.totals.unknown_usage_calls > 0) && <p className="availability-note">{snapshot.totals.unpriced_calls} 次调用未计价；{snapshot.totals.unknown_usage_calls} 次调用未报告用量。汇总金额只覆盖可估算部分。</p>}
       </section>
       <h3 className="runtime-subheading">按模型汇总</h3>

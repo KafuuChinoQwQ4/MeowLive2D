@@ -21,8 +21,8 @@ async function fixture(t, { delay = 0, exit = false, startupMs = 3000, readMemor
   `;
   const definition = { id, url: `http://127.0.0.1:${port}`, command: process.execPath,
     args: ['-e', code, '--'], cwd: root, env: process.env, issue: null, logPath: join(root, `${id}.log`) };
-  const manager = new Supervisor({ definitions: [definition], setup: {}, startupMs, stopMs: 300, pollMs: 30, readMemory });
-  t.after(async () => { await manager.close(); await rm(root, { recursive: true, force: true }); });
+  const manager = new Supervisor({ definitions: [definition], setup: {}, eventLogPath: join(root, 'events.jsonl'), startupMs, stopMs: 300, pollMs: 30, readMemory });
+  t.after(async () => { await manager.close(); await manager.events.queue; await rm(root, { recursive: true, force: true }); });
   return { manager, port, definition };
 }
 
@@ -241,6 +241,8 @@ test('closing the launcher reaps all owned service processes', async t => {
   await manager.setEnabled('server', true);
   await until(manager, 'running');
   await manager.close();
+  const codes = (await manager.events.list()).entries.map(entry => entry.code);
+  for (const code of ['service_started', 'service_ready', 'service_stopping', 'service_exited']) assert.ok(codes.includes(code), code);
   await assert.rejects(fetch(`http://127.0.0.1:${port}`, { signal: AbortSignal.timeout(500) }));
   await assert.rejects(manager.setEnabled('server', true), /退出/);
 });

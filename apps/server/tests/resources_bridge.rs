@@ -35,6 +35,18 @@ async fn resource_response_requires_current_correlation_and_stop_stays_responsiv
     let (code, result) = pending.await.unwrap();
     assert_eq!(code, 200);
     assert_eq!(result["models"][0]["name"], "魔女");
+    let logs = state
+        .logs
+        .list(None, Some("bridge"), Some("resources"), None, 100);
+    assert_eq!(
+        logs.entries
+            .iter()
+            .filter(|e| e.code == "resource_completed")
+            .count(),
+        1
+    );
+    assert!(logs.entries.iter().any(|e| e.code == "resource_failed"));
+    assert!(!serde_json::to_string(&logs).unwrap().contains("魔女"));
 
     let requester = state.clone();
     let pending = tokio::spawn(async move {

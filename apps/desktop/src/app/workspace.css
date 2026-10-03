@@ -393,13 +393,25 @@
 .training-result-actions button:focus-visible { outline: 3px solid #bd8fa5; outline-offset: 3px; }
 
 .persona-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-top: 22px; }
-.persona-card-panel .profile-picker-control { width: 100%; }
-.persona-card-panel .profile-picker-control .profile-toggle { justify-content: center; }
+.studio-shell .profile-picker-control { width: 100%; }
+.studio-shell .profile-picker-control .profile-toggle { justify-content: center; }
+.persona-card-panel .persona-profile-dropdown { position: relative; }
+.studio-shell .profile-picker-control { gap: 8px; }
+.studio-shell .profile-picker-control input { border-radius: 12px; }
+.studio-shell .profile-picker-control .profile-toggle { margin-left: 0; padding-inline: 16px; border-radius: 12px; background: #fff5fa; }
+.studio-shell .profile-toggle:hover, .studio-shell .profile-toggle[aria-expanded="true"] { background: #fbedf4; }
+.studio-shell .profile-list { top: calc(100% + 8px); gap: 4px; padding: 8px; border-radius: 14px; box-shadow: 0 12px 32px rgb(74 34 53 / 14%); }
+.studio-shell .profile-option { padding: 12px; border-radius: 9px; }
+.studio-shell .profile-option[aria-pressed="true"] { box-shadow: inset 3px 0 #b34c7c; }
+.studio-shell .profile-menu-actions { border-top: 1px solid var(--studio-border); margin-top: 4px; padding-top: 10px; }
 .persona-card-panel .persona-rename-button { margin-top: 8px; font-size: 11px; }
 .studio-shell .persona-card-heading h3 { margin: 0; color: #604452; }
 .persona-card-heading .field-hint { margin-top: 4px; }
 .persona-card-count { flex-shrink: 0; padding: 3px 8px; border-radius: 999px; background: #f6e6ee; color: #8b687b; font-size: 10px; font-variant-numeric: tabular-nums; }
 .persona-card-count.is-over { background: #fae3df; color: #a2433b; }
+.persona-identity-field { position: relative; }
+.studio-shell .persona-identity-field textarea { display: block; padding-bottom: 38px; }
+.persona-identity-field .persona-card-count { position: absolute; right: 20px; bottom: 10px; pointer-events: none; }
 .persona-card-details { margin-top: 14px; border: 1px solid #ead3de; border-radius: 12px; background: linear-gradient(135deg, #fffafd, #fff5fa); overflow: hidden; }
 .persona-card-details > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 15px; list-style: none; color: #87546e; font-size: 12px; font-weight: 650; }
 .persona-card-details > summary::-webkit-details-marker { display: none; }

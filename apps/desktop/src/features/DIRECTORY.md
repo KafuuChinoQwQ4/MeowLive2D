@@ -15,6 +15,7 @@ features/  # 面向用户的功能模块，各自封装组件与状态
 ├── live/  # 直播工作台、弹幕观察与播报控制
 ├── llm/  # LLM 接入配置功能
 ├── llm-runtime/  # 模型运行能力、用量费用与 Agent 实时活动界面
+├── logs/  # 运行日志控制面板与筛选展示组件
 ├── model-library/  # 环境检查、本地语音模型选择与官方模型下载管理界面
 ├── obs/  # OBS 场景与录制控制面板
 ├── training/  # 仅音频与可选文本训练、转写校对、任务版本和离线测量界面
@@ -33,6 +34,7 @@ features/  # 面向用户的功能模块，各自封装组件与状态
 - [live/](live/DIRECTORY.md)：直播工作台、弹幕观察与播报控制
 - [llm/](llm/DIRECTORY.md)：LLM 接入配置功能
 - [llm-runtime/](llm-runtime/DIRECTORY.md)：模型运行能力、用量费用与 Agent 实时活动界面
+- [logs/](logs/DIRECTORY.md)：运行日志控制面板与筛选展示组件
 - [model-library/](model-library/DIRECTORY.md)：环境检查、本地语音模型选择与官方模型下载管理界面
 - [obs/](obs/DIRECTORY.md)：OBS 场景与录制控制面板
 - [training/](training/DIRECTORY.md)：仅音频与可选文本训练、转写校对、任务版本和离线测量界面
@@ -43,4 +45,4 @@ features/  # 面向用户的功能模块，各自封装组件与状态
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: ad6c29415de811c2e6ef80c1a106cff512d96da09b6a8d37a79ef8db40de90b4 -->
+<!-- directory-tree-sha256: 2a0da144e2cf4c669de798f98c5b2fcb4c80e2c144037aab9957db5d9fb587ff -->

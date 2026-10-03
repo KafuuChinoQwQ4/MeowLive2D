@@ -85,6 +85,10 @@ pub fn router(state: AppState) -> Router {
         .route("/api/status", get(status))
         .route("/api/health", get(health))
         .route(
+            "/api/logs",
+            get(super::logs::list).post(super::logs::record),
+        )
+        .route(
             "/api/llm/settings",
             get(super::llm::settings).post(super::llm::save),
         )
@@ -207,6 +211,10 @@ pub fn router(state: AppState) -> Router {
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
             super::auth::guard,
+        ))
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            super::logging::guard,
         ))
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),

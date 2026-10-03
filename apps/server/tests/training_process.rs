@@ -273,6 +273,33 @@ default_sovits_weights={default_sovits}
             tokio::time::sleep(Duration::from_millis(25)).await;
         }
     }
+    async fn wait_log(&self, code: &str) {
+        let deadline = Instant::now() + Duration::from_secs(3);
+        loop {
+            let logs: Value = self
+                .client
+                .get(format!("{}/api/logs?category=training", self.base))
+                .send()
+                .await
+                .unwrap()
+                .json()
+                .await
+                .unwrap();
+            if logs["entries"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|e| e["code"] == code)
+            {
+                return;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "missing runtime log {code}: {logs}"
+            );
+            tokio::time::sleep(Duration::from_millis(25)).await;
+        }
+    }
     async fn owned_pids(&self, id: &str) -> Vec<u32> {
         let path = self
             .root
@@ -373,6 +400,7 @@ async fn real_binary_training_audition_save_and_activation_persist_across_restar
     let voice = f.voice().await;
     let id = f.train(&voice, "complete-pair").await;
     let complete = f.wait_state(&id, "completed").await;
+    f.wait_log("training_completed").await;
     assert_eq!(complete["versions"][0]["available"], true);
     assert_eq!(complete["versions"][0]["saved"], false);
     assert_eq!(f.json("/api/training/save", json!({"id":id})).await.0, 409);
@@ -481,6 +509,7 @@ async fn real_binary_http_cancel_and_sigterm_reap_owned_training_tree() {
         .await;
     assert_eq!(code, 200, "{body}");
     let terminal = f.wait_state(&cancelled, "cancelled").await;
+    f.wait_log("training_cancelled").await;
     assert_eq!(terminal["busy"], false);
     assert!(
         pids.iter().all(|pid| !running(*pid)),
@@ -506,6 +535,7 @@ async fn real_binary_rejects_partial_pair_and_recovers_crashed_job_as_interrupte
     let voice = f.voice().await;
     let incomplete = f.train(&voice, "partial-pair").await;
     let failed = f.wait_state(&incomplete, "failed").await;
+    f.wait_log("training_failed").await;
     assert_eq!(failed["busy"], false);
     assert_eq!(failed["versions"], json!([]));
     assert_eq!(

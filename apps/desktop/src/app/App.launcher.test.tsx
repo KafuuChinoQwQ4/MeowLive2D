@@ -20,7 +20,7 @@ it("waits for automatic startup and hides business APIs when the service goes do
   }));
   render(<App />);
   await screen.findByText("启动中");
-  expect(screen.queryByRole("switch", { name: "主服务" })).not.toBeInTheDocument();
+  expect(screen.getByRole("switch", { name: "主服务" })).toBeChecked();
   await userEvent.click(screen.getByRole("link", { name: "语音播报" }));
   expect(await screen.findByRole("button", { name: "前往启动与运行" })).toBeInTheDocument();
   expect(businessCalls).toHaveLength(0);
@@ -63,5 +63,5 @@ it("shows the execution client connection in the workspace status bar", async ()
   vi.stubGlobal("fetch", vi.fn<typeof fetch>(async () => jsonResponse(launcherSnapshot("running", "running", "running"))));
   render(<App />);
   expect(await screen.findByText("Windows 执行端 · 已连接")).toBeInTheDocument();
-  expect(screen.getAllByRole("switch")).toHaveLength(2);
+  expect(screen.getAllByRole("switch")).toHaveLength(3);
 });

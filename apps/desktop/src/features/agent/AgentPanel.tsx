@@ -28,7 +28,6 @@ export function AgentPanel({ client = defaultClient, runtimeClient, pollInterval
       <section className="connection-card agent-status-card">
         <div>
           <h2 id="agent-heading">{phase ? phaseLabels[phase] : "正在读取 Agent 状态…"}</h2>
-          <p className="server-address">{client.baseUrl}</p>
         </div>
         <div className="agent-status-actions">
           <div className="connection-indicators" aria-label="Agent 运行条件">

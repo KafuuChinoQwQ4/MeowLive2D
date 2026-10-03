@@ -12,4 +12,4 @@ llm_runtime/  # 运行配置、计量与持久化实现
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: b22f226c0da9deced26052184334f946b75b95a3646362beafee81977a89e6c2 -->
+<!-- directory-tree-sha256: 2f2967568070ca1c061df2c370e5198c9de80995af046df3d0f08da5bf27981b -->

@@ -67,7 +67,14 @@ export class WindowsClientSupervisor {
     return this;
   }
 
-  locked(work) { const result = this.queue.then(work); this.queue = result.catch(() => {}); return result; }
+  locked(work) { const result = this.queue.then(async () => { try { return await work(); } finally { this.observe(); } }); this.queue = result.catch(() => {}); return result; }
+
+  observe() {
+    if (this.loggedState === this.state) return;
+    this.loggedState = this.state;
+    const code = { starting: 'service_started', running: 'service_ready', external: 'service_external', failed: 'service_failed', stopping: 'service_stopping', stopped: 'service_exited' }[this.state];
+    if (code) void this.events?.record(this.state === 'failed' ? 'error' : 'info', code, 'windows');
+  }
 
   async pulse(session) {
     const path = join(session.path, 'lease');
@@ -160,6 +167,7 @@ export class WindowsClientSupervisor {
             this.lastExit = session;
             this.session = null; this.state = session.finalState ?? 'failed';
             this.message = session.finalMessage ?? 'Windows 启动进程退出。请双击 launchers/start-windows.cmd 重新打开面板，并检查执行端配置和默认扬声器。';
+            this.observe();
           }
           if (session.finalMessage) { resolve(); return; }
           // The helper usually exits before the next status poll. Enrich this
@@ -196,7 +204,8 @@ export class WindowsClientSupervisor {
 
 export function managedServices(supervisor, windows) {
   let initializing;
-  return { token: supervisor.token,
+  windows.events = supervisor.events;
+  return { token: supervisor.token, events: supervisor.events,
     async initialize() {
       initializing ??= (async () => {
         await supervisor.initialize();
@@ -205,7 +214,7 @@ export function managedServices(supervisor, windows) {
         if (!['running', 'external'].includes(server?.state)) return;
         try { await windows.setEnabled(true); }
         catch (error) {
-          if (!windows.closed && !windows.session) { windows.state = 'failed'; windows.message = error.message; }
+          if (!windows.closed && !windows.session) { windows.state = 'failed'; windows.message = error.message; windows.observe(); }
         }
       })();
       await initializing;

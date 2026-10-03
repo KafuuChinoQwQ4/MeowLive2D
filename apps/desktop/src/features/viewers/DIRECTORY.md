@@ -12,4 +12,4 @@ viewers/  # 管理员只读观众档案与持久事件查询页面
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: dd21ecbe65b40ca68502b3945da003ff48897f9ece71335d5a8bba20ed17c72a -->
+<!-- directory-tree-sha256: 594bc890936f45c4a9d4ae57f355b83e88278473abd5e82ab95af3d0bd376ddc -->

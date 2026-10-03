@@ -63,7 +63,10 @@ describe("LLM 推理强度", () => {
     const api = client({ previewReasoning: vi.fn().mockImplementation(async request => ({ ...mapped, requested: request.reasoning_effort,
       effective: request.reasoning_effort === "default" ? "default" : null, supported: [], note: request.reasoning_effort === "default" ? "保留供应商默认推理行为。" : "未识别该模型，不发送推理覆盖参数。" })) });
     await load(api);
-    expect(await screen.findByText("实际生效：模型默认（不覆盖）")).toBeVisible();
+    await waitFor(() => expect(api.previewReasoning).toHaveBeenCalled());
+    await waitFor(() => expect(document.getElementById("llm-reasoning-help")).toHaveAttribute("aria-busy", "false"));
+    expect(screen.queryByText("实际生效：模型默认（不覆盖）")).not.toBeInTheDocument();
+    expect(screen.queryByText("保留供应商默认推理行为。")).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("推理强度"), { target: { value: "ultra" } });
     expect(await screen.findByText("未识别该模型，不发送推理覆盖参数。")).toBeVisible();
     expect(screen.getByLabelText("推理强度")).toHaveValue("ultra");
