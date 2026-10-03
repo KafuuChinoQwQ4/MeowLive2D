@@ -56,7 +56,7 @@ npm run check
 npm run build
 ```
 
-推送或提交 PR 后，GitHub Actions 自动执行检查并构建 Windows 安装包，可在 CI 的 `windows-installer` 附件下载。发布时同步版本号，添加 `releases/v版本号.md`，再推送同名 `v版本号` 标签；全部检查通过后自动发布 Windows 预览版。Dependabot 定期提交依赖更新 PR，不自动合并。
+推送或提交 PR 后，GitHub Actions 自动执行检查并构建 Windows 安装包，可在 CI 的 `windows-installer` 附件下载。发布时同步版本号，添加 `releases/标签名.md`，再推送对应标签（`v版本号` 或 `v版本号-windows-preview.YYYYMMDD`）；全部检查通过后自动发布 Windows 预览版。Dependabot 定期提交依赖更新 PR，不自动合并。
 
 主服务在 `apps/server`，前端在 `apps/desktop`。依赖方向为 `application → domain`；外部适配器实现 application 接口，跨端契约集中在 protocol，Windows 执行库独立于 Tauri 外壳。前端通过 services 访问外部能力。
 

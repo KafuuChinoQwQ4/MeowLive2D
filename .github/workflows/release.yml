@@ -28,7 +28,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          node --input-type=module -e 'import fs from "node:fs"; const version = JSON.parse(fs.readFileSync("apps/desktop/src-tauri/tauri.conf.json")).version; if (process.env.RELEASE_TAG !== `v${version}`) throw new Error("Tag must match Tauri version");'
+          node --input-type=module -e 'import fs from "node:fs"; const version = JSON.parse(fs.readFileSync("apps/desktop/src-tauri/tauri.conf.json")).version; const tag = process.env.RELEASE_TAG; if (tag !== `v${version}` && !(tag.startsWith(`v${version}-windows-preview.`) && /^\d{8}$/.test(tag.slice(`v${version}-windows-preview.`.length)))) throw new Error("Tag must match Tauri version or its dated Windows preview");'
           test -f "releases/$RELEASE_TAG.md"
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
