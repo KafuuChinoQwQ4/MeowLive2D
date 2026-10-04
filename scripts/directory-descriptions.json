@@ -828,7 +828,7 @@
     ".github": "GitHub 自动检查、发布与依赖更新配置",
     ".github/workflows": "持续集成与 Windows 发布工作流",
     ".github/workflows/ci.yml": "Linux 全量检查与 Windows 安装包构建验证",
-    ".github/workflows/release.yml": "版本标签触发验证并发布 Windows 预览安装包",
+    ".github/workflows/release.yml": "版本标签触发验证，分离发布平台安装包与增量更新资源",
     ".github/dependabot.yml": "定期创建 Actions、npm 与 Cargo 依赖更新请求",
     "releases": "各版本公开发布说明",
     "releases/v0.1.1-windows-preview.20261003.md": "0.1.1 Windows 预览版改动与安装限制说明",
@@ -864,6 +864,8 @@
     "scripts/voice-backend.py": "WSL 语音后端检查、模型下载与受管推理进程组控制",
     "scripts/voice_backend_test.py": "后端资源完整性、模型边界和进程组清理回归",
     "scripts/wsl-training-bridge.py": "WSL 训练转写路径转换、标准输入租约与进程组监督",
-    "scripts/wsl-training-bridge.test.py": "WSL 转写协议、路径隔离、正常退出及取消清理回归"
+    "scripts/wsl-training-bridge.test.py": "WSL 转写协议、路径隔离、正常退出及取消清理回归",
+    "scripts/release-layout.mjs": "分离增量分块资源并生成按平台架构分类的发布下载入口",
+    "scripts/release-layout.test.mjs": "验证公开安装包与增量资源分流、多平台下载入口及无签名发布"
   }
 }

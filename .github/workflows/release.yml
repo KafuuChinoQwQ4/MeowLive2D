@@ -13,6 +13,7 @@ concurrency:
 
 jobs:
   verify:
+    if: ${{ !contains(github.ref_name, '-updates-') }}
     uses: ./.github/workflows/ci.yml
   publish:
     needs: verify
@@ -52,14 +53,28 @@ jobs:
           else
             node scripts/update-manifest.mjs release-assets
           fi
-      - name: Publish Windows release
+      - name: Separate update resources and generate platform download links
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: node scripts/release-layout.mjs release-assets update-assets "releases/$RELEASE_TAG.md" "$RUNNER_TEMP/release-notes.md"
+      - name: Publish platform downloads and separate update release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_COMMIT: ${{ github.sha }}
         run: |
-          release_args=(--draft --verify-tag --title "MeowLive2D $RELEASE_TAG" --notes-file "releases/$RELEASE_TAG.md")
+          # Publish all update blocks before exposing the user-facing release.
+          if [ -n "$(find update-assets -maxdepth 1 -type f -name 'chunk-*.bin' -print -quit)" ]; then
+            update_tag="$RELEASE_TAG-updates-windows-x86_64"
+            gh release create "$update_tag" --target "$RELEASE_COMMIT" --draft --prerelease --latest=false \
+              --title "MeowLive2D $RELEASE_TAG 更新资源（Windows x64）" \
+              --notes "供 App 增量更新使用，请勿手动下载。安装包请前往 https://github.com/$GITHUB_REPOSITORY/releases/tag/$RELEASE_TAG"
+            find update-assets -maxdepth 1 -type f -name 'chunk-*.bin' -print0 | xargs -0 -n 20 gh release upload "$update_tag"
+            gh release edit "$update_tag" --draft=false --latest=false
+          fi
+          release_args=(--draft --verify-tag --title "MeowLive2D $RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md")
           if [[ "$RELEASE_TAG" == *-windows-preview.* ]]; then release_args+=(--prerelease); fi
           gh release create "$RELEASE_TAG" "${release_args[@]}"
-          # Bound argv and publish only after every installer/chunk/manifest uploaded.
+          # This directory contains installers and small metadata, never chunks.
           find release-assets -maxdepth 1 -type f -print0 | xargs -0 -n 20 gh release upload "$RELEASE_TAG"
           gh release edit "$RELEASE_TAG" --draft=false

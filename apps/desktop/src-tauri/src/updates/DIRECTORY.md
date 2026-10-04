@@ -12,4 +12,4 @@ updates/  # GitHub 签名更新与分块增量下载
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: be7223ce76e194db1639ddf2c7ec0d28284fc4a25f99d80f9f3cbbea7d98c986 -->
+<!-- directory-tree-sha256: 5e8a3f4992d5e1e16cef13d5da1691ce595db11c9f45b307eb1eb8498b636afe -->
