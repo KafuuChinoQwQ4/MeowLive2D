@@ -18,9 +18,14 @@ pub struct ResourceSynthesizer {
     default: Arc<dyn SpeechSynthesizer>,
     library: Arc<ResourceLibrary>,
     config: ResourceSynthesizerConfig,
+    wsl_distribution: Option<String>,
 }
 
 impl ResourceSynthesizer {
+    pub fn with_wsl_distribution(mut self, distribution: Option<String>) -> Self {
+        self.wsl_distribution = distribution;
+        self
+    }
     pub fn new(
         default: Arc<dyn SpeechSynthesizer>,
         library: Arc<ResourceLibrary>,
@@ -43,6 +48,7 @@ impl ResourceSynthesizer {
             default,
             library,
             config,
+            wsl_distribution: None,
         })
     }
 }
@@ -73,7 +79,8 @@ impl SpeechSynthesizer for ResourceSynthesizer {
                         text_language: "auto".into(),
                         timeout: self.config.timeout,
                         max_audio_bytes: self.config.max_audio_bytes,
-                    })?;
+                    })?
+                    .with_wsl_distribution(self.wsl_distribution.clone());
                     synthesizer
                         .synthesize(SynthesisRequest {
                             text: request.text,

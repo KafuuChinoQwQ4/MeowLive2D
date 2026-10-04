@@ -47,24 +47,35 @@ fn execute(
         .parent()
         .ok_or_else(failure)?
         .join("transcribe-training.py");
-    let mut command = Command::new(&engine.config.python);
+    let mut command = if let Some(wsl) = &engine.wsl {
+        wsl.command(true, engine.asr_model.as_ref())
+    } else {
+        let mut command = Command::new(&engine.config.python);
+        command.arg("-s").arg(runner);
+        command
+    };
     command
-        .arg("-s")
-        .arg(runner)
         .arg("--audio")
         .arg(audio)
         .arg("--language")
         .arg(&clip.language)
-        .arg("--engine-root")
-        .arg(engine.engine_root.as_ref().ok_or_else(failure)?)
         .current_dir(&directory.0)
-        .stdin(Stdio::null())
+        .stdin(if engine.wsl.is_some() {
+            Stdio::piped()
+        } else {
+            Stdio::null()
+        })
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .env("PYTHONDONTWRITEBYTECODE", "1")
         .env("PYTHONUNBUFFERED", "1");
-    if let Some(model) = &engine.asr_model {
-        command.arg("--model").arg(model);
+    if engine.wsl.is_none() {
+        command
+            .arg("--engine-root")
+            .arg(engine.engine_root.as_ref().ok_or_else(failure)?);
+        if let Some(model) = &engine.asr_model {
+            command.arg("--model").arg(model);
+        }
     }
     #[cfg(unix)]
     {
@@ -74,6 +85,7 @@ fn execute(
     let mut owned = OwnedChild {
         child: command.spawn().map_err(|_| failure())?,
         cleaned: false,
+        wsl: engine.wsl.is_some(),
     };
     let stdout = owned.child.stdout.take().ok_or_else(failure)?;
     let stderr = owned.child.stderr.take().ok_or_else(failure)?;

@@ -19,4 +19,4 @@ protocol/  # 跨进程控制、事件、音频和执行消息的契约源
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: bac8f667be3120f7bfba289d3f27b4d92e17f16f6c7dea9ffb6d521312da865c -->
+<!-- directory-tree-sha256: 3d856ccd1e1b81e9af8822b7d007728e59d94d405f5df6d66fa1a7f35431cd3c -->

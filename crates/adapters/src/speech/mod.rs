@@ -4,3 +4,5 @@ pub mod gpt_sovits;
 pub mod model_synthesizer;
 pub mod resource_synthesizer;
 pub mod wav;
+
+mod wsl_path;

@@ -17,4 +17,4 @@ src/  # 与业务领域分离的通信 DTO 模块
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: df3947e00890333d1af10df148eef88385291fc0978008503336b7ad30702399 -->
+<!-- directory-tree-sha256: 99334913568967a1bbfe0924d8885bec8a195e97a309c12084ff8b248ef2e79e -->

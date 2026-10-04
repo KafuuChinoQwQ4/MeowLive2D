@@ -1,3 +1,6 @@
+import { listenForExitBlocked } from "../services/desktop/lifecycle";
+import { AppUpdatePanel } from "../features/updates/AppUpdatePanel";
+import { DesktopEnvironmentPanel } from "../features/desktop-environment/DesktopEnvironmentPanel";
 import { ModelLibraryManualGuide } from "../features/model-library/ModelLibraryPanel";
 import { SpeechPanel } from "../features/live";
 import { AgentPanel } from "../features/agent";
@@ -37,6 +40,7 @@ function AppContent() {
   const [desktop, setDesktop] = useState<DesktopStatus | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [environmentBusy, setEnvironmentBusy] = useState(false);
   const [soundRevision, setSoundRevision] = useState(0);
   useEffect(() => {
     let cancelled = false;
@@ -60,12 +64,19 @@ function AppContent() {
           setError("桌面配置读取失败，请检查执行端状态后重试。");
           if (retryRequested) { retryRequested = false; feedback.error("重试桌面连接失败", "请检查执行端状态后重试。"); }
           else feedback.reportIssue("desktop:configuration", "桌面配置读取失败", "请检查执行端状态后重试。");
+          timer = setTimeout(() => void update(), 3_000);
         }
       }
     };
     void update();
     return () => { cancelled = true; clearTimeout(timer); };
   }, [attempt, feedback]);
+  useEffect(() => {
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    void listenForExitBlocked(message => feedback.error("暂时无法关闭 App", message)).then(stop => { if (disposed) stop(); else unlisten = stop; }).catch(() => {});
+    return () => { disposed = true; unlisten?.(); };
+  }, [feedback]);
   const baseUrl = desktop?.server_url;
   const clients = useMemo(() => ({
     speech: createServerClient({ baseUrl }), agent: createAgentClient({ baseUrl }),
@@ -98,7 +109,7 @@ function AppContent() {
   const serverLabel = desktop?.server.ready ? "主服务运行中" : desktop?.server.last_error ? "主服务未就绪" : "主服务启动中";
   if (desktop === undefined) return <main className="studio-initial"><h1>MeowLive2D</h1>{errorNotice || <p role="status">正在读取桌面配置…</p>}</main>;
   if (desktop === null && import.meta.env.VITE_MEOWLIVE_LAUNCHER === "true") return <ManagedWorkspace pages={panels} adminClient={clients.auth} />;
-  return <Workspace pages={panels} adminClient={clients.auth} setup={<ModelLibraryManualGuide />} ready={desktop === null || (!error && desktop.server.ready)} status={[...(desktop ? [{ label: serverLabel, available: !error && desktop.server.ready }] : []), { label: desktop ? (desktop.runtime.running ? "桌面执行端运行中" : "桌面执行端已停止") : "手动服务模式", available: desktop?.runtime.running ?? null }]}
+  return <Workspace pages={panels} adminClient={clients.auth} setup={desktop ? <><DesktopEnvironmentPanel onBusyChanged={setEnvironmentBusy} onApplied={() => setAttempt(value => value + 1)} /><AppUpdatePanel disabled={environmentBusy} /></> : <ModelLibraryManualGuide />} ready={desktop === null || (!error && desktop.server.ready)} status={[...(desktop ? [{ label: serverLabel, available: !error && desktop.server.ready }] : []), { label: desktop ? (desktop.runtime.running ? "桌面执行端运行中" : "桌面执行端已停止") : "手动服务模式", available: desktop?.runtime.running ?? null }]}
     notice={errorNotice} overview={<>{errorNotice}{desktop && <section className="connection-card" aria-label="主服务">
       <div><h2>{serverLabel}</h2><p>打开应用时自动启动，关闭应用时自动退出。</p>
         {desktop.server.ready && !desktop.server.managed && <p className="muted">已连接现有服务，由原启动程序管理。</p>}

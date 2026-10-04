@@ -88,6 +88,7 @@ pub async fn run(config_path: &Path) -> Result<(), String> {
     };
     let live_source = build_live_source(&config.live)?;
     let speech = &config.speech;
+    let wsl_distribution = config.training.wsl_config()?.map(|wsl| wsl.distribution);
     let synthesizer: Arc<dyn SpeechSynthesizer> = if speech.reference_audio.trim().is_empty() {
         eprintln!("语音参考素材尚未配置；服务可启动，播报任务会报告配置错误。");
         Arc::new(UnconfiguredSpeech)
@@ -102,7 +103,8 @@ pub async fn run(config_path: &Path) -> Result<(), String> {
                 timeout: Duration::from_secs(speech.timeout_seconds),
                 max_audio_bytes: speech.max_audio_bytes,
             })
-            .map_err(|e| e.to_string())?,
+            .map_err(|e| e.to_string())?
+            .with_wsl_distribution(wsl_distribution.clone()),
         )
     };
     let synthesizer = Arc::new(
@@ -115,7 +117,8 @@ pub async fn run(config_path: &Path) -> Result<(), String> {
                 max_audio_bytes: speech.max_audio_bytes,
             },
         )
-        .map_err(|e| e.to_string())?,
+        .map_err(|e| e.to_string())?
+        .with_wsl_distribution(wsl_distribution.clone()),
     );
     let model_synthesizer = if config.training.managed_inference {
         Some(Arc::new(
@@ -135,7 +138,8 @@ pub async fn run(config_path: &Path) -> Result<(), String> {
                     .into_owned(),
                 Duration::from_secs(30),
             )
-            .map_err(|e| e.to_string())?,
+            .map_err(|e| e.to_string())?
+            .with_wsl_distribution(wsl_distribution),
         ))
     } else {
         None
@@ -337,12 +341,16 @@ pub fn build_training(
     }
     let runner = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scripts/train-gpt-sovits.py");
     let store = FileTrainingStore::open(&config.directory).map_err(|e| e.to_string())?;
-    let engine = ProcessTrainingEngine::new(ProcessTrainingConfig {
-        python: config.python.clone(),
-        runner,
-        timeout: Duration::from_secs(config.timeout_seconds),
-    })
-    .and_then(|engine| engine.with_engine_root(config.engine_root.clone()))
+    let engine = if let Some(wsl) = config.wsl_config()? {
+        ProcessTrainingEngine::new_wsl(wsl, Duration::from_secs(config.timeout_seconds))
+    } else {
+        ProcessTrainingEngine::new(ProcessTrainingConfig {
+            python: config.python.clone(),
+            runner,
+            timeout: Duration::from_secs(config.timeout_seconds),
+        })
+        .and_then(|engine| engine.with_engine_root(config.engine_root.clone()))
+    }
     .and_then(|engine| {
         engine.with_transcription(config.directory.clone(), config.asr_model.clone())
     })

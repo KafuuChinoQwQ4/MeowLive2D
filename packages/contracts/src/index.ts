@@ -2,6 +2,18 @@
 
 export const PROTOCOL_VERSION = 3 as const;
 
+export type EnvironmentRequest = { action: string, distro: string | null, modelId: string | null, };
+
+export type EnvironmentSnapshot = { phase: string, busy: boolean, message: string, logs: Array<string>, distros: Array<Distro>, selectedDistro: string | null, backend: Backend, models: Array<Model>, progress: number, inferenceRunning: boolean, };
+
+export type Distro = { name: string, version: number, };
+
+export type Backend = { ready: boolean, engineRoot: string, pythonPath: string, gpu: boolean, detail: string, };
+
+export type Model = { id: string, name: string, capability: string, downloaded: boolean, selected: boolean, };
+
+export type UpdateStatus = { phase: string, current_tag: string, available_tag: string | null, release_url: string | null, release_notes: string | null, message: string, downloaded_bytes: number, reused_bytes: number, total_bytes: number, };
+
 export type ChatReadMode = "auto" | "all" | "selective";
 
 export type InteractionSettings = { chat_read_mode: ChatReadMode, welcome_enabled: boolean, busy_chat_count: number, busy_enter_count: number, busy_pending_count: number, welcome_cooldown_ms: number, welcome_viewer_cooldown_ms: number, };

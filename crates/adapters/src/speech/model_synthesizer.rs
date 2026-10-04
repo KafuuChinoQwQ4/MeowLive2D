@@ -21,6 +21,7 @@ pub struct ModelSynthesizer {
 struct Engine {
     client: reqwest::Client,
     base: reqwest::Url,
+    wsl_distribution: Option<String>,
     default_gpt: String,
     default_sovits: String,
     busy: AtomicBool,
@@ -72,12 +73,19 @@ impl ModelSynthesizer {
             engine: Arc::new(Engine {
                 client,
                 base,
+                wsl_distribution: None,
                 default_gpt,
                 default_sovits,
                 busy: AtomicBool::new(false),
                 poisoned: AtomicBool::new(false),
             }),
         })
+    }
+    pub fn with_wsl_distribution(mut self, distribution: Option<String>) -> Self {
+        if let Some(engine) = Arc::get_mut(&mut self.engine) {
+            engine.wsl_distribution = distribution;
+        }
+        self
     }
     pub fn is_busy(&self) -> bool {
         self.engine.busy.load(Ordering::Acquire)
@@ -213,7 +221,12 @@ impl Engine {
         runtime_request(&self.client, &self.base, enabled).await
     }
     async fn set_pair(&self, gpt: &str, sovits: &str) -> Result<(), SynthesisError> {
-        for (route, path) in [("set_gpt_weights", gpt), ("set_sovits_weights", sovits)] {
+        let gpt = super::wsl_path::map(self.wsl_distribution.as_deref(), gpt).await?;
+        let sovits = super::wsl_path::map(self.wsl_distribution.as_deref(), sovits).await?;
+        for (route, path) in [
+            ("set_gpt_weights", gpt.as_str()),
+            ("set_sovits_weights", sovits.as_str()),
+        ] {
             let mut url = self.base.clone();
             url.set_path(&format!(
                 "{}/{route}",

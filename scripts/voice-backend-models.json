@@ -1,0 +1,151 @@
+[
+  {
+    "id": "gpt-sovits-v2",
+    "name": "GPT-SoVITS v2",
+    "languages": "中文 / 英文 / 日文 / 韩文 / 粤语",
+    "description": "已接入的参考音频克隆引擎，适合本项目语音播报。",
+    "license": "MIT；附属模型遵循各自许可",
+    "homepage": "https://github.com/RVC-Boss/GPT-SoVITS",
+    "source_url": "https://huggingface.co/lj1995/GPT-SoVITS",
+    "compatibility": "ready",
+    "note": "下载含 v2 权重、中文编码器、语言识别和 G2PW 资源；仍需已有 GPT-SoVITS 引擎代码及 Python 依赖，通过环境检查后可选择启用。",
+    "sources": [
+      {
+        "repo": "lj1995/GPT-SoVITS",
+        "prefix": "GPT_SoVITS/pretrained_models",
+        "include": [
+          "README.md",
+          "chinese-hubert-base/",
+          "chinese-roberta-wwm-ext-large/",
+          "gsv-v2final-pretrained/"
+        ]
+      },
+      {
+        "repo": "XXXXRT/GPT-SoVITS-Pretrained",
+        "prefix": "GPT_SoVITS",
+        "include": [
+          "pretrained_models/fast_langdetect/lid.176.bin"
+        ]
+      },
+      {
+        "repo": "XXXXRT/GPT-SoVITS-Pretrained",
+        "prefix": "",
+        "include": [
+          "G2PWModel.zip"
+        ]
+      }
+    ],
+    "markers": [
+      "GPT_SoVITS/pretrained_models/chinese-hubert-base/config.json",
+      "GPT_SoVITS/pretrained_models/chinese-hubert-base/preprocessor_config.json",
+      "GPT_SoVITS/pretrained_models/chinese-hubert-base/pytorch_model.bin",
+      "GPT_SoVITS/pretrained_models/chinese-roberta-wwm-ext-large/config.json",
+      "GPT_SoVITS/pretrained_models/chinese-roberta-wwm-ext-large/pytorch_model.bin",
+      "GPT_SoVITS/pretrained_models/chinese-roberta-wwm-ext-large/tokenizer.json",
+      "GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt",
+      "GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s2D2333k.pth",
+      "GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s2G2333k.pth",
+      "GPT_SoVITS/pretrained_models/fast_langdetect/lid.176.bin",
+      "G2PWModel.zip"
+    ]
+  },
+  {
+    "id": "faster-whisper-large-v3-turbo",
+    "name": "Whisper large-v3-turbo",
+    "purpose": "asr",
+    "languages": "中文 / 英文 / 日文 / 韩文 / 粤语等多语言",
+    "description": "推荐：多语言训练录音转写，兼顾速度与识别质量。",
+    "license": "MIT",
+    "homepage": "https://huggingface.co/openai/whisper-large-v3-turbo",
+    "source_url": "https://huggingface.co/mobiuslabsgmbh/faster-whisper-large-v3-turbo",
+    "compatibility": "ready",
+    "note": "用于训练录音自动提取文本。使用训练 Python 中的 faster-whisper，CPU INT8 运行，识别完成后卸载。",
+    "sources": [
+      {
+        "repo": "mobiuslabsgmbh/faster-whisper-large-v3-turbo",
+        "prefix": "",
+        "include": [
+          "README.md",
+          "model.bin",
+          "config.json",
+          "tokenizer.json",
+          "preprocessor_config.json",
+          "vocabulary.json"
+        ]
+      }
+    ],
+    "markers": [
+      "model.bin",
+      "config.json",
+      "tokenizer.json",
+      "preprocessor_config.json",
+      "vocabulary.json"
+    ]
+  },
+  {
+    "id": "faster-whisper-large-v3",
+    "name": "Whisper large-v3",
+    "purpose": "asr",
+    "languages": "中文 / 英文 / 日文 / 韩文 / 粤语等多语言",
+    "description": "完整版 Whisper，适合能接受较长识别等待的场景。",
+    "license": "MIT",
+    "homepage": "https://github.com/SYSTRAN/faster-whisper",
+    "source_url": "https://huggingface.co/Systran/faster-whisper-large-v3",
+    "compatibility": "ready",
+    "note": "用于训练录音自动提取文本。使用训练 Python 中的 faster-whisper，CPU INT8 运行，识别完成后卸载。",
+    "sources": [
+      {
+        "repo": "Systran/faster-whisper-large-v3",
+        "prefix": "",
+        "include": [
+          "README.md",
+          "model.bin",
+          "config.json",
+          "tokenizer.json",
+          "preprocessor_config.json",
+          "vocabulary.json"
+        ]
+      }
+    ],
+    "markers": [
+      "model.bin",
+      "config.json",
+      "tokenizer.json",
+      "preprocessor_config.json",
+      "vocabulary.json"
+    ]
+  },
+  {
+    "id": "sensevoice-small",
+    "name": "SenseVoiceSmall",
+    "purpose": "asr",
+    "languages": "中文 / 粤语 / 英文 / 日文 / 韩文",
+    "description": "适合中文短录音的轻量语音理解模型，兼有情绪和声音事件识别。",
+    "license": "见官方模型许可",
+    "homepage": "https://github.com/FunAudioLLM/SenseVoice",
+    "source_url": "https://huggingface.co/FunAudioLLM/SenseVoiceSmall",
+    "compatibility": "download_only",
+    "note": "可按需下载；尚未接入本项目自动转写，下载后不能直接选择使用。",
+    "sources": [
+      {
+        "repo": "FunAudioLLM/SenseVoiceSmall",
+        "prefix": "",
+        "include": [
+          "README.md",
+          "model.pt",
+          "config.yaml",
+          "configuration.json",
+          "am.mvn",
+          "chn_jpn_yue_eng_ko_spectok.bpe.model"
+        ]
+      }
+    ],
+    "markers": [
+      "model.pt",
+      "config.yaml",
+      "configuration.json",
+      "am.mvn",
+      "chn_jpn_yue_eng_ko_spectok.bpe.model"
+    ]
+  }
+]

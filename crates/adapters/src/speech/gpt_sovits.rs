@@ -29,6 +29,7 @@ pub struct GptSovits {
     client: Client,
     endpoint: Url,
     config: GptSovitsConfig,
+    wsl_distribution: Option<String>,
 }
 
 impl GptSovits {
@@ -95,9 +96,14 @@ impl GptSovits {
             client,
             endpoint,
             config,
+            wsl_distribution: None,
         })
     }
 
+    pub fn with_wsl_distribution(mut self, distribution: Option<String>) -> Self {
+        self.wsl_distribution = distribution;
+        self
+    }
     async fn synthesize_audio(
         &self,
         request: SynthesisRequest,
@@ -109,10 +115,15 @@ impl GptSovits {
         }
         let text = SpeechText::broadcast(request.text)
             .map_err(|error| SynthesisError::new(error.to_string()))?;
+        let reference_audio = super::wsl_path::map(
+            self.wsl_distribution.as_deref(),
+            &self.config.reference_audio,
+        )
+        .await?;
         let payload = TtsRequest {
             text: text.as_str(),
             text_lang: &self.config.text_language,
-            ref_audio_path: &self.config.reference_audio,
+            ref_audio_path: &reference_audio,
             prompt_text: &self.config.prompt_text,
             prompt_lang: &self.config.prompt_language,
             text_split_method: "cut5",

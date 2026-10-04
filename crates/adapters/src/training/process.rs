@@ -23,6 +23,7 @@ pub struct ProcessTrainingConfig {
 }
 pub struct ProcessTrainingEngine {
     pub(super) config: ProcessTrainingConfig,
+    pub(super) wsl: Option<super::WslTrainingConfig>,
     pub(super) engine_root: Option<PathBuf>,
     pub(super) transcription_root: Option<PathBuf>,
     pub(super) asr_model: Option<PathBuf>,
@@ -42,6 +43,7 @@ impl ProcessTrainingEngine {
         }
         Ok(Self {
             config,
+            wsl: None,
             engine_root: None,
             transcription_root: None,
             asr_model: None,
@@ -49,12 +51,36 @@ impl ProcessTrainingEngine {
     }
 }
 impl ProcessTrainingEngine {
+    pub fn new_wsl(
+        config: super::WslTrainingConfig,
+        timeout: Duration,
+    ) -> Result<Self, TrainingError> {
+        config.validate()?;
+        if timeout.is_zero() || timeout > Duration::from_secs(86400) {
+            return Err(engine_error());
+        }
+        Ok(Self {
+            config: ProcessTrainingConfig {
+                python: config.python.clone().into(),
+                runner: config.runner.clone().into(),
+                timeout,
+            },
+            engine_root: Some(config.engine_root.clone().into()),
+            wsl: Some(config),
+            transcription_root: None,
+            asr_model: None,
+        })
+    }
     pub fn with_transcription(
         mut self,
         directory: PathBuf,
         model: PathBuf,
     ) -> Result<Self, TrainingError> {
-        if !directory.is_absolute() || (!model.as_os_str().is_empty() && !model.is_absolute()) {
+        if !directory.is_absolute()
+            || (!model.as_os_str().is_empty()
+                && !model.is_absolute()
+                && !(self.wsl.is_some() && model.to_string_lossy().starts_with('/')))
+        {
             return Err(TrainingError::Engine(
                 "自动提取文本的存储目录或模型路径无效".into(),
             ));
@@ -101,7 +127,11 @@ impl TrainingEngine for ProcessTrainingEngine {
             .create_new(true)
             .open(job.work_dir.join("engine.log"))
             .map_err(|_| engine_error())?;
-        let mut command = Command::new(&self.config.python);
+        let mut command = if let Some(wsl) = &self.wsl {
+            wsl.command(false, self.asr_model.as_ref())
+        } else {
+            Command::new(&self.config.python)
+        };
         if let Some(root) = &self.engine_root {
             command.env("MEOWLIVE_GPT_SOVITS_ROOT", root);
         }
@@ -109,12 +139,18 @@ impl TrainingEngine for ProcessTrainingEngine {
             command.env("MEOWLIVE_ASR_MODEL", model);
         }
         command.env("PYTHONDONTWRITEBYTECODE", "1");
+        if self.wsl.is_none() {
+            command.arg(&self.config.runner);
+        }
         command
-            .arg(&self.config.runner)
             .arg("--job")
             .arg(&job.job_file)
             .current_dir(&job.work_dir)
-            .stdin(Stdio::null())
+            .stdin(if self.wsl.is_some() {
+                Stdio::piped()
+            } else {
+                Stdio::null()
+            })
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .env("PYTHONUNBUFFERED", "1");
@@ -127,6 +163,7 @@ impl TrainingEngine for ProcessTrainingEngine {
         let mut owned = OwnedChild {
             child,
             cleaned: false,
+            wsl: self.wsl.is_some(),
         };
         let stdout = owned.child.stdout.take().ok_or_else(engine_error)?;
         let stderr = owned.child.stderr.take().ok_or_else(engine_error)?;
@@ -257,10 +294,19 @@ fn read_progress(mut stdout: impl Read, sender: mpsc::SyncSender<Event>) {
 pub(super) struct OwnedChild {
     pub(super) child: Child,
     pub(super) cleaned: bool,
+    pub(super) wsl: bool,
 }
 impl OwnedChild {
     pub(super) fn cleanup(&mut self) {
         if self.cleaned {
+            return;
+        }
+        if self.wsl {
+            // EOF tells the Linux supervisor to kill its process group. Wait for its
+            // acknowledgement before releasing the training slot or closing logs.
+            drop(self.child.stdin.take());
+            let _ = self.child.wait();
+            self.cleaned = true;
             return;
         }
         terminate_group(self.child.id(), false);

@@ -11,10 +11,10 @@
 - 语音播报：自行准备 TTS 引擎和模型。
 - Live2D 形象：自行安装 VTube Studio，加载模型并开启插件 API。
 - 观众档案、积分和记忆：准备 PostgreSQL + pgvector，按[数据库启用步骤](config/windows-database.md)配置。首次默认关闭观众存储。
-- 本地声音训练：连接已配置训练环境的 Linux / WSL 主服务，Windows 内置主服务暂不支持。
+- 本地声音训练：在 App「环境与模型」检测或安装 WSL2 语音后端，下载并选用 GPT-SoVITS v2；训练需要可用 CUDA GPU。
 - 推流与录制：按需安装 OBS。
 
-原生 App 本身不需要 WSL，也不会自动安装 WSL 或 Docker。桌面配置与打包见 [Windows App 说明](apps/desktop/src-tauri/README.md)。
+原生 App 基础功能不需要 WSL。声音环境向导可在用户点击后安装 WSL2 和独立语音后端；系统授权和重启由用户完成。桌面配置与打包见 [Windows App 说明](apps/desktop/src-tauri/README.md)。
 
 ## 开始使用
 
@@ -24,6 +24,8 @@
 4. **连接 AI**：在「LLM 接入」填写地址和密钥，获取模型、测试并保存，然后重启 App 或启动器。
 5. **开始互动**：在「Agent 互动」保存设置并恢复 Agent，先用模拟事件试用。
 6. **接入直播**：在「直播连接」填写 B 站开放平台凭据和主播身份码，连接直播间；仅填房间号不能接入。
+
+App「环境与模型」也提供 GitHub 版本检查与签名更新；首次或无缓存时完整下载，后续复用已验证分块。发布配置见 [更新发布说明](releases/UPDATING.md)。
 
 各页面的具体操作见应用内「使用指南」。异常先查「运行日志」，Agent 执行过程查「Agent 观察」。
 
@@ -56,7 +58,7 @@ npm run check
 npm run build
 ```
 
-推送或提交 PR 后，GitHub Actions 自动执行检查并构建 Windows 安装包，可在 CI 的 `windows-installer` 附件下载。发布时同步版本号，添加 `releases/标签名.md`，再推送对应标签（`v版本号` 或 `v版本号-windows-preview.YYYYMMDD`）；全部检查通过后自动发布 Windows 预览版。Dependabot 定期提交依赖更新 PR，不自动合并。
+推送或提交 PR 后，GitHub Actions 自动执行检查并构建 Windows 安装包，可在 CI 的 `windows-installer` 附件下载。发布时同步版本号，添加 `releases/标签名.md`，再推送对应标签（`v版本号` 或 `v版本号-windows-preview.YYYYMMDD`）；全部检查通过后自动发布 Windows 安装包；正式版本标签发布为 Release，带日期的预览标签发布为预览版。Dependabot 定期提交依赖更新 PR，不自动合并。
 
 主服务在 `apps/server`，前端在 `apps/desktop`。依赖方向为 `application → domain`；外部适配器实现 application 接口，跨端契约集中在 protocol，Windows 执行库独立于 Tauri 外壳。前端通过 services 访问外部能力。
 

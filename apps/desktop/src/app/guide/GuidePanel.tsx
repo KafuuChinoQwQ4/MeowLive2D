@@ -13,7 +13,7 @@ export function GuidePanel({ onNavigate }: { onNavigate: (page: WorkspacePage) =
         <li><strong>试播一句</strong><p>到「语音播报」输入文字；需要角色动嘴时再连接 VTube Studio。</p></li>
       </ol>
       <button className="primary-button" onClick={() => onNavigate("setup")}>检查环境与模型<WorkspaceIcon name="arrow" /></button>
-      <p className="field-hint">Windows 安装版不会自动安装 WSL、Docker 或数据库。需要观众存储时，到「环境与模型 → 数据库与可选功能」按步骤启用。</p>
+      <p className="field-hint">Windows 安装版可在“环境与模型”补齐 WSL2 语音后端；Docker 和数据库按需准备。需要观众存储时，到「环境与模型 → 数据库与可选功能」按步骤启用。</p>
     </section>
     <section aria-labelledby="guide-features-heading">
       <div className="section-title guide-section-title"><h2 id="guide-features-heading">功能使用</h2><span className="field-hint">展开查看步骤</span></div>

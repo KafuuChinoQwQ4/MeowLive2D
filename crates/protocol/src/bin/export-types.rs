@@ -1,7 +1,7 @@
 use meowlive_protocol::{
     agent::*, agent_observability::*, audio::*, auth::*, control::*, execution::*, launcher::*,
     live::*, llm::*, llm_runtime::*, log::*, model_library::*, obs::*, resources::*, training::*,
-    training_runtime::*,
+    training_runtime::*, updates::*,
 };
 use meowlive_protocol::{companionship, memory, relationships, viewer_merge, viewers};
 use std::{env, fs, path::PathBuf, process::ExitCode};
@@ -11,6 +11,12 @@ fn main() -> ExitCode {
     let path =
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../packages/contracts/src/index.ts");
     let types = [
+        meowlive_protocol::desktop_environment::EnvironmentRequest::decl(),
+        meowlive_protocol::desktop_environment::EnvironmentSnapshot::decl(),
+        meowlive_protocol::desktop_environment::Distro::decl(),
+        meowlive_protocol::desktop_environment::Backend::decl(),
+        meowlive_protocol::desktop_environment::Model::decl(),
+        UpdateStatus::decl(),
         ChatReadMode::decl(),
         InteractionSettings::decl(),
         viewer_merge::MergeViewerSummary::decl(),

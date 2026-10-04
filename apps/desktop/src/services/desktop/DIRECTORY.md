@@ -12,4 +12,4 @@ desktop/  # Tauri 命令客户端与桌面能力边界
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 75b535954c41a13d6af1a183e309e0b0cf9d1511f79410a577a3fbca42cb002a -->
+<!-- directory-tree-sha256: 3984509165f7f4b2e24c17b0baf566d5e92a021df7d79d811804fa2c02fe13f1 -->

@@ -11,6 +11,7 @@ features/  # 面向用户的功能模块，各自封装组件与状态
 ├── characters/  # 角色模型选择、导入与动作映射界面
 ├── connections/  # 直播平台凭据配置、连接控制与运行状态展示
 ├── database-setup/  # 数据库官方来源、Windows 和源码安装启用指引
+├── desktop-environment/  # App 内 WSL 环境安装和声音模型选择界面
 ├── launcher/  # 控制面板服务开关、启动状态及新人引导
 ├── live/  # 直播工作台、弹幕观察与播报控制
 ├── llm/  # LLM 接入配置功能
@@ -19,6 +20,7 @@ features/  # 面向用户的功能模块，各自封装组件与状态
 ├── model-library/  # 环境检查、本地语音模型选择与官方模型下载管理界面
 ├── obs/  # OBS 场景与录制控制面板
 ├── training/  # 仅音频与可选文本训练、转写校对、任务版本和离线测量界面
+├── updates/  # App GitHub 更新检查与增量安装界面
 ├── viewers/  # 管理员只读观众档案与持久事件查询页面
 └── voices/  # 参考素材、音色试听和训练任务界面
 ```
@@ -30,6 +32,7 @@ features/  # 面向用户的功能模块，各自封装组件与状态
 - [characters/](characters/DIRECTORY.md)：角色模型选择、导入与动作映射界面
 - [connections/](connections/DIRECTORY.md)：直播平台凭据配置、连接控制与运行状态展示
 - [database-setup/](database-setup/DIRECTORY.md)：数据库官方来源、Windows 和源码安装启用指引
+- [desktop-environment/](desktop-environment/DIRECTORY.md)：App 内 WSL 环境安装和声音模型选择界面
 - [launcher/](launcher/DIRECTORY.md)：控制面板服务开关、启动状态及新人引导
 - [live/](live/DIRECTORY.md)：直播工作台、弹幕观察与播报控制
 - [llm/](llm/DIRECTORY.md)：LLM 接入配置功能
@@ -38,6 +41,7 @@ features/  # 面向用户的功能模块，各自封装组件与状态
 - [model-library/](model-library/DIRECTORY.md)：环境检查、本地语音模型选择与官方模型下载管理界面
 - [obs/](obs/DIRECTORY.md)：OBS 场景与录制控制面板
 - [training/](training/DIRECTORY.md)：仅音频与可选文本训练、转写校对、任务版本和离线测量界面
+- [updates/](updates/DIRECTORY.md)：App GitHub 更新检查与增量安装界面
 - [viewers/](viewers/DIRECTORY.md)：管理员只读观众档案与持久事件查询页面
 - [voices/](voices/DIRECTORY.md)：参考素材、音色试听和训练任务界面
 
@@ -45,4 +49,4 @@ features/  # 面向用户的功能模块，各自封装组件与状态
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 2a0da144e2cf4c669de798f98c5b2fcb4c80e2c144037aab9957db5d9fb587ff -->
+<!-- directory-tree-sha256: b88aae09d474bcc2befc0be81fcdd876eb7b1e95195b616f6f493e22afa8648c -->

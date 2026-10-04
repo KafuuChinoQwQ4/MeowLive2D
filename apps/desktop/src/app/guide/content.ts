@@ -13,12 +13,12 @@ export const featureGuides: Record<Exclude<WorkspacePage, "guide">, GuideTopic> 
   },
   setup: {
     steps: [
-      "Windows 安装版不会自动安装 WSL、Docker、数据库或 TTS 引擎，按需要自行准备。",
+      "Windows 安装版可在“环境与模型”检测或安装 WSL2 语音后端、下载模型；Docker 和数据库按需要另行准备。",
       "源码版先准备 GPT-SoVITS 引擎，在 config/local/launcher.json 配置 Python 和引擎目录。",
       "在本地模型中选择 GPT-SoVITS v2；缺少权重时下载后重新扫描。标记「需适配」的模型暂不能直接使用。",
       "需要观众存储时，展开「数据库与可选功能」，按步骤准备 PostgreSQL + pgvector 并启用。",
     ],
-    note: "原生 Windows App 本身不需要 WSL；本地声音训练需连接 Linux / WSL 主服务。",
+    note: "原生 Windows App 基础功能不需要 WSL；声音环境向导可补齐 WSL2 语音后端，保留原有主服务和用户数据。",
   },
   speech: {
     steps: [
@@ -82,11 +82,11 @@ export const featureGuides: Record<Exclude<WorkspacePage, "guide">, GuideTopic> 
   training: {
     steps: [
       "先上传一段 3–10 秒清晰参考录音，核对原文并选用音色。不训练也能试播。",
-      "需要训练时，先配置 Linux / WSL 训练引擎；上传同一人的 2–32 段录音，每段 3–10 秒。",
+      "需要训练时，在环境与模型安装后端，下载、选用模型并连接训练后端；上传同一人的 2–32 段录音，每段 3–10 秒。",
       "选择本地语音识别模型，或手工填写并校对文本。关闭语音模型释放资源后开始训练。",
       "完成后启用语音模型，试听新版本，再点击「确认所选音色」应用。",
     ],
-    note: "Windows 内置主服务不支持本地训练，需连接已配置训练环境的 Linux / WSL 主服务。",
+    note: "Windows 主服务通过 WSL2 执行训练，需要可用 CUDA GPU。环境与模型页也支持 GitHub 版本检查、差量下载和安装更新。",
   },
   logs: {
     steps: [

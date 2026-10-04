@@ -153,11 +153,12 @@ def complete_transcripts(root, job, engine_root):
 def run_stage(script, args, work, env):
     # Python 3.10 multiprocessing appends /pymp-XXXXXXXX/listener-XXXXXXXX.
     # A UUID job's work/cache/tmpdir already exceeds the Unix socket budget.
-    temporary_root = Path(__file__).resolve().parents[1] / "data/tmp"
-    temporary_root.mkdir(parents=True, exist_ok=True)
+    # Installed runners live under root-owned /opt. Ignore a potentially long
+    # job TMPDIR and allocate a private 0700 directory in the Linux temp root.
+    temporary_root = Path("/tmp")
     with tempfile.TemporaryDirectory(prefix="gsv-", dir=temporary_root) as temporary:
         if len(os.fsencode(temporary)) > 70:
-            raise ValueError("项目路径过长，训练进程通信需要更短的项目路径")
+            raise ValueError("临时路径过长，训练进程通信需要更短的临时路径")
         stage_env = {**env, "TMPDIR": temporary}
         # Rust owns this process group. Children intentionally inherit the group.
         with subprocess.Popen([sys.executable, "-s", str(script), *args], cwd=work, env=stage_env,
@@ -287,8 +288,9 @@ def main():
     except Exception:
         print(json.dumps({"state": "failed", "error": "transcription_failed", "progress": 1}), flush=True)
         raise
-    models = assets(args.engine_root)
-    work = workspace(args.engine_root, root / "work")
+    models_root = os.environ.get("MEOWLIVE_GPT_SOVITS_MODELS")
+    models = assets(args.engine_root, models_root)
+    work = workspace(args.engine_root, root / "work", models_root)
     configure_training_loaders(work)
     configure_low_memory(work, job["performance"]["low_memory"])
     env = environment(work, models, job["performance"])

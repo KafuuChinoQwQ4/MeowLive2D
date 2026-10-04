@@ -93,6 +93,12 @@ timeout_seconds = 7200
 # 只对 scripts/start-managed-inference.py 的独立配置实例设 true。
 # 共享的其他 GPT-SoVITS 实例不应启用此项，因为权重接口会写推理配置。
 managed_inference = false
+# Windows App 的声音环境向导自动填写以下 WSL 配置；Linux 原生运行保持空。
+wsl_distribution = ""
+wsl_python = "/opt/meowlive-voice/venv/bin/python"
+wsl_engine_root = "/opt/meowlive-voice/engine"
+wsl_runner = "/opt/meowlive-voice/scripts/train-gpt-sovits.py"
+wsl_bridge = "/opt/meowlive-voice/scripts/wsl-training-bridge.py"
 default_gpt_weights = ""
 default_sovits_weights = ""
 

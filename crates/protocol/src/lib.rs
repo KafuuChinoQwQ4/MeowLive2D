@@ -30,3 +30,7 @@ pub mod memory;
 pub mod relationships;
 
 pub mod viewer_merge;
+
+pub mod updates;
+
+pub mod desktop_environment;

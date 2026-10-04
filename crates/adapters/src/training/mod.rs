@@ -6,3 +6,6 @@ pub use store::FileTrainingStore;
 mod process;
 mod transcription;
 pub use process::{ProcessTrainingConfig, ProcessTrainingEngine};
+
+mod wsl;
+pub use wsl::WslTrainingConfig;

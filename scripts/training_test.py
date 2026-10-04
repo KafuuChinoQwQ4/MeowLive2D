@@ -434,7 +434,30 @@ with tempfile.TemporaryDirectory(prefix="pymp-", dir=tempfile.gettempdir()) as s
             result = json.loads((work / "result.json").read_text())
             self.assertLess(len(os.fsencode(result["socket"])), 108)
             self.assertFalse(Path(result["tmp"]).exists())
-            self.assertTrue(Path(result["tmp"]).is_relative_to(Path(__file__).resolve().parents[1] / "data"))
+            self.assertEqual(Path(result["tmp"]).parent, Path("/tmp"))
+
+    @unittest.skipUnless(sys.platform == "linux" and os.geteuid() == 0, "验证安装目录只读的非 root 用户")
+    def test_installed_runner_stage_works_as_unprivileged_user(self):
+        import shutil
+        with tempfile.TemporaryDirectory(dir='/tmp') as folder:
+            root = Path(folder)
+            root.chmod(0o755)
+            install = root / 'install/scripts'
+            install.mkdir(parents=True)
+            for name in ('train-gpt-sovits.py', 'engine_workspace.py', 'training_transcription.py'):
+                shutil.copyfile(Path(__file__).with_name(name), install / name)
+            work = root / 'jobs/work'
+            work.mkdir(parents=True)
+            os.chown(work.parent, 65534, 65534)
+            os.chown(work, 65534, 65534)
+            script = work / 'stage.py'
+            script.write_text('import tempfile; from pathlib import Path; Path("tmp.txt").write_text(tempfile.gettempdir())')
+            bootstrap = 'import importlib.util,sys,os; from pathlib import Path; s=importlib.util.spec_from_file_location("runner",sys.argv[1]); r=importlib.util.module_from_spec(s); s.loader.exec_module(r); w=Path(sys.argv[2]); r.run_stage(w/"stage.py",[],w,dict(os.environ))'
+            result = subprocess.run([sys.executable, '-c', bootstrap, str(install/'train-gpt-sovits.py'), str(work)], env={**os.environ, 'PYTHONPATH': str(install), 'PYTHONDONTWRITEBYTECODE': '1'}, user=65534, group=65534, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            temporary = Path((work/'tmp.txt').read_text())
+            self.assertEqual(temporary.parent, Path('/tmp'))
+            self.assertFalse(temporary.exists())
 
     def test_stage_flushes_small_logs_before_exit_and_cleans_up_on_failure(self):
         with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parents[1] / "target") as temp:

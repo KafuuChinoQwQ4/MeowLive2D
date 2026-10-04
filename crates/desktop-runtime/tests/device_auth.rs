@@ -14,31 +14,41 @@ use tokio_tungstenite::{
     },
 };
 
-fn private_root() -> std::path::PathBuf {
-    std::env::temp_dir().join(format!(
-        "meowlive-auth-{}-{}",
-        std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos()
-    ))
+fn private_root() -> tempfile::TempDir {
+    // Atomic creation keeps parallel tests isolated even on coarse Windows clocks.
+    tempfile::Builder::new()
+        .prefix("meowlive-auth-")
+        .tempdir()
+        .unwrap()
+}
+
+#[test]
+fn concurrent_credential_tests_have_independent_directories() {
+    let workers: Vec<_> = (0..32).map(|_| std::thread::spawn(private_root)).collect();
+    let roots: Vec<_> = workers
+        .into_iter()
+        .map(|worker| worker.join().unwrap())
+        .collect();
+    let paths: std::collections::HashSet<_> =
+        roots.iter().map(|root| root.path().to_owned()).collect();
+    assert_eq!(paths.len(), roots.len());
+    roots.into_iter().for_each(|root| root.close().unwrap());
 }
 
 async fn invalid_device_credential(contents: Option<&[u8]>) -> String {
     let root = private_root();
-    std::fs::create_dir_all(&root).unwrap();
+    assert!(root.path().is_dir());
     if let Some(contents) = contents {
-        std::fs::write(root.join("device.txt"), contents).unwrap();
+        std::fs::write(root.path().join("device.txt"), contents).unwrap();
     }
     let mut config =
         ClientConfig::from_toml("server_url='http://127.0.0.1:9'\ndevice_token_file='device.txt'")
             .unwrap();
-    config.resolve_paths(&root.join("desktop.toml"));
+    config.resolve_paths(&root.path().join("desktop.toml"));
     let error = run_once(&config, SimulatedBackend::new(48_000))
         .await
         .unwrap_err();
-    std::fs::remove_dir_all(root).unwrap();
+    root.close().unwrap();
     error
 }
 
@@ -80,9 +90,9 @@ async fn non_ascii_device_credential_is_rejected_before_connecting() {
 #[allow(clippy::result_large_err)]
 async fn private_device_credential_is_sent_on_both_websocket_channels() {
     let root = private_root();
-    std::fs::create_dir_all(&root).unwrap();
+    assert!(root.path().is_dir());
     std::fs::write(
-        root.join("device.txt"),
+        root.path().join("device.txt"),
         "independent-device-credential-123456789\n",
     )
     .unwrap();
@@ -94,7 +104,7 @@ async fn private_device_credential_is_sent_on_both_websocket_channels() {
         listener.local_addr().unwrap()
     );
     let mut config = ClientConfig::from_toml(&config_text).unwrap();
-    config.resolve_paths(&root.join("desktop.toml"));
+    config.resolve_paths(&root.path().join("desktop.toml"));
     let peer = tokio::spawn(async move {
         let read = move |request: &Request, response: Response| {
             headers.lock().unwrap().push(
@@ -128,5 +138,5 @@ async fn private_device_credential_is_sent_on_both_websocket_channels() {
         *captured.lock().unwrap(),
         vec!["Bearer independent-device-credential-123456789"; 2]
     );
-    std::fs::remove_dir_all(root).unwrap();
+    root.close().unwrap();
 }

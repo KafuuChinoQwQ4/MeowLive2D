@@ -17,7 +17,7 @@ jobs:
   publish:
     needs: verify
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 30
     permissions:
       contents: write
     steps:
@@ -37,9 +37,29 @@ jobs:
       - name: Verify installer checksum
         working-directory: release-assets
         run: sha256sum --check SHA256SUMS.txt
-      - name: Publish Windows preview
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+      - name: Sign update manifest and create incremental chunks
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          MEOWLIVE_UPDATE_PRIVATE_KEY: ${{ secrets.MEOWLIVE_UPDATE_PRIVATE_KEY }}
+          MEOWLIVE_UPDATE_PUBLIC_KEY: ${{ vars.MEOWLIVE_UPDATE_PUBLIC_KEY }}
+        shell: bash
+        run: |
+          if [ -z "$MEOWLIVE_UPDATE_PRIVATE_KEY" ] || [ -z "$MEOWLIVE_UPDATE_PUBLIC_KEY" ]; then
+            echo '::warning::Update signing is not configured. Publishing manual installer only; App automatic installation remains disabled.'
+          else
+            node scripts/update-manifest.mjs release-assets
+          fi
+      - name: Publish Windows release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          gh release create "$RELEASE_TAG" release-assets/* --verify-tag --prerelease --title "MeowLive2D $RELEASE_TAG Windows 预览版" --notes-file "releases/$RELEASE_TAG.md"
+          release_args=(--draft --verify-tag --title "MeowLive2D $RELEASE_TAG" --notes-file "releases/$RELEASE_TAG.md")
+          if [[ "$RELEASE_TAG" == *-windows-preview.* ]]; then release_args+=(--prerelease); fi
+          gh release create "$RELEASE_TAG" "${release_args[@]}"
+          # Bound argv and publish only after every installer/chunk/manifest uploaded.
+          find release-assets -maxdepth 1 -type f -print0 | xargs -0 -n 20 gh release upload "$RELEASE_TAG"
+          gh release edit "$RELEASE_TAG" --draft=false

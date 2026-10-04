@@ -1,6 +1,6 @@
 {
   "name": "meowlive2d",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -22,7 +22,7 @@
     "tree:update": "node scripts/directory-tree.mjs --write",
     "tree:check": "node scripts/directory-tree.mjs --check",
     "test:tooling": "node --test scripts/directory-tree.test.mjs",
-    "check": "npm run tree:check && npm run test:tooling && npm run test:rust-cache && npm run test:launcher && npm run test:acceptance && npm run test:training && npm run check:rust && npm run contracts:check && npm run test:rust && npm run typecheck && npm run test:frontend",
+    "check": "npm run tree:check && npm run test:tooling && npm run test:rust-cache && npm run test:launcher && npm run test:acceptance && npm run test:training && npm run test:desktop-platform && npm run check:rust && npm run contracts:check && npm run test:rust && npm run typecheck && npm run test:frontend",
     "start:server": "node scripts/launcher/server.mjs",
     "start:client": "python3 scripts/rust_cache.py run -p meowlive-desktop-runtime --bin meowlive-client --",
     "contracts:generate": "python3 scripts/rust_cache.py run -p meowlive-protocol --bin export-types --locked",
@@ -37,7 +37,8 @@
     "test:acceptance": "node --test scripts/acceptance.test.mjs",
     "start": "node scripts/start-control-panel.mjs",
     "stop": "node scripts/stop-control-panel.mjs",
-    "test:launcher": "node --test scripts/launcher/*.test.mjs"
+    "test:launcher": "node --test scripts/launcher/*.test.mjs",
+    "test:desktop-platform": "node --test scripts/update-manifest.test.mjs && PYTHONDONTWRITEBYTECODE=1 python3 scripts/voice_backend_test.py && PYTHONDONTWRITEBYTECODE=1 python3 scripts/wsl-training-bridge.test.py"
   },
   "devDependencies": {
     "typescript": "7.0.2",
