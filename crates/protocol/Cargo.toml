@@ -9,7 +9,7 @@ license.workspace = true
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-ts-rs = { version = "11", features = ["serde-compat", "no-serde-warnings"] }
+ts-rs = { version = "12", features = ["serde-compat", "no-serde-warnings"] }
 
 [lints]
 workspace = true
