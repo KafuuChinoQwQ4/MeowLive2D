@@ -6,6 +6,8 @@
 
 从 [Releases](https://github.com/KafuuChinoQwQ4/MeowLive2D/releases) 下载预览安装包，安装后打开 App。主服务和桌面执行端随 App 启动，无需安装 Node.js 或 Rust。
 
+在版本说明顶部按平台点击“下载安装包”；名称含“更新资源”的技术发布供 App 自动增量更新使用，无需手动下载。当前提供 Windows x64，其他平台的安装包将在支持后出现在下载表中。
+
 **安装包不会自动补齐全部环境：**
 
 - 语音播报：自行准备 TTS 引擎和模型。

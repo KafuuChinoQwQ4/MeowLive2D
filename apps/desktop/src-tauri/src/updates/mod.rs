@@ -261,11 +261,15 @@ impl UpdateManager {
                 self.checkpoint()?;
                 let cache = self.cache_dir.join(format!("{}.bin", chunk.sha256));
                 let loaded = load_chunk(&cache, chunk, || {
-                    fetch(
-                        &client,
-                        &asset_url(&manifest.tag, &format!("chunk-{}.bin", chunk.sha256))?,
-                        chunk.size,
-                    )
+                    let mut last_error = "更新分块下载失败".to_string();
+                    for url in chunk_urls(&manifest.tag, &chunk.sha256)? {
+                        self.checkpoint()?;
+                        match fetch(&client, &url, chunk.size) {
+                            Ok(bytes) => return Ok(bytes),
+                            Err(error) => last_error = error,
+                        }
+                    }
+                    Err(last_error)
                 });
                 let bytes = match loaded {
                     Ok((bytes, reused)) => {
@@ -548,6 +552,13 @@ fn verify_manifest(envelope: &Envelope, public_key: &str, tag: &str) -> Result<M
         return Err("更新分块总长度不匹配".into());
     }
     Ok(manifest)
+}
+fn chunk_urls(tag: &str, hash: &str) -> Result<Vec<String>, String> {
+    let name = format!("chunk-{hash}.bin");
+    Ok(vec![
+        asset_url(&format!("{tag}-updates-windows-x86_64"), &name)?,
+        asset_url(tag, &name)?,
+    ])
 }
 fn asset_url(tag: &str, name: &str) -> Result<String, String> {
     let mut url = url::Url::parse(&format!(

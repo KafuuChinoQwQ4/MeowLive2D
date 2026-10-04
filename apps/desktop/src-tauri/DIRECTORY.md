@@ -23,4 +23,4 @@ src-tauri/  # Windows Tauri 薄外壳、窗口配置与执行库生命周期
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 4d6974620a0d39c12e0b4181e1464a251a468d82102f626f02ccaf21fe5435c1 -->
+<!-- directory-tree-sha256: 88130839fd58711f30fb95ad6f0b14fbb16cf6b40532d111a0a957dbb9bd1ed5 -->

@@ -19,4 +19,4 @@ src/  # 桌面启动、依赖组装与命令转发源码
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: a8569ec3168476ed89811ac70d54e7139de71bf7ebfe7d6e4fdd52fd741f6eb5 -->
+<!-- directory-tree-sha256: 3117716e1937453762136c979957732ea96d166efe5b3b0af674d960e27c99a8 -->

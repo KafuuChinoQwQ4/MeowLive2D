@@ -1,6 +1,22 @@
 use super::*;
 use ed25519_dalek::{Signer, SigningKey};
 #[test]
+fn chunks_use_separate_release_with_legacy_fallback() {
+    let urls = chunk_urls("v0.1.2", "abc").unwrap();
+    assert_eq!(
+        urls,
+        [
+            "https://github.com/KafuuChinoQwQ4/MeowLive2D/releases/download/v0.1.2-updates-windows-x86_64/chunk-abc.bin",
+            "https://github.com/KafuuChinoQwQ4/MeowLive2D/releases/download/v0.1.2/chunk-abc.bin",
+        ]
+    );
+    assert_eq!(version("v0.1.2-updates-windows-x86_64"), None);
+    assert_eq!(
+        version("v0.1.2-windows-preview.20261004-updates-windows-x86_64"),
+        None
+    );
+}
+#[test]
 fn dated_previews_and_stable_versions_are_ordered() {
     assert!(
         version("v0.1.1-windows-preview.20261004") > version("v0.1.1-windows-preview.20260929")

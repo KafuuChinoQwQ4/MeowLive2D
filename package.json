@@ -38,7 +38,7 @@
     "start": "node scripts/start-control-panel.mjs",
     "stop": "node scripts/stop-control-panel.mjs",
     "test:launcher": "node --test scripts/launcher/*.test.mjs",
-    "test:desktop-platform": "node --test scripts/update-manifest.test.mjs && PYTHONDONTWRITEBYTECODE=1 python3 scripts/voice_backend_test.py && PYTHONDONTWRITEBYTECODE=1 python3 scripts/wsl-training-bridge.test.py"
+    "test:desktop-platform": "node --test scripts/update-manifest.test.mjs scripts/release-layout.test.mjs && PYTHONDONTWRITEBYTECODE=1 python3 scripts/voice_backend_test.py && PYTHONDONTWRITEBYTECODE=1 python3 scripts/wsl-training-bridge.test.py"
   },
   "devDependencies": {
     "typescript": "7.0.2",
