@@ -67,6 +67,7 @@ impl Harness {
         config.live.enabled = true;
         config.live.app_id = 1;
         config.agent.event_ttl_ms = 1000;
+        config.agent.room_enter_ttl_ms = 15_000;
         config.agent.proactive_enabled = false;
         config.llm.max_retries = 0;
         let decisions = Arc::new(Mutex::new(Vec::new()));

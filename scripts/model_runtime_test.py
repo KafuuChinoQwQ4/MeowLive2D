@@ -64,6 +64,20 @@ class ModelRuntimeTests(unittest.TestCase):
             self.assertEqual(client.get("/meowlive/models").json()["state"], "failed")
             self.assertEqual(client.post("/meowlive/models", json={"enabled": True}).json()["state"], "loaded")
 
+    def test_audio_warmup_finishes_before_loaded_and_never_plays(self):
+        calls = []
+        class WarmPipeline:
+            def run(self, request):
+                calls.append(request)
+                self.assert_reference_exists = Path(request["ref_audio_path"]).is_file()
+                yield 16000, b"ignored test audio"
+        pipeline = WarmPipeline()
+        model_runtime.warmup_pipeline(pipeline)
+        self.assertTrue(pipeline.assert_reference_exists)
+        self.assertEqual(len(calls), 1)
+        self.assertFalse(calls[0]["streaming_mode"])
+        self.assertFalse(Path(calls[0]["ref_audio_path"]).exists())
+
     def test_managed_entrypoint_passes_auto_load_flag_through_private_environment(self):
         spec = importlib.util.spec_from_file_location("managed_inference", Path(__file__).with_name("start-managed-inference.py"))
         launcher = importlib.util.module_from_spec(spec)
@@ -77,6 +91,7 @@ class ModelRuntimeTests(unittest.TestCase):
                       patch.object(launcher, "assets", return_value=models),
                       patch.object(launcher, "workspace", return_value=root),
                       patch.object(launcher, "configure_inference_memory"),
+                      patch.object(launcher, "configure_inference_audio"),
                       patch.object(launcher, "prepare_runtime"),
                       patch.object(os, "chdir"), patch.object(os, "execve") as execute,
                       redirect_stdout(io.StringIO())):

@@ -81,26 +81,25 @@ async function until(manager, expected, index = 0) {
   assert.fail(`did not reach ${expected}: ${JSON.stringify(await manager.snapshot())}`);
 }
 
-test('initialization automatically starts the main service once', async t => {
+test('initialization leaves the main service stopped until the user enables it', async t => {
   const { manager } = await fixture(t);
   await manager.initialize();
-  const first = manager.records.get('server').child;
+  assert.equal(manager.records.get('server').child, null);
   await manager.initialize();
-  assert.equal(manager.records.get('server').child, first);
-  assert.equal((await until(manager, 'running')).managed, true);
+  assert.equal(manager.records.get('server').child, null);
+  assert.equal((await manager.snapshot()).services[0].state, 'stopped');
 });
 
-test('initialization automatically starts every configured service after the main service', async t => {
+test('initialization leaves every configured service stopped', async t => {
   const server = await fixture(t);
   const tts = await fixture(t, { id: 'tts' });
   const manager = new Supervisor({ definitions: [server.definition, tts.definition], setup: {}, pollMs: 30 });
   t.after(() => manager.close());
   await manager.initialize();
-  assert.equal((await until(manager, 'running')).state, 'running');
-  assert.equal((await until(manager, 'running', 1)).managed, true);
-  const first = manager.records.get('tts').child;
+  assert.equal(manager.records.get('server').child, null);
+  assert.equal(manager.records.get('tts').child, null);
   await manager.initialize();
-  assert.equal(manager.records.get('tts').child, first);
+  assert.equal(manager.records.get('tts').child, null);
 });
 
 test('reconfiguring a running TTS pauses it and automatically starts it with the new model', async t => {
@@ -157,22 +156,22 @@ test('status remains responsive when polling races with a model switch', async t
   } finally { clearTimeout(timer); release(); await switching; }
 });
 
-test('failed main-service startup does not start dependent TTS', async t => {
+test('panel initialization does not start services after a startup configuration failure', async t => {
   const server = await fixture(t, { exit: true });
   const tts = await fixture(t, { id: 'tts' });
   const manager = new Supervisor({ definitions: [server.definition, tts.definition], setup: {}, pollMs: 30 });
   t.after(() => manager.close());
   await manager.initialize();
-  assert.equal((await manager.snapshot()).services[0].state, 'failed');
+  assert.equal((await manager.snapshot()).services[0].state, 'stopped');
   assert.equal(manager.records.get('tts').child, null);
 });
 
-test('automatic startup keeps configuration failures visible in the panel', async t => {
+test('a manual start keeps configuration failures visible in the panel', async t => {
   const { manager, definition } = await fixture(t);
   definition.issue = '主服务配置无效';
-  await manager.initialize();
+  await assert.rejects(manager.setEnabled('server', true), /主服务配置无效/);
   const status = (await manager.snapshot()).services[0];
-  assert.equal(status.state, 'failed');
+  assert.equal(status.state, 'stopped');
   assert.equal(status.message, '主服务配置无效');
   assert.equal(status.managed, false);
 });

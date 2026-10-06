@@ -52,7 +52,7 @@ test('local model selection persists a discovered path and changes the inference
   assert.equal((await library.snapshot()).selected_id, item.id);
   assert.equal(JSON.parse(await readFile(join(root, 'config/local/model-selection.json'), 'utf8')).path, other);
   assert.equal(supervisor.records.get('tts').def.args.at(-1), other);
-  assert.ok(supervisor.records.get('tts').child, 'selecting a complete model automatically starts TTS');
+  assert.equal(supervisor.records.get('tts').child, null, 'selecting a model keeps TTS stopped until its switch is enabled');
   await rm(join(other, gptRequiredFiles[0][0]));
   await assert.rejects(library.action('select', item.id), /缺少运行文件/);
 });

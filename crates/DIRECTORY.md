@@ -25,4 +25,4 @@ crates/  # 按职责与单向依赖隔离的 Rust 库
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 2957478c1f99693b547d0709cc2a1bb50185befeaf2ca486b7dbfadc5629c6e5 -->
+<!-- directory-tree-sha256: 9ded5487a106c867f09b646822b42a78505655d08f6752a9aba22deef286d7b6 -->

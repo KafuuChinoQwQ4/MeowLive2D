@@ -33,6 +33,10 @@ jobs:
       - name: Set up Rust
         run: rustup update stable --no-self-update && rustup default stable && rustup component add rustfmt
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: Install Tauri Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y build-essential libayatana-appindicator3-dev librsvg2-dev libssl-dev libwebkit2gtk-4.1-dev
       - run: npm ci
       - run: npm run check
         env:
@@ -45,7 +49,7 @@ jobs:
     timeout-minutes: 60
     env:
       CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUSTFLAGS: -C target-feature=+crt-static
-      MEOWLIVE_RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
+      MEOWLIVE_RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
       MEOWLIVE_UPDATE_PUBLIC_KEY: ${{ vars.MEOWLIVE_UPDATE_PUBLIC_KEY }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -86,5 +90,55 @@ jobs:
             target/x86_64-pc-windows-msvc/release/bundle/nsis/*-setup.exe
             target/x86_64-pc-windows-msvc/release/bundle/nsis/SHA256SUMS.txt
             target/x86_64-pc-windows-msvc/release/bundle/nsis/build-info.json
+          if-no-files-found: error
+          retention-days: 14
+
+  linux-desktop:
+    name: Linux AppImage and deb
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      MEOWLIVE_RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+      MEOWLIVE_UPDATE_PUBLIC_KEY: ${{ vars.MEOWLIVE_UPDATE_PUBLIC_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install Tauri Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y build-essential curl file libayatana-appindicator3-dev librsvg2-dev libssl-dev libwebkit2gtk-4.1-dev
+      - name: Set up Rust
+        run: rustup update stable --no-self-update && rustup default stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          key: linux-desktop
+      - run: npm ci
+      - name: Build Linux server sidecar and desktop bundles
+        run: |
+          cargo build --release --locked -p meowlive-server
+          mkdir -p target/linux-bundle
+          cp target/release/meowlive-server target/linux-bundle/meowlive-server-x86_64-unknown-linux-gnu
+          node node_modules/@tauri-apps/cli/tauri.js build --config apps/desktop/src-tauri/tauri.linux.conf.json --bundles appimage,deb --ci -- --locked
+      - name: Create checksums and build information
+        run: |
+          bundle=target/release/bundle
+          cd "$bundle"
+          find appimage deb -maxdepth 1 -type f \( -name '*.AppImage' -o -name '*.deb' \) -print0 | xargs -0 -r sha256sum > SHA256SUMS.txt
+          test -s SHA256SUMS.txt
+          cd - >/dev/null
+          node --input-type=module -e 'import fs from "node:fs"; fs.writeFileSync("target/release/bundle/build-info.json", JSON.stringify({ commit: process.env.GITHUB_SHA, run: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`, version: JSON.parse(fs.readFileSync("apps/desktop/src-tauri/tauri.conf.json")).version }, null, 2));'
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: linux-desktop
+          path: |
+            target/release/bundle/appimage/*.AppImage
+            target/release/bundle/deb/*.deb
+            target/release/bundle/SHA256SUMS.txt
+            target/release/bundle/build-info.json
           if-no-files-found: error
           retention-days: 14

@@ -12,4 +12,4 @@ icons/  # 沿用控制台绿色 M 标志的图标源及窗口构建资源
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 12ec5ae7ce42a424e2b4450ea6020904ce7ae4f2ad1d710a5e3a95ddb8a2378b -->
+<!-- directory-tree-sha256: c5174431c64384b1c735e67d89e6aeb051dbea1e71d7a9d07ae8676239682246 -->

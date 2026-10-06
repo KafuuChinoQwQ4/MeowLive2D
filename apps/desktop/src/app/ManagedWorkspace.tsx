@@ -7,7 +7,7 @@ import { LauncherControls, useLauncher } from "../features/launcher";
 import { createLauncherClient } from "../services/launcher";
 import { Workspace, type WorkspaceProps } from "./Workspace";
 
-export function ManagedWorkspace({ pages, adminClient }: Pick<WorkspaceProps, "pages" | "adminClient">) {
+export function ManagedWorkspace({ pages, adminClient, allowManualService = false }: Pick<WorkspaceProps, "pages" | "adminClient"> & { allowManualService?: boolean }) {
   const [client] = useState(createLauncherClient);
   const [modelClient] = useState(createModelLibraryClient);
   const controller = useLauncher(client);
@@ -15,7 +15,7 @@ export function ManagedWorkspace({ pages, adminClient }: Pick<WorkspaceProps, "p
   const available = (id: LauncherServiceId) => !controller.stale && ["running", "external"].includes(state(id) ?? "");
   const label = (id: LauncherServiceId) => controller.stale ? "状态待确认" : launcherStateLabel(id, state(id) ?? "stopped");
   const titles = { server: "主服务", tts: "TTS", windows: "Windows 执行端" };
-  return <Workspace pages={pages} adminClient={adminClient} setup={<ModelLibraryPanel client={modelClient} token={controller.stale ? null : controller.snapshot?.session_token ?? null} onSelected={controller.refreshQuietly} />} overview={<LauncherControls controller={controller} />} ready={available("server")}
+  return <Workspace pages={pages} adminClient={adminClient} setup={<ModelLibraryPanel client={modelClient} token={controller.stale ? null : controller.snapshot?.session_token ?? null} onSelected={controller.refreshQuietly} />} overview={<LauncherControls controller={controller} />} ready={available("server") || (allowManualService && !controller.snapshot)}
     status={(["server", "tts", "windows"] as const).map(id => ({ label: `${titles[id]} · ${label(id)}`, available: controller.stale ? null : available(id) }))}
-    notice={!available("tts") && <p className="availability-note">TTS 会自动启动；请等待就绪，启动异常可在“启动与运行”查看原因。</p>} />;
+    notice={!available("tts") && <p className="availability-note">服务默认关闭，请在“启动与运行”中手动打开开关。</p>} />;
 }

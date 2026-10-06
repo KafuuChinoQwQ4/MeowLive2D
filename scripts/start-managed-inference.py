@@ -5,7 +5,7 @@ import json
 import os
 from pathlib import Path
 import sys
-from engine_workspace import assets, configure_inference_memory, environment, workspace
+from engine_workspace import assets, configure_inference_audio, configure_inference_memory, environment, workspace
 from model_runtime import prepare_runtime
 
 
@@ -25,6 +25,7 @@ def main():
     root = args.data_dir.resolve()
     work = workspace(args.engine_root, root / "work", args.model_root)
     configure_inference_memory(work, args.memory_mode)
+    configure_inference_audio(work)
     prepare_runtime(work)
     env = environment(work, models)
     # Forward only this explicit startup flag through the inference environment allowlist.

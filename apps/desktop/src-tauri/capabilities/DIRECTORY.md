@@ -12,4 +12,4 @@ capabilities/  # 桌面窗口的 Tauri 能力声明
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: fdbc3c9f9a382f149820aaeb789686f2f374b788be955f4a2fe39af32fce2339 -->
+<!-- directory-tree-sha256: dd9e4ffb71c2857fb9ece9736de12d01a21aebadbc4ccdc2f338b8c3ba854dc6 -->

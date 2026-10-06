@@ -1,4 +1,5 @@
 import type { UpdateStatus } from "@meowlive/contracts";
+import { invokeDesktop } from "./desktop/transport";
 export type { UpdateStatus } from "@meowlive/contracts";
 export interface UpdateClient {
   status(): Promise<UpdateStatus>;
@@ -8,8 +9,7 @@ export interface UpdateClient {
   install(): Promise<void>;
 }
 async function invoke<T>(command: string): Promise<T> {
-  const api = await import("@tauri-apps/api/core");
-  return api.invoke<T>(command);
+  return invokeDesktop<T>(command);
 }
 export const updateClient: UpdateClient = {
   status: () => invoke("update_status"),

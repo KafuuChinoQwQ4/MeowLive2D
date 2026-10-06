@@ -19,4 +19,4 @@ application/  # 业务用例编排及外部能力接口定义
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 2c4d5daf11f17e32b01c41aba9516417c0a1dedd8277ef25fcda6539fa046f49 -->
+<!-- directory-tree-sha256: dabaab927bf59583244ab324e935e123bd2aa1bf0328514ead2f3e814ac673e8 -->

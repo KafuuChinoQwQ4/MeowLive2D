@@ -17,4 +17,4 @@ GitHub 自动检查、发布与依赖更新配置
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: faeb080b179b7f5d575359ba9d253b5f0c1522039f7ba0d8c67b45f2c64479ad -->
+<!-- directory-tree-sha256: bf78ab15004df91d69d4f9a683d8c48401bc7425835f4745c3a33026653a7d2c -->

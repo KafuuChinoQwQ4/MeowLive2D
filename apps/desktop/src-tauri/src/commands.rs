@@ -3,11 +3,15 @@
 #[cfg(windows)]
 pub struct DesktopState {
     pub closing: std::sync::atomic::AtomicBool,
+    pub auto_inference: std::sync::atomic::AtomicBool,
     pub environment: std::sync::Arc<crate::environment::EnvironmentManager>,
     pub updates: std::sync::Arc<crate::updates::UpdateManager>,
     pub maintenance: std::sync::Mutex<()>,
     pub server: std::sync::Mutex<crate::managed_server::ServerHandle>,
+    pub browser_panel: Option<crate::browser_panel::BrowserPanelHandle>,
+    pub browser_panel_error: Option<String>,
     pub runtime: std::sync::Mutex<meowlive_desktop_runtime::host::RuntimeHandle>,
+    pub runtime_config: meowlive_desktop_runtime::config::ClientConfig,
     pub config_path: String,
     pub server_url: String,
 }
@@ -15,10 +19,13 @@ pub struct DesktopState {
 #[cfg(windows)]
 #[derive(serde::Serialize)]
 pub struct DesktopStatus {
+    platform: &'static str,
+    environment: crate::environment::EnvironmentSnapshot,
     server: crate::managed_server::ServerStatus,
     config_path: String,
     server_url: String,
     runtime: meowlive_desktop_runtime::host::RuntimeStatus,
+    browser_panel_error: Option<String>,
 }
 
 #[cfg(windows)]
@@ -28,6 +35,8 @@ pub async fn desktop_status(app: tauri::AppHandle) -> Result<DesktopStatus, Stri
         use tauri::Manager;
         let state = app.state::<DesktopState>();
         DesktopStatus {
+            platform: "windows",
+            environment: state.environment.snapshot(),
             server: state
                 .server
                 .lock()
@@ -40,10 +49,107 @@ pub async fn desktop_status(app: tauri::AppHandle) -> Result<DesktopStatus, Stri
                 .lock()
                 .unwrap_or_else(|e| e.into_inner())
                 .status(),
+            browser_panel_error: state.browser_panel_error.clone(),
         }
     })
     .await
     .map_err(|e| e.to_string())
+}
+
+#[cfg(windows)]
+#[tauri::command]
+pub async fn desktop_service_set_enabled(
+    app: tauri::AppHandle,
+    id: String,
+    enabled: bool,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        use tauri::Manager;
+        let state = app.state::<DesktopState>();
+        if !matches!(id.as_str(), "server" | "tts" | "windows") {
+            return Err("未知服务".into());
+        }
+        if state.closing.load(std::sync::atomic::Ordering::Acquire) {
+            return Err("App 正在关闭".into());
+        }
+        let _guard = state
+            .maintenance
+            .try_lock()
+            .map_err(|_| "其他维护任务正在运行，请稍后重试")?;
+        let environment = state.environment.snapshot();
+        if environment.busy || state.updates.is_busy() {
+            return Err("环境或更新任务正在运行，请等待完成".into());
+        }
+        let server = state
+            .server
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .status();
+        if id == "server" && server.ready && !server.managed {
+            return Err("当前连接外部主服务，请在原启动程序中管理".into());
+        }
+        if server.ready && (!enabled || id == "tts") {
+            crate::maintenance::require_idle(&state)?;
+        }
+        if id == "tts" || id == "server" && !enabled {
+            state
+                .auto_inference
+                .store(false, std::sync::atomic::Ordering::Release);
+        }
+        match (id.as_str(), enabled) {
+            ("server", true) if !server.ready => crate::maintenance::start_server(&state, false),
+            ("server", false) => {
+                state
+                    .server
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .shutdown();
+                Ok(())
+            }
+            ("windows", true) => {
+                if !server.ready {
+                    return Err("请先启动主服务".into());
+                }
+                let mut runtime = state.runtime.lock().unwrap_or_else(|e| e.into_inner());
+                let status = runtime.status();
+                if !status.running {
+                    runtime.shutdown()?;
+                    *runtime = meowlive_desktop_runtime::host::RuntimeHandle::start(
+                        state.runtime_config.clone(),
+                        status.simulation,
+                    )?;
+                }
+                Ok(())
+            }
+            ("windows", false) => state
+                .runtime
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .shutdown(),
+            ("tts", _) => {
+                if enabled && !server.ready {
+                    return Err("请先启动主服务".into());
+                }
+                state
+                    .environment
+                    .action(crate::environment::EnvironmentRequest {
+                        action: if enabled {
+                            "start_inference"
+                        } else {
+                            "stop_inference"
+                        }
+                        .into(),
+                        distro: environment.selected_distro,
+                        model_id: None,
+                        config_path: None,
+                    })?;
+                Ok(())
+            }
+            _ => Ok(()),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[cfg(windows)]
@@ -57,6 +163,18 @@ pub fn open_dependency_page(id: String) -> Result<(), String> {
         .spawn()
         .map(|_| ())
         .map_err(|_| "无法打开系统浏览器，请复制下载地址到浏览器。".into())
+}
+
+#[cfg(windows)]
+#[tauri::command]
+pub fn open_control_panel() -> Result<(), String> {
+    use std::os::windows::process::CommandExt;
+    std::process::Command::new("rundll32.exe")
+        .args(["url.dll,FileProtocolHandler", "http://127.0.0.1:1420"])
+        .creation_flags(0x0800_0000)
+        .spawn()
+        .map(|_| ())
+        .map_err(|_| "无法打开系统浏览器，请确认浏览器已安装。".into())
 }
 
 #[cfg(windows)]
@@ -84,6 +202,16 @@ pub async fn environment_action(
             .map_err(|_| "其他维护任务正在运行，请稍后重试")?;
         if state.updates.is_busy() {
             return Err("更新任务正在运行".into());
+        }
+        if request.action == "start_inference"
+            && !state
+                .server
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .status()
+                .ready
+        {
+            return Err("请先在“启动与运行”中手动启动主服务".into());
         }
         if !matches!(
             request.action.as_str(),

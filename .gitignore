@@ -30,3 +30,6 @@ Thumbs.db
 .venv/
 __pycache__/
 *.py[cod]
+
+# Local agent coordination state
+/.superpowers/

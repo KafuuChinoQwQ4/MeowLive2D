@@ -364,10 +364,13 @@ async fn streamed_room_enter_accepts_a_single_fenced_json_decision() {
 }
 
 #[tokio::test]
-async fn fenced_decision_still_rejects_prose_and_unknown_event_ids() {
+async fn wrapped_decision_still_rejects_trailing_prose_and_unknown_event_ids() {
     for content in [
-        "Here is the answer:\n```json\n{\"reply_to\":[\"room-1\"],\"text\":\"欢迎\",\"topic\":null}\n```",
+        "```json\n{\"reply_to\":[\"room-1\"],\"text\":\"欢迎\",\"topic\":null}\n```\nExtra prose",
         "```json\n{\"reply_to\":[\"unknown\"],\"text\":\"欢迎\",\"topic\":null}\n```",
+        "Analysis.\n{\"reply_to\":[\"unknown\"],\"text\":\"欢迎\",\"topic\":null}",
+        "Analysis.\n{\"reply_to\":[\"room-1\"],\"text\":\"欢迎\",\"topic\":null,\"extra\":true}",
+        "Analysis.\n{\"reply_to\":[\"room-1\"],\"text\":\"欢迎\",\"topic\":null",
     ] {
         let mut raw = response(ApiFormat::OpenaiChat, false);
         raw["choices"][0]["message"]["content"] = json!(content);
@@ -1305,4 +1308,37 @@ async fn the_assembled_stream_result_keeps_the_original_response_budget() {
             .any(|e| matches!(e,ModelEvent::Usage(u) if u.input_tokens==Some(100)))
     );
     task.abort();
+}
+
+#[tokio::test]
+async fn decision_extracts_only_the_final_json_after_provider_analysis() {
+    let final_json = json!({"reply_to":["room-1"],"text":"最终欢迎","topic":null}).to_string();
+    for content in [
+        format!("English analysis.\n\n{final_json}"),
+        format!(
+            "Analysis.\n```json\n{{\"reply_to\":[\"room-1\"],\"text\":\"草稿\",\"topic\":null}}\n```\nFinal answer:\n```json\n{final_json}\n```"
+        ),
+    ] {
+        for stream in [false, true] {
+            let body = if stream {
+                [frame(json!({"choices":[{"index":0,"delta":{"content":content},"finish_reason":null}]})),
+                 frame(json!({"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]})),
+                 "data: [DONE]\n\n".into()].concat()
+            } else {
+                let mut raw = response(ApiFormat::OpenaiChat, false);
+                raw["choices"][0]["message"]["content"] = json!(content);
+                raw.to_string()
+            };
+            let (adapter, _, task) = fixture(vec![body], stream).await;
+            let result = adapter
+                .turn(
+                    llm_support::request(vec![llm_support::chat("room-1", "你好")]),
+                    options(stream),
+                )
+                .await
+                .unwrap();
+            assert_eq!(result.decision.unwrap().text.as_deref(), Some("最终欢迎"));
+            task.abort();
+        }
+    }
 }

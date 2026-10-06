@@ -12,4 +12,4 @@ transport/  # 控制接口、跨端连接与协议到领域对象的转换
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 30d898af4c8946a941deb9ba20b439624a7e18b745d5bf0000dcbb063f731adb -->
+<!-- directory-tree-sha256: 5ef960b810c3934cb3bcdda992ac78765a2ad09fc76568c18f0633a83fb46930 -->

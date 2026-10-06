@@ -39,6 +39,7 @@ pub struct AgentLimits {
     pub history_limit: usize,
     pub dedup_capacity: usize,
     pub event_ttl_ms: u64,
+    pub room_enter_ttl_ms: u64,
     pub gift_merge_ms: u64,
     pub batch_size: usize,
     pub conversation_limit: usize,
@@ -50,6 +51,7 @@ impl Default for AgentLimits {
             history_limit: 200,
             dedup_capacity: 512,
             event_ttl_ms: 60_000,
+            room_enter_ttl_ms: 60_000,
             gift_merge_ms: 3000,
             batch_size: 8,
             conversation_limit: 6,
@@ -71,6 +73,9 @@ impl AgentLimits {
         }
         if !(1000..=600_000).contains(&self.event_ttl_ms) {
             return Err("event TTL must be between 1000 and 600000 milliseconds".into());
+        }
+        if !(1000..=600_000).contains(&self.room_enter_ttl_ms) {
+            return Err("room enter TTL must be between 1000 and 600000 milliseconds".into());
         }
         if self.gift_merge_ms > 10_000 {
             return Err("gift merge window must not exceed 10000 milliseconds".into());

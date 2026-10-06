@@ -38,17 +38,21 @@ export function AppUpdatePanel({ client = updateClient, disabled = false, pollIn
     finally { if (mounted.current) setPending(false); }
   };
   const busy = pending || Boolean(status && busyPhases.has(status.phase));
-  return <section className="connection-card" aria-labelledby="app-update-title">
-    <h2 id="app-update-title">App 更新</h2>
-    <p>通过 GitHub Releases 获取经签名验证的 Windows 更新。</p>
-    <p>当前版本：{status?.current_tag ?? "读取中…"}{status?.available_tag && ` · 可用版本：${status.available_tag}`}</p>
-    <p role="status">{status?.message ?? "正在读取更新状态…"}</p>
-    {error && <p role="alert">{error}</p>}
-    {status && status.total_bytes > 0 && <>
+  return <section className="connection-card app-update-card" aria-labelledby="app-update-title">
+    <div className="app-update-intro"><p className="eyebrow">SYSTEM UPDATE</p><h2 id="app-update-title">App 更新</h2>
+      </div>
+    <div className="app-update-state"><span className="app-update-label">版本状态</span>
+      <strong>{status?.current_tag ?? "读取中…"}</strong>
+      {status?.available_tag && <span className="app-update-available">可用：{status.available_tag}</span>}
+      <p role="status">{status?.message ?? "正在读取更新状态…"}</p>
+    </div>
+    <div className="app-update-actions">
+    {error && <p role="alert" className="error-banner">{error}</p>}
+    {status && status.total_bytes > 0 && <div className="app-update-progress">
       <progress aria-label="更新准备进度" max={status.total_bytes} value={Math.min(status.total_bytes, status.downloaded_bytes + status.reused_bytes)} />
       <p>安装包 {size(status.total_bytes)} · 已下载 {size(status.downloaded_bytes)} · 已复用 {size(status.reused_bytes)}</p>
       <p>{status.reused_bytes > 0 ? "增量更新：复用已验证的本地数据。" : "首次更新或缓存不可用时需要完整下载。"}</p>
-    </>}
+    </div>}
     {status?.release_notes && <details><summary>版本说明</summary><p style={{ whiteSpace: "pre-wrap" }}>{status.release_notes}</p></details>}
     <div className="button-row">
       <button type="button" disabled={busy || disabled} onClick={() => void action("check")}>检查更新</button>
@@ -57,6 +61,7 @@ export function AppUpdatePanel({ client = updateClient, disabled = false, pollIn
       {status && ["checking", "downloading"].includes(status.phase) && <button type="button" disabled={pending} onClick={() => void action("cancel")}>取消更新</button>}
       <a href={status?.release_url ?? "https://github.com/KafuuChinoQwQ4/MeowLive2D/releases"} target="_blank" rel="noreferrer">查看 GitHub Releases</a>
     </div>
-    <p>安装会停止受管服务并关闭 App；模型与用户配置保留。训练或环境安装期间不能更新。</p>
+    <p>更新将重启 App，保留模型与配置。</p>
+    </div>
   </section>;
 }

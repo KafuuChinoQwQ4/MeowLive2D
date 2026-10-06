@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash, generateKeyPairSync, verify } from 'node:crypto';
-import { buildManifest } from './update-manifest.mjs';
+import { buildManifest, manifestNameForTarget, targetForInstaller } from './update-manifest.mjs';
 test('manifest signs exact bytes and shares unchanged content blocks', () => {
   const { privateKey, publicKey } = generateKeyPairSync('ed25519');
   const bytes = Buffer.concat([Buffer.alloc(1024 * 1024, 7), Buffer.from('tail')]);
@@ -12,6 +12,19 @@ test('manifest signs exact bytes and shares unchanged content blocks', () => {
   assert.equal(result.manifest.chunks.length, 2);
   assert.equal(result.chunks.get(result.manifest.chunks[0].sha256).length, 1024 * 1024);
   assert.equal(verify(null, Buffer.concat([payload, Buffer.from('x')]), publicKey, Buffer.from(result.envelope.signature, 'base64')), false);
+});
+test('Linux package formats produce distinct signed targets and manifest names', () => {
+  const { privateKey } = generateKeyPairSync('ed25519');
+  for (const [installer, target, name] of [
+    ['MeowLive2D_0.1.2_amd64.AppImage', 'linux-appimage-x86_64', 'meowlive-update-linux-appimage.json'],
+    ['meowlive-desktop_0.1.2_amd64.deb', 'linux-deb-x86_64', 'meowlive-update-linux-deb.json'],
+  ]) {
+    assert.equal(targetForInstaller(installer), target);
+    assert.equal(manifestNameForTarget(target), name);
+    const result = buildManifest(Buffer.from('linux package'), '0.1.3', installer, privateKey);
+    assert.equal(result.manifest.target, target);
+  }
+  assert.throws(() => buildManifest(Buffer.from('x'), '0.1.3', 'package.deb', privateKey, 'linux-appimage-x86_64'));
 });
 test('successive releases reuse the unchanged block and reject empty installers', () => {
   const { privateKey } = generateKeyPairSync('ed25519');
@@ -29,7 +42,7 @@ test('content boundaries recover after an inserted prefix', () => {
   let state = 1234567;
   for (let i = 0; i < original.length; i++) { state ^= state << 13; state ^= state >>> 17; state ^= state << 5; original[i] = state & 255; }
   const before = buildManifest(original, 'v0.1.1', 'app-setup.exe', privateKey);
-  const after = buildManifest(Buffer.concat([Buffer.from('inserted-header'), original]), 'v0.1.2', 'app-setup.exe', privateKey);
+  const after = buildManifest(Buffer.concat([Buffer.from('inserted-header'), original]), '0.1.3', 'app-setup.exe', privateKey);
   const reused = after.manifest.chunks.filter((chunk) => before.chunks.has(chunk.sha256)).reduce((sum, chunk) => sum + chunk.size, 0);
   assert.ok(reused > original.length / 2, `Expected substantial unchanged data reuse, got ${reused}`);
 });

@@ -28,6 +28,7 @@ pending_capacity = 128
 history_limit = 200
 dedup_capacity = 512
 event_ttl_ms = 60000
+room_enter_ttl_ms = 60000
 gift_merge_ms = 3000
 batch_size = 8
 conversation_limit = 6

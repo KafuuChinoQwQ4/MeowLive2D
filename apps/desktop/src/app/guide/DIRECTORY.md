@@ -12,4 +12,4 @@ guide/  # 控制面板集中使用指南与各功能操作步骤
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 2229ffb32a58186c8a432da436e27f0f1e8d442dc8a42b0b1865a84539772b38 -->
+<!-- directory-tree-sha256: aaf9e12b349d227bb2db2066da2371fbf41e56fc982902446db09239cb406608 -->

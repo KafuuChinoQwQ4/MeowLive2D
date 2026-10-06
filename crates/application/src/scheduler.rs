@@ -41,9 +41,9 @@ impl EventScheduler {
     }
 
     pub fn submit(&mut self, event: LiveEvent, now_ms: u64) -> Result<SubmitOutcome, String> {
-        let expires_at_ms = event
-            .occurred_at_ms
-            .saturating_add(event.response_ttl_ms(self.limits.event_ttl_ms));
+        let expires_at_ms = event.occurred_at_ms.saturating_add(
+            event.response_ttl_ms(self.limits.event_ttl_ms, self.limits.room_enter_ttl_ms),
+        );
         self.submit_before(event, now_ms, expires_at_ms)
     }
 
@@ -54,7 +54,7 @@ impl EventScheduler {
         age_ms: u64,
     ) -> Result<SubmitOutcome, String> {
         let remaining_ms = event
-            .response_ttl_ms(self.limits.event_ttl_ms)
+            .response_ttl_ms(self.limits.event_ttl_ms, self.limits.room_enter_ttl_ms)
             .saturating_sub(age_ms);
         self.submit_before(event, now_ms, now_ms.saturating_add(remaining_ms))
     }

@@ -34,6 +34,8 @@ struct Chunk {
 struct Manifest {
     schema: u32,
     tag: String,
+    #[serde(default)]
+    target: Option<String>,
     installer: String,
     size: u64,
     sha256: String,
@@ -190,10 +192,11 @@ impl UpdateManager {
             ));
             state.release_notes = release.body.map(|body| body.chars().take(16000).collect());
         }
+        let manifest_name = manifest_asset_name();
         if !release
             .assets
             .iter()
-            .any(|asset| asset.name == "meowlive-update.json")
+            .any(|asset| asset.name == manifest_name)
         {
             return Err(
                 "发现新版本，但该发布缺少受签名的更新资源，请前往 GitHub Releases 查看".into(),
@@ -204,11 +207,14 @@ impl UpdateManager {
             .ok_or("此 App 未配置更新签名公钥，已拒绝自动安装；请使用可信的正式安装包")?;
         let bytes = fetch(
             &client,
-            &asset_url(&release.tag_name, "meowlive-update.json")?,
+            &asset_url(&release.tag_name, manifest_name)?,
             2 * 1024 * 1024,
         )?;
         let envelope: Envelope = serde_json::from_slice(&bytes).map_err(|_| "更新签名封装无效")?;
         let manifest = verify_manifest(&envelope, public_key, &release.tag_name)?;
+        if !is_current_target(manifest.target.as_deref()) {
+            return Err("该发布没有与当前安装包类型匹配的更新，已拒绝安装".into());
+        }
         if !release
             .assets
             .iter()
@@ -262,7 +268,8 @@ impl UpdateManager {
                 let cache = self.cache_dir.join(format!("{}.bin", chunk.sha256));
                 let loaded = load_chunk(&cache, chunk, || {
                     let mut last_error = "更新分块下载失败".to_string();
-                    for url in chunk_urls(&manifest.tag, &chunk.sha256)? {
+                    for url in chunk_urls(&manifest.tag, manifest.target.as_deref(), &chunk.sha256)?
+                    {
                         self.checkpoint()?;
                         match fetch(&client, &url, chunk.size) {
                             Ok(bytes) => return Ok(bytes),
@@ -315,7 +322,7 @@ impl UpdateManager {
             self.checkpoint()?;
             let destination = self
                 .cache_dir
-                .join(format!("installer-{}.exe", manifest.sha256));
+                .join(format!("installer-{}", manifest.sha256));
             if destination.exists() {
                 fs::remove_file(&destination).map_err(io_error)?;
             }
@@ -330,10 +337,7 @@ impl UpdateManager {
                 if name.ends_with(".bin") && !keep {
                     let _ = fs::remove_file(entry.path());
                 }
-                if name.starts_with("installer-")
-                    && name.ends_with(".exe")
-                    && entry.path() != destination
-                {
+                if name.starts_with("installer-") && entry.path() != destination {
                     let _ = fs::remove_file(entry.path());
                 }
             }
@@ -387,11 +391,11 @@ impl UpdateManager {
         Ok(())
     }
     pub fn launch_installer(&self) -> Result<(), String> {
-        #[cfg(not(windows))]
+        #[cfg(target_os = "linux")]
         {
-            Err("自动安装仅支持 Windows App".into())
+            self.launch_linux_update()
         }
-        #[cfg(windows)]
+        #[cfg(target_os = "windows")]
         {
             self.begin("installing", "正在启动已校验安装程序")?;
             let result: Result<(), String> = (|| {
@@ -416,6 +420,162 @@ impl UpdateManager {
             result
         }
     }
+
+    #[cfg(target_os = "linux")]
+    fn launch_linux_update(&self) -> Result<(), String> {
+        self.begin("installing", "正在应用已校验的 Linux 更新")?;
+        let result = (|| {
+            self.checkpoint()?;
+            let (path, manifest) = self
+                .ready
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .clone()
+                .ok_or("尚未准备好更新")?;
+            let _verified_handle = verify_file(&path, &manifest)?;
+            match manifest.target.as_deref() {
+                Some("linux-appimage-x86_64") => install_appimage(&path, &manifest),
+                Some("linux-deb-x86_64") => install_deb(&path),
+                _ => Err("更新包与当前 Linux 安装类型不匹配，已拒绝安装".into()),
+            }
+        })();
+        if let Err(error) = &result {
+            self.change("error", error.clone());
+        }
+        self.active.store(false, Ordering::Release);
+        result
+    }
+}
+
+fn manifest_asset_name() -> &'static str {
+    #[cfg(windows)]
+    {
+        "meowlive-update.json"
+    }
+    #[cfg(target_os = "linux")]
+    {
+        match linux_package() {
+            Some(LinuxPackage::AppImage) => "meowlive-update-linux-appimage.json",
+            Some(LinuxPackage::Deb) => "meowlive-update-linux-deb.json",
+            None => "meowlive-update-linux-unsupported.json",
+        }
+    }
+    #[cfg(not(any(windows, target_os = "linux")))]
+    {
+        "meowlive-update-unsupported.json"
+    }
+}
+
+#[cfg(windows)]
+fn is_current_target(target: Option<&str>) -> bool {
+    matches!(target, Some("windows-x64") | None)
+}
+#[cfg(target_os = "linux")]
+fn is_current_target(target: Option<&str>) -> bool {
+    match (linux_package(), target) {
+        (Some(LinuxPackage::AppImage), Some("linux-appimage-x86_64")) => true,
+        (Some(LinuxPackage::Deb), Some("linux-deb-x86_64")) => true,
+        _ => false,
+    }
+}
+
+#[cfg(target_os = "linux")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum LinuxPackage {
+    AppImage,
+    Deb,
+}
+
+#[cfg(target_os = "linux")]
+fn linux_package() -> Option<LinuxPackage> {
+    if std::env::consts::ARCH != "x86_64" {
+        return None;
+    }
+    if std::env::var_os("APPIMAGE").is_some() {
+        return Some(LinuxPackage::AppImage);
+    }
+    let executable = std::env::current_exe().ok()?;
+    if executable.starts_with("/usr/") || executable.starts_with("/opt/") {
+        Some(LinuxPackage::Deb)
+    } else {
+        None
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn install_appimage(download: &std::path::Path, manifest: &Manifest) -> Result<(), String> {
+    use std::os::unix::fs::PermissionsExt;
+    let installed = std::env::var_os("APPIMAGE")
+        .map(PathBuf::from)
+        .filter(|path| path.is_absolute())
+        .ok_or("无法确定当前 AppImage 文件位置")?;
+    let parent = installed.parent().ok_or("AppImage 安装目录无效")?;
+    let staged = parent.join(format!(".meowlive-update-{}.AppImage", std::process::id()));
+    let backup = parent.join(format!(".meowlive-backup-{}.AppImage", std::process::id()));
+    let result = (|| {
+        fs::copy(download, &staged).map_err(io_error)?;
+        let permissions = fs::metadata(&installed).map_err(io_error)?.permissions();
+        fs::set_permissions(
+            &staged,
+            fs::Permissions::from_mode(permissions.mode() | 0o111),
+        )
+        .map_err(io_error)?;
+        fs::File::open(&staged)
+            .and_then(|file| file.sync_all())
+            .map_err(io_error)?;
+        let _staged_verified_handle = verify_file(&staged, manifest)?;
+        fs::rename(&installed, &backup).map_err(io_error)?;
+        if let Err(error) = fs::rename(&staged, &installed) {
+            let _ = fs::rename(&backup, &installed);
+            return Err(io_error(error));
+        }
+        if let Err(error) = schedule_restart(&installed) {
+            let _ = fs::remove_file(&installed);
+            let _ = fs::rename(&backup, &installed);
+            return Err(error);
+        }
+        let _ = fs::remove_file(backup);
+        Ok(())
+    })();
+    if result.is_err() {
+        let _ = fs::remove_file(staged);
+    }
+    result
+}
+
+#[cfg(target_os = "linux")]
+fn install_deb(deb: &std::path::Path) -> Result<(), String> {
+    let status = std::process::Command::new("pkexec")
+        .args(["dpkg", "--install"])
+        .arg(deb)
+        .status()
+        .map_err(|error| format!("无法启动系统授权安装器（需要 pkexec 和 dpkg）：{error}"))?;
+    if !status.success() {
+        return Err("系统软件包安装未完成；更新包已保留，可重新尝试".into());
+    }
+    let executable = std::env::current_exe().map_err(io_error)?;
+    schedule_restart(&executable)?;
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+fn schedule_restart(executable: &std::path::Path) -> Result<(), String> {
+    use std::process::Stdio;
+    let pid = std::process::id().to_string();
+    std::process::Command::new("sh")
+        .args([
+            "-c",
+            "while kill -0 \"$1\" 2>/dev/null; do sleep 0.2; done; exec \"$2\"",
+            "meowlive-restart",
+            &pid,
+        ])
+        .arg(executable)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .map(|_| ())
+        .map_err(io_error)
 }
 fn io_error(error: std::io::Error) -> String {
     format!("更新文件操作失败：{error}")
@@ -453,7 +613,7 @@ fn load_chunk(
     fs::write(path, &bytes).map_err(io_error)?;
     Ok((bytes, false))
 }
-#[cfg(any(windows, test))]
+#[cfg(any(windows, target_os = "linux", test))]
 fn verify_file(path: &std::path::Path, manifest: &Manifest) -> Result<fs::File, String> {
     let mut options = fs::OpenOptions::new();
     options.read(true);
@@ -483,7 +643,7 @@ fn verify_file(path: &std::path::Path, manifest: &Manifest) -> Result<fs::File, 
     Ok(file)
 }
 fn version(tag: &str) -> Option<(u64, u64, u64, u64)> {
-    let text = tag.strip_prefix('v')?;
+    let text = tag.strip_prefix('v').unwrap_or(tag);
     let (base, preview) = if let Some((base, date)) = text.split_once("-windows-preview.") {
         if date.len() != 8 || !date.bytes().all(|b| b.is_ascii_digit()) {
             return None;
@@ -531,7 +691,11 @@ fn verify_manifest(envelope: &Envelope, public_key: &str, tag: &str) -> Result<M
         || manifest.size == 0
         || manifest.size > MAX_INSTALLER
         || !valid_hash(&manifest.sha256)
-        || !manifest.installer.ends_with("-setup.exe")
+        || !matches!(
+            manifest.target.as_deref(),
+            Some("windows-x64") | Some("linux-appimage-x86_64") | Some("linux-deb-x86_64") | None
+        )
+        || !installer_matches_target(&manifest.installer, manifest.target.as_deref())
         || !manifest
             .installer
             .bytes()
@@ -553,12 +717,23 @@ fn verify_manifest(envelope: &Envelope, public_key: &str, tag: &str) -> Result<M
     }
     Ok(manifest)
 }
-fn chunk_urls(tag: &str, hash: &str) -> Result<Vec<String>, String> {
+fn installer_matches_target(installer: &str, target: Option<&str>) -> bool {
+    match target {
+        Some("windows-x64") | None => installer.ends_with("-setup.exe"),
+        Some("linux-appimage-x86_64") => installer.ends_with(".AppImage"),
+        Some("linux-deb-x86_64") => installer.ends_with(".deb"),
+        _ => false,
+    }
+}
+fn chunk_urls(tag: &str, target: Option<&str>, hash: &str) -> Result<Vec<String>, String> {
     let name = format!("chunk-{hash}.bin");
-    Ok(vec![
-        asset_url(&format!("{tag}-updates-windows-x86_64"), &name)?,
-        asset_url(tag, &name)?,
-    ])
+    let update_tag = match target {
+        Some("linux-appimage-x86_64") | Some("linux-deb-x86_64") => {
+            format!("{tag}-updates-linux-x86_64")
+        }
+        _ => format!("{tag}-updates-windows-x86_64"),
+    };
+    Ok(vec![asset_url(&update_tag, &name)?, asset_url(tag, &name)?])
 }
 fn asset_url(tag: &str, name: &str) -> Result<String, String> {
     let mut url = url::Url::parse(&format!(

@@ -94,3 +94,10 @@ pub struct ServerHealth {
     pub protocol_version: u16,
     pub bridge_connected: bool,
 }
+
+/// 同一条播报内同时合成的分句数；各播报任务仍按队列顺序执行。
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[serde(deny_unknown_fields)]
+pub struct SpeechSettings {
+    pub sentence_batch_size: u8,
+}

@@ -1,7 +1,10 @@
+import { WindowChrome } from "./WindowChrome";
+import { hasNativeWindow } from "../services/desktop/window";
+import type { LauncherServiceId } from "@meowlive/contracts";
+import { DesktopLauncherControls } from "../features/launcher/DesktopLauncherControls";
 import { listenForExitBlocked } from "../services/desktop/lifecycle";
 import { AppUpdatePanel } from "../features/updates/AppUpdatePanel";
 import { DesktopEnvironmentPanel } from "../features/desktop-environment/DesktopEnvironmentPanel";
-import { ModelLibraryManualGuide } from "../features/model-library/ModelLibraryPanel";
 import { SpeechPanel } from "../features/live";
 import { AgentPanel } from "../features/agent";
 import { AgentObservabilityPanel } from "../features/agent-observability";
@@ -10,8 +13,8 @@ import { ViewerPanel } from "../features/viewers";
 import { ConnectionPanel } from "../features/connections";
 import { TrainingPanel } from "../features/training";
 import { ResourcesPanel } from "./resources";
-import { useEffect, useMemo, useState } from "react";
-import { getDesktopStatus, type DesktopStatus } from "../services/desktop";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { getDesktopStatus, setDesktopServiceEnabled, type DesktopStatus } from "../services/desktop";
 import { createServerClient } from "../services/server";
 import { createAgentClient } from "../services/server/agent";
 import { createLiveClient } from "../services/server/live";
@@ -32,7 +35,7 @@ import { createRuntimeLogClient } from "../services/server/logs";
 import { createLauncherLogClient } from "../services/launcher/logs";
 
 export function App() {
-  return <FeedbackProvider><AppContent /></FeedbackProvider>;
+  return <FeedbackProvider><div className={`application-frame${hasNativeWindow() ? " is-native" : ""}`}><WindowChrome /><AppContent /></div></FeedbackProvider>;
 }
 
 function AppContent() {
@@ -40,6 +43,8 @@ function AppContent() {
   const [desktop, setDesktop] = useState<DesktopStatus | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const serviceAction = useRef(false);
+  const [serviceBusy, setServiceBusy] = useState(false);
   const [environmentBusy, setEnvironmentBusy] = useState(false);
   const [soundRevision, setSoundRevision] = useState(0);
   useEffect(() => {
@@ -50,10 +55,11 @@ function AppContent() {
       try {
         const status = await getDesktopStatus();
         if (cancelled) return;
+        if (serviceAction.current) { timer = setTimeout(() => void update(), 3_000); return; }
         setDesktop(status);
         setError(null);
         feedback.clearIssue("desktop:configuration");
-        if (status && !status.runtime.running) feedback.reportIssue("desktop:runtime", "桌面执行端已停止", status.runtime.last_error || "请关闭并重新启动桌面程序。");
+        if (status?.runtime.last_error) feedback.reportIssue("desktop:runtime", "桌面执行端运行失败", status.runtime.last_error);
         else feedback.clearIssue("desktop:runtime");
         if (status?.server.last_error) feedback.reportIssue("desktop:server", "主服务未就绪", status.server.last_error);
         else feedback.clearIssue("desktop:server");
@@ -105,20 +111,28 @@ function AppContent() {
     window.addEventListener("error", onError); window.addEventListener("unhandledrejection", onRejection); window.addEventListener("meowlive:request-failed", onRequestFailed);
     return () => { window.removeEventListener("error", onError); window.removeEventListener("unhandledrejection", onRejection); window.removeEventListener("meowlive:request-failed", onRequestFailed); };
   }, [clients.logs]);
+  async function setServiceEnabled(id: LauncherServiceId, enabled: boolean) {
+    if (serviceAction.current) return;
+    serviceAction.current = true;
+    setServiceBusy(true);
+    try {
+      await setDesktopServiceEnabled(id, enabled);
+      const status = await getDesktopStatus();
+      if (!status) throw new Error("桌面状态不可用");
+      setDesktop(status);
+      setError(null);
+    } catch (failure) {
+      feedback.error("服务启停失败", failure);
+    } finally {
+      serviceAction.current = false;
+      setServiceBusy(false);
+      setAttempt(value => value + 1);
+    }
+  }
   const errorNotice = error && <div className="error-banner" role="alert">{error} <button onClick={() => setAttempt(value => value + 1)}>重试桌面连接</button></div>;
-  const serverLabel = desktop?.server.ready ? "主服务运行中" : desktop?.server.last_error ? "主服务未就绪" : "主服务启动中";
+  const serverLabel = desktop?.server.stopped ? "主服务已停止" : desktop?.server.ready ? "主服务运行中" : desktop?.server.last_error ? "主服务未就绪" : "主服务启动中";
   if (desktop === undefined) return <main className="studio-initial"><h1>MeowLive2D</h1>{errorNotice || <p role="status">正在读取桌面配置…</p>}</main>;
-  if (desktop === null && import.meta.env.VITE_MEOWLIVE_LAUNCHER === "true") return <ManagedWorkspace pages={panels} adminClient={clients.auth} />;
-  return <Workspace pages={panels} adminClient={clients.auth} setup={desktop ? <><DesktopEnvironmentPanel onBusyChanged={setEnvironmentBusy} onApplied={() => setAttempt(value => value + 1)} /><AppUpdatePanel disabled={environmentBusy} /></> : <ModelLibraryManualGuide />} ready={desktop === null || (!error && desktop.server.ready)} status={[...(desktop ? [{ label: serverLabel, available: !error && desktop.server.ready }] : []), { label: desktop ? (desktop.runtime.running ? "桌面执行端运行中" : "桌面执行端已停止") : "手动服务模式", available: desktop?.runtime.running ?? null }]}
-    notice={errorNotice} overview={<>{errorNotice}{desktop && <section className="connection-card" aria-label="主服务">
-      <div><h2>{serverLabel}</h2><p>打开应用时自动启动，关闭应用时自动退出。</p>
-        {desktop.server.ready && !desktop.server.managed && <p className="muted">已连接现有服务，由原启动程序管理。</p>}
-        {desktop.server.last_error && <p role="alert">{desktop.server.last_error}</p>}
-        <details><summary>主服务日志位置</summary><code>{desktop.server.log_path}</code></details>
-        <p className="field-hint">修改需重启的配置后，关闭并重新打开应用即可。</p>
-      </div>
-    </section>}{desktop ? <section className="connection-card" aria-label="桌面执行端">
-      <div><h2>{desktop.runtime.running ? "桌面执行端运行中" : "桌面执行端已停止"}</h2><p className="muted">{desktop.runtime.simulation ? "静音模拟：不输出设备声音" : "系统音频输出"}</p></div>
-      {!desktop.runtime.running && <p role="alert">执行端已停止，请关闭并重新启动桌面程序。{desktop.runtime.last_error}</p>}
-    </section> : <section className="panel studio-manual"><h2>从导航开始</h2><p className="muted">手动服务模式，请从左侧选择功能。</p><p className="availability-note">网页管理服务：运行 <code>./launchers/start.sh</code>。</p></section>}</>} />;
+  if (desktop === null) return <ManagedWorkspace pages={panels} adminClient={clients.auth} allowManualService={import.meta.env.VITE_MEOWLIVE_LAUNCHER !== "true"} />;
+  return <Workspace pages={panels} adminClient={clients.auth} setup={<><DesktopEnvironmentPanel platform={desktop.platform ?? "windows"} onBusyChanged={setEnvironmentBusy} onApplied={() => setAttempt(value => value + 1)} /><AppUpdatePanel disabled={environmentBusy || serviceBusy} /></>} ready={!error && desktop.server.ready} status={[{ label: serverLabel, available: !error && desktop.server.ready }, ...(desktop.platform === "linux" ? [] : [{ label: desktop.runtime.running ? "桌面执行端运行中" : "桌面执行端已停止", available: desktop.runtime.running }])]}
+    notice={errorNotice} overview={<>{errorNotice}<DesktopLauncherControls status={desktop} busy={serviceBusy || environmentBusy} stale={!!error} setEnabled={setServiceEnabled} refresh={() => setAttempt(value => value + 1)} /></>} />;
 }

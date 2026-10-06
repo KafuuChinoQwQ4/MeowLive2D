@@ -19,4 +19,4 @@ desktop-runtime/  # 独立于界面的 Windows 播放与设备执行库
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: bf30d3a6e11ee9b469b931e92ba5c532c5ca50e925d05f96398e7afad0808c7d -->
+<!-- directory-tree-sha256: 3d6dbf3f945241d1fd2006d8438d2fb92f56cee99b3d9345b0131fc7a9b33d85 -->

@@ -28,7 +28,7 @@ function setupClients() {
       return { type: "models", models: [model(), model({ id: "model-new", name: "New Cat" })] };
     }),
   };
-  const speechClient: ServerClient = { baseUrl: "", getStatus: vi.fn(), submitSpeech: vi.fn(), stop: vi.fn() };
+  const speechClient: ServerClient = { getSpeechSettings: vi.fn(), saveSpeechSettings: vi.fn(), baseUrl: "", getStatus: vi.fn(), submitSpeech: vi.fn(), stop: vi.fn() };
   return { resourceClient, speechClient };
 }
 

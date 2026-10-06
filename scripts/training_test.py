@@ -559,6 +559,24 @@ runner.main()
             with self.assertRaises(ValueError):
                 configure_low_memory(root)
 
+    def test_inference_audio_reader_is_idempotent_and_rejects_unknown_upstream(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "GPT_SoVITS/TTS_infer_pack/TTS.py"
+            source.parent.mkdir(parents=True)
+            source.write_text("            wav16k, sr = librosa.load(ref_wav_path, sr=16000)\n")
+            engine_workspace.configure_inference_audio(root)
+            first = source.read_text()
+            self.assertIn("torchaudio.load(ref_wav_path)", first)
+            self.assertIn("mean(dim=0)", first)
+            self.assertIn("16000", first)
+            self.assertNotIn("librosa.load", first)
+            engine_workspace.configure_inference_audio(root)
+            self.assertEqual(source.read_text(), first)
+            source.write_text("changed upstream")
+            with self.assertRaises(ValueError):
+                engine_workspace.configure_inference_audio(root)
+
     def test_inference_memory_mode_uses_upstream_pinyin_fallback_and_can_restore(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

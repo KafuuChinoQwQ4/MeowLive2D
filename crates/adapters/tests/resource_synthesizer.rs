@@ -71,6 +71,7 @@ async fn uploaded_voices_send_their_own_engine_reference_and_default_still_deleg
     );
     let one = library.create_voice("one", "zh", "一", &wav()).unwrap();
     let two = library.create_voice("two", "en", "two", &wav()).unwrap();
+    let batch = Arc::new(std::sync::atomic::AtomicU8::new(4));
     let default = Arc::new(
         GptSovits::new(GptSovitsConfig {
             base_url: url.clone(),
@@ -81,7 +82,8 @@ async fn uploaded_voices_send_their_own_engine_reference_and_default_still_deleg
             timeout: Duration::from_secs(2),
             max_audio_bytes: 256 * 1024,
         })
-        .unwrap(),
+        .unwrap()
+        .with_sentence_batch_size(batch.clone()),
     );
     let synth = ResourceSynthesizer::new(
         default,
@@ -92,7 +94,9 @@ async fn uploaded_voices_send_their_own_engine_reference_and_default_still_deleg
             max_audio_bytes: 256 * 1024,
         },
     )
-    .unwrap();
+    .unwrap()
+    .with_sentence_batch_size(batch.clone());
+    batch.store(16, std::sync::atomic::Ordering::Relaxed);
     for voice_id in ["default", one.id.as_str(), two.id.as_str()] {
         synth
             .synthesize(SynthesisRequest {
@@ -103,6 +107,7 @@ async fn uploaded_voices_send_their_own_engine_reference_and_default_still_deleg
             .unwrap();
     }
     let seen = paths.lock().await.clone();
+    assert!(seen.iter().all(|body| body["batch_size"] == 16));
     assert_eq!(seen[0]["ref_audio_path"], "/engine/default.wav");
     assert_ne!(seen[1]["ref_audio_path"], seen[2]["ref_audio_path"]);
     assert!(

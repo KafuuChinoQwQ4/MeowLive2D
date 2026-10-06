@@ -12,4 +12,4 @@ test/  # 前端测试公共设施
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 00b3ccde8f5e024108c6a772b2c3ed3f3bb8ca5bed3a82dadee6c0aa96dbbd3b -->
+<!-- directory-tree-sha256: 29f7957382357a51bb82543897d2f5c91999202aab1d2c34bfb8a400fdd6743d -->

@@ -26,3 +26,5 @@ pub mod graph;
 
 #[cfg(test)]
 mod memory_worker_tests;
+
+pub mod speech_settings;

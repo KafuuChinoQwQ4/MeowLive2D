@@ -56,7 +56,7 @@ it("shows a completed live connection once after the accepted connection request
 
 it("acknowledges queued speech then reports the later playback failure once", async () => {
   vi.useFakeTimers(); let status = serverStatus();
-  const client: ServerClient = { baseUrl: "test", getStatus: vi.fn(async () => status), submitSpeech: vi.fn().mockResolvedValue(speech()), stop: vi.fn() };
+  const client: ServerClient = { getSpeechSettings: vi.fn(), saveSpeechSettings: vi.fn(), baseUrl: "test", getStatus: vi.fn(async () => status), submitSpeech: vi.fn().mockResolvedValue(speech()), stop: vi.fn() };
   const { result } = renderHook(() => useSpeechController(client, 1000), { wrapper: FeedbackProvider });
   await act(async () => {});
   await act(async () => { await result.current.submit({ text: "你好", voice_id: "active" }); });

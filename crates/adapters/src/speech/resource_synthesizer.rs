@@ -5,7 +5,10 @@ use meowlive_application::{
     ports::speech::{SpeechSynthesizer, SynthesisError, SynthesisFuture, SynthesisRequest},
     resources::{ResolvedVoice, ResourceLibrary},
 };
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::{Arc, atomic::AtomicU8},
+    time::Duration,
+};
 
 #[derive(Clone, Debug)]
 pub struct ResourceSynthesizerConfig {
@@ -19,9 +22,14 @@ pub struct ResourceSynthesizer {
     library: Arc<ResourceLibrary>,
     config: ResourceSynthesizerConfig,
     wsl_distribution: Option<String>,
+    sentence_batch_size: Arc<AtomicU8>,
 }
 
 impl ResourceSynthesizer {
+    pub fn with_sentence_batch_size(mut self, value: Arc<AtomicU8>) -> Self {
+        self.sentence_batch_size = value;
+        self
+    }
     pub fn with_wsl_distribution(mut self, distribution: Option<String>) -> Self {
         self.wsl_distribution = distribution;
         self
@@ -49,6 +57,7 @@ impl ResourceSynthesizer {
             library,
             config,
             wsl_distribution: None,
+            sentence_batch_size: Arc::new(AtomicU8::new(4)),
         })
     }
 }
@@ -80,7 +89,8 @@ impl SpeechSynthesizer for ResourceSynthesizer {
                         timeout: self.config.timeout,
                         max_audio_bytes: self.config.max_audio_bytes,
                     })?
-                    .with_wsl_distribution(self.wsl_distribution.clone());
+                    .with_wsl_distribution(self.wsl_distribution.clone())
+                    .with_sentence_batch_size(self.sentence_batch_size.clone());
                     synthesizer
                         .synthesize(SynthesisRequest {
                             text: request.text,

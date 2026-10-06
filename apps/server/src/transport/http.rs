@@ -83,6 +83,10 @@ pub fn router(state: AppState) -> Router {
                 .delete(super::auth::logout),
         )
         .route("/api/status", get(status))
+        .route(
+            "/api/speech/settings",
+            get(super::speech_settings::settings).post(super::speech_settings::save),
+        )
         .route("/api/health", get(health))
         .route(
             "/api/logs",

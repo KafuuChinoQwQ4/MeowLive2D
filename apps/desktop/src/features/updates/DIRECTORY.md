@@ -12,4 +12,4 @@ updates/  # App GitHub 更新检查与增量安装界面
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: c4bb2023cb350b63bc4d5d5636a26b6f7f7fa87956edbf9ffeeee9dc5e0b196e -->
+<!-- directory-tree-sha256: 03dfd3efa700dc9edf53ae07a59cfab4a8ed8e82eda934b81c5f253a929001c3 -->

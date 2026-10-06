@@ -25,4 +25,4 @@ services/  # 前端访问主服务、Linux 启动管理与 Windows 桌面能力�
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 348bf0b0f78aa0ad2cc7bf087490bafbf03e6d6354d663da4a1899fcad8e2865 -->
+<!-- directory-tree-sha256: c73ce1b81b2092a696b3e64e9bd8ff63d703b6a5ed57b02aa8e8ae4178c6961a -->

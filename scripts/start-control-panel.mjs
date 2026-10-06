@@ -54,9 +54,8 @@ try {
   });
   await vite.listen();
   void supervisor.emit('info', 'launcher_started', 'launcher');
-  void services.initialize().catch(() => console.error('服务自动启动未完成，请在“启动与运行”查看状态与日志。'));
   console.log('\nMeowLive2D 控制面板：http://127.0.0.1:1420');
-  console.log('主服务正在自动启动，就绪后会自动启动 TTS 和 Windows 执行端。缺少依赖或模型时请在面板按提示补齐。保持启动窗口打开。\n');
+  console.log('服务默认保持关闭，请在“启动与运行”中手动打开开关。关闭控制面板时会自动回收本次启动的服务。\n');
 } catch (error) {
   void supervisor.emit('error', 'launcher_failed', 'launcher');
   console.error(error.code === 'EADDRINUSE' || /already in use/.test(error.message)

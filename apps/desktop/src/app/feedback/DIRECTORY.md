@@ -12,4 +12,4 @@ feedback/  # 全局操作结果弹窗、去重与面板反馈回归测试
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: e04e45f9677bbd49372623c6df81e61ddc06d60c8deb3b8fb5243032ca5ec151 -->
+<!-- directory-tree-sha256: 549631d5e6f7b1e63363e048f09ef1ab37312ea39756770fd87bb827e3447cb9 -->

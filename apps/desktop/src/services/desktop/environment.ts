@@ -1,10 +1,12 @@
 /** Windows 环境 IPC 边界；功能组件不直接访问 Tauri。 */
 import type { EnvironmentSnapshot } from "@meowlive/contracts";
+import { invokeDesktop } from "./transport";
 export type { EnvironmentSnapshot } from "@meowlive/contracts";
 export interface EnvironmentRequest {
   action: "detect" | "install_wsl" | "install_backend" | "download_model" | "select_model" | "start_inference" | "stop_inference" | "cancel";
   distro?: string;
   modelId?: string;
+  configPath?: string;
 }
 export interface EnvironmentClient {
   status(): Promise<EnvironmentSnapshot>;
@@ -18,7 +20,7 @@ export function readEnvironmentSnapshot(value: unknown): EnvironmentSnapshot {
     || typeof value.busy !== "boolean" || !string(value.message) || !Array.isArray(value.logs) || value.logs.length > 500 || !value.logs.every(string)
     || !Array.isArray(value.distros) || value.distros.length > 128 || !value.distros.every(item => object(item) && string(item.name) && [1, 2].includes(Number(item.version)))
     || !(value.selectedDistro === null || string(value.selectedDistro)) || !object(value.backend) || typeof value.backend.ready !== "boolean"
-    || typeof value.backend.gpu !== "boolean" || ![value.backend.engineRoot, value.backend.pythonPath, value.backend.detail].every(string)
+    || typeof value.backend.gpu !== "boolean" || ![value.backend.engineRoot, value.backend.pythonPath, value.backend.modelRoot, value.backend.detail].every(string)
     || !Array.isArray(value.models) || value.models.length > 128 || !value.models.every(item => object(item) && [item.id, item.name, item.capability].every(string) && typeof item.downloaded === "boolean" && typeof item.selected === "boolean")
     || typeof value.progress !== "number" || !Number.isFinite(value.progress) || value.progress < 0 || value.progress > 100
     || typeof value.inferenceRunning !== "boolean") throw new Error("环境状态无效，请重新检测。");
@@ -26,9 +28,7 @@ export function readEnvironmentSnapshot(value: unknown): EnvironmentSnapshot {
 }
 export function createEnvironmentClient(): EnvironmentClient {
   async function call(command: string, args?: Record<string, unknown>): Promise<unknown> {
-    if (!("__TAURI_INTERNALS__" in globalThis)) throw new Error("请在 Windows App 内管理本机训练环境。");
-    const { invoke } = await import("@tauri-apps/api/core");
-    return invoke(command, args);
+    return invokeDesktop(command, args);
   }
   return {
     status: async () => readEnvironmentSnapshot(await call("environment_status")),

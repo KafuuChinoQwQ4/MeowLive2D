@@ -11,7 +11,7 @@ const outputs = [];
 
 function excluded(relative, name) {
   return excludedDirectories.has(name)
-    || ["data", "logs", "config/local"].includes(relative)
+    || ["data", "logs", "config/local", ".superpowers"].includes(relative)
     || /(^|\/)src-tauri\/gen$/.test(relative)
     || (/^\.env(?:\.|$)/.test(name) && name !== ".env.example")
     || /\.(?:log|tsbuildinfo|py[cod])$/.test(name)

@@ -19,4 +19,4 @@ domain/  # 业务对象、状态和不变量，保持无外部依赖
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: eb0b370ccbdeebd6ffe2e20e3e317795b3db100ced64b212c1f1edf0a0db2e5b -->
+<!-- directory-tree-sha256: 4ed5f75073e39fecde44e19cb2c0fa03f7805521fe566045dff0ca4e20caceaf -->

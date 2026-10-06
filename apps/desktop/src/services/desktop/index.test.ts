@@ -1,20 +1,42 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 import { invoke } from "@tauri-apps/api/core";
-import { getDesktopStatus, readDesktopStatus } from "./index";
+import { getDesktopStatus, readDesktopStatus, setDesktopServiceEnabled } from "./index";
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); vi.resetAllMocks(); });
 
 const server = { ready: true, managed: true, last_error: null, log_path: "server.log" };
 
 describe("desktop status boundary", () => {
   it("browser mode needs no native bridge", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("not found", { status: 404 })));
     expect(await getDesktopStatus()).toBeNull();
+  });
+
+  it("uses the App host from a browser and authenticates service actions", async () => {
+    const status = { server, config_path: "desktop.toml", server_url: "http://127.0.0.1:19600", runtime: { running: true, simulation: false, last_error: null } };
+    const token = "a".repeat(64);
+    const fetcher = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ status, token })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ result: null })));
+    vi.stubGlobal("fetch", fetcher);
+    expect(await getDesktopStatus()).toMatchObject(status);
+    await setDesktopServiceEnabled("tts", true);
+    expect(fetcher).toHaveBeenLastCalledWith("/api/desktop/command", expect.objectContaining({
+      method: "POST", headers: expect.objectContaining({ "X-MeowLive-Desktop-Token": token }),
+      body: JSON.stringify({ command: "desktop_service_set_enabled", args: { id: "tts", enabled: true } }),
+    }));
   });
 
   it("preserves the configured server and refuses malformed native status", () => {
     expect(readDesktopStatus({ server, config_path: "C:/Users/test/desktop.toml", server_url: "http://192.168.1.10:19600", runtime: { running: true, simulation: false, last_error: null } })).toEqual({ server, config_path: "C:/Users/test/desktop.toml", server_url: "http://192.168.1.10:19600", runtime: { running: true, simulation: false, last_error: null } });
     expect(() => readDesktopStatus({ server, config_path: "x", server_url: "javascript:alert(1)", runtime: { running: true, simulation: false, last_error: null } })).toThrow();
     expect(() => readDesktopStatus({ server, config_path: "x", server_url: "http://localhost:19600", runtime: { running: "yes" } })).toThrow();
+  });
+
+  it("accepts native Linux status without a Windows runtime and rejects unknown platforms", () => {
+    const linux = readDesktopStatus({ platform: "linux", config_path: "/home/test/.config/meowlive/server.toml", server_url: "http://127.0.0.1:19600", server, environment: { phase: "idle", busy: false, message: "Linux 首版暂不包含本机语音执行端", logs: [], distros: [], selectedDistro: null, backend: { ready: false, gpu: false, engineRoot: "", pythonPath: "", modelRoot: "", detail: "" }, models: [], progress: 0, inferenceRunning: false } });
+    expect(linux.platform).toBe("linux");
+    expect(linux.runtime.running).toBe(false);
+    expect(() => readDesktopStatus({ platform: "freebsd", config_path: "x", server_url: "http://localhost:19600", server })).toThrow();
   });
 
   it("refuses credentials, query strings and malformed native origins", () => {
@@ -61,4 +83,14 @@ it("observes native state transitions with bounded safe logs and stable timestam
   expect(bounded?.runtime_logs?.entries).toHaveLength(100);
   expect(bounded?.runtime_logs?.truncated).toBe(true);
   expect(bounded?.runtime_logs?.storage_available).toBe(false);
+});
+
+
+it("shows actionable WSL startup diagnostics in the control-panel logs without raw output", async () => {
+  vi.stubGlobal("__TAURI_INTERNALS__", {});
+  const status = { config_path: "wsl-timeout-test.toml", server_url: "http://localhost:19600", server: { ...server, stopped: false, ready: false, last_error: "Wsl/Service/0x8007274c token=private" }, runtime: { running: false, simulation: false, last_error: null } };
+  vi.mocked(invoke).mockResolvedValue(status);
+  const logs = (await getDesktopStatus())?.runtime_logs?.entries;
+  expect(logs?.find(entry => entry.code === "desktop_wsl_timeout")?.summary).toContain("wsl --shutdown");
+  expect(JSON.stringify(logs)).not.toContain("private");
 });

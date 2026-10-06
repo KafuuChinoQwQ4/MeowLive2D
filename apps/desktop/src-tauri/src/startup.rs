@@ -9,6 +9,34 @@ use std::{
 
 const DEFAULT_CONFIG: &str = include_str!("../../../../config/desktop.example.toml");
 
+/// Release builds have no console; retain initialization errors and panics locally.
+#[cfg(windows)]
+pub fn record_startup_error(message: &str) {
+    let Some(directory) = std::env::var_os("APPDATA") else {
+        return;
+    };
+    let directory = PathBuf::from(directory).join("io.meowlive.desktop");
+    if fs::create_dir_all(&directory).is_err() {
+        return;
+    }
+    let path = directory.join("startup.log");
+    let truncate = fs::metadata(&path).is_ok_and(|value| value.len() > 256 * 1024);
+    if let Ok(mut file) = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .append(!truncate)
+        .truncate(truncate)
+        .open(path)
+    {
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|value| value.as_secs())
+            .unwrap_or_default();
+        let message: String = message.chars().take(8192).collect();
+        let _ = writeln!(file, "[{timestamp}] {message}");
+    }
+}
+
 /// Fixed setup destinations; the frontend cannot ask the shell to open arbitrary URLs.
 pub fn dependency_url(id: &str) -> Result<&'static str, &'static str> {
     match id {

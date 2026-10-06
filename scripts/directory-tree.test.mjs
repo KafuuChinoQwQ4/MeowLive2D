@@ -105,7 +105,7 @@ test("added and removed files require matching purpose entries before writing", 
 
 test("excluded dependencies, outputs, local settings and symlinks are not traversed", (t) => {
   const f = fixture(t);
-  for (const name of ["node_modules/pkg/file.js", "target/debug/output", "apps/desktop/dist/index.html", "apps/desktop/src-tauri/gen/schemas/desktop-schema.json", "apps/desktop/src-tauri/target/debug/output", ".git/config", "config/local/secret", ".env", "run.log", "scripts/__pycache__/runner.cpython-310.pyc", "scripts/old.pyc"]) {
+  for (const name of [".superpowers/sdd/local-state.json", "node_modules/pkg/file.js", "target/debug/output", "apps/desktop/dist/index.html", "apps/desktop/src-tauri/gen/schemas/desktop-schema.json", "apps/desktop/src-tauri/target/debug/output", ".git/config", "config/local/secret", ".env", "run.log", "scripts/__pycache__/runner.cpython-310.pyc", "scripts/old.pyc"]) {
     f.write(name, "not project source\n");
   }
   // These parents are genuine project directories even when their generated children are excluded.

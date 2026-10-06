@@ -30,6 +30,18 @@ pub struct RuntimeHandle {
 }
 
 impl RuntimeHandle {
+    pub fn stopped(simulation: bool) -> Self {
+        Self {
+            stop: None,
+            thread: None,
+            status: Arc::new(Mutex::new(RuntimeStatus {
+                running: false,
+                simulation,
+                last_error: None,
+            })),
+        }
+    }
+
     pub fn start(config: ClientConfig, simulation: bool) -> Result<Self, String> {
         let (stop, stopped) = oneshot::channel();
         let (ready, initialized) = mpsc::sync_channel(1);

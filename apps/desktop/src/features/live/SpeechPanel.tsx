@@ -4,6 +4,7 @@ import type { SpeechStatus } from "@meowlive/contracts";
 import { createServerClient } from "../../services/server";
 import type { ServerClient } from "../../services/server";
 import { isActiveSpeech, useSpeechController } from "./useSpeechController";
+import { SpeechSettingsPanel } from "./SpeechSettingsPanel";
 import { useFeedback } from "../../app/feedback/OperationFeedback";
 
 const defaultClient = createServerClient();
@@ -55,6 +56,8 @@ export function SpeechPanel({ client = defaultClient, pollIntervalMs = 1_000 }: 
         {connectionError && <p>{connectionError}</p>}
         {actionError && <p>{actionError}</p>}
       </div>}
+
+      <SpeechSettingsPanel client={client} />
 
       <div className="workspace-columns">
         <section className="panel" aria-labelledby="speech-heading">

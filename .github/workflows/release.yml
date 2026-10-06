@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    tags: ['v*']
+    tags: ['v*', '[0-9]*']
 
 permissions:
   contents: read
@@ -29,15 +29,27 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          node --input-type=module -e 'import fs from "node:fs"; const version = JSON.parse(fs.readFileSync("apps/desktop/src-tauri/tauri.conf.json")).version; const tag = process.env.RELEASE_TAG; if (tag !== `v${version}` && !(tag.startsWith(`v${version}-windows-preview.`) && /^\d{8}$/.test(tag.slice(`v${version}-windows-preview.`.length)))) throw new Error("Tag must match Tauri version or its dated Windows preview");'
+          node --input-type=module -e 'import fs from "node:fs"; const version = JSON.parse(fs.readFileSync("apps/desktop/src-tauri/tauri.conf.json")).version; const tag = process.env.RELEASE_TAG; if (tag !== version && tag !== `v${version}` && !(tag.startsWith(`v${version}-windows-preview.`) && /^\d{8}$/.test(tag.slice(`v${version}-windows-preview.`.length)))) throw new Error("Tag must match Tauri version or its dated Windows preview");'
           test -f "releases/$RELEASE_TAG.md"
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: windows-installer
           path: release-assets
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: linux-desktop
+          path: linux-assets
       - name: Verify installer checksum
         working-directory: release-assets
         run: sha256sum --check SHA256SUMS.txt
+      - name: Verify Linux package checksums
+        working-directory: linux-assets
+        run: sha256sum --check SHA256SUMS.txt
+      - name: Add Linux packages to release assets
+        run: |
+          cp linux-assets/appimage/*.AppImage linux-assets/deb/*.deb release-assets/
+          cp linux-assets/build-info.json release-assets/build-info-linux.json
+          sed -E 's#  (appimage|deb)/#  #' linux-assets/SHA256SUMS.txt > release-assets/SHA256SUMS-linux.txt
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
@@ -72,6 +84,16 @@ jobs:
                 --notes "供 App 增量更新使用，请勿手动下载。安装包请前往 https://github.com/$GITHUB_REPOSITORY/releases/tag/$RELEASE_TAG"
             fi
             find update-assets -maxdepth 1 -type f -name 'chunk-*.bin' -print0 | xargs -0 -n 20 gh release upload --clobber "$update_tag"
+            gh release edit "$update_tag" --draft=false --latest=false
+          fi
+          if [ -n "$(find update-assets/linux-x86_64 -maxdepth 1 -type f -name 'chunk-*.bin' -print -quit 2>/dev/null)" ]; then
+            update_tag="$RELEASE_TAG-updates-linux-x86_64"
+            if ! gh release view "$update_tag" >/dev/null 2>&1; then
+              gh release create "$update_tag" --target "$RELEASE_COMMIT" --draft --prerelease --latest=false \
+                --title "MeowLive2D $RELEASE_TAG 更新资源（Linux x86_64）" \
+                --notes "供 Linux App 自动更新使用，请勿手动下载。安装包请前往 https://github.com/$GITHUB_REPOSITORY/releases/tag/$RELEASE_TAG"
+            fi
+            find update-assets/linux-x86_64 -maxdepth 1 -type f -name 'chunk-*.bin' -print0 | xargs -0 -n 20 gh release upload --clobber "$update_tag"
             gh release edit "$update_tag" --draft=false --latest=false
           fi
           release_args=(--draft --verify-tag --title "MeowLive2D $RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md")

@@ -5,8 +5,8 @@ type GuideTopic = { steps: string[]; note?: string };
 export const featureGuides: Record<Exclude<WorkspacePage, "guide">, GuideTopic> = {
   overview: {
     steps: [
-      "Windows 安装版：打开 App，内置主服务和桌面执行端自动启动。",
-      "源码版：Windows 双击 launchers/start-windows.cmd；Linux / WSL 运行 ./launchers/start.sh，保持终端打开。",
+      "打开 App 后，在“启动与运行”中手动开启需要的服务；关闭 App 时会自动释放本次启动的服务。",
+      "源码版：Windows 双击 launchers/start-windows.cmd；Linux / WSL 运行 ./launchers/start.sh，服务默认关闭。",
       "在运行总览查看状态；遇到问题到「运行日志」查看原因。",
       "退出安装版直接关闭 App；源码版在启动终端按 Ctrl+C。",
     ],

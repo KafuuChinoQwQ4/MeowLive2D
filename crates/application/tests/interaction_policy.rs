@@ -284,6 +284,50 @@ fn welcome_is_dropped_if_room_becomes_busy_during_generation() {
 }
 
 #[test]
+fn welcome_survives_twenty_second_model_generation() {
+    let mut agent = session();
+    agent.submit(enter("welcome", "甲", 0), 0).unwrap();
+    agent.set_paused(false, 0);
+    let work = agent.begin(0).unwrap();
+    assert!(
+        agent
+            .resolve(work.id, answer(&["welcome"]), "speech".into(), 20_000)
+            .unwrap()
+            .is_some()
+    );
+}
+
+#[test]
+fn welcome_uses_its_own_ttl_and_preserves_source_age() {
+    for (age, finished, spoken) in [(10_000, 19_999, true), (10_000, 20_000, false)] {
+        let mut agent = AgentSession::new(
+            AgentSettings::default(),
+            AgentLimits {
+                event_ttl_ms: 1000,
+                room_enter_ttl_ms: 30_000,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        agent
+            .submit_with_age(enter("welcome", "甲", 0), 0, age)
+            .unwrap();
+        agent.set_paused(false, 0);
+        let work = agent.begin(0).unwrap();
+        assert_eq!(
+            agent
+                .resolve(work.id, answer(&["welcome"]), "speech".into(), finished)
+                .unwrap()
+                .is_some(),
+            spoken
+        );
+        if !spoken {
+            assert_eq!(agent.view(finished).events[0].status, EventStatus::Expired);
+        }
+    }
+}
+
+#[test]
 fn full_ordinary_queue_reserves_admission_for_paid_text() {
     let mut agent = AgentSession::new(
         AgentSettings::default(),

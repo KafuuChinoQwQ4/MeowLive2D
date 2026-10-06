@@ -78,7 +78,12 @@ impl AppState {
             }
             *result.persisted.as_mut().unwrap() += 1;
             let age_ms = event_age_ms(&event, utc_ms());
-            if age_ms >= event.response_ttl_ms(self.config.agent.event_ttl_ms) {
+            if age_ms
+                >= event.response_ttl_ms(
+                    self.config.agent.event_ttl_ms,
+                    self.config.agent.room_enter_ttl_ms,
+                )
+            {
                 *result.unscheduled.as_mut().unwrap() += 1;
                 continue;
             }

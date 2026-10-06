@@ -40,3 +40,10 @@ export function deferred<T>() {
   });
   return { promise, resolve, reject };
 }
+
+/** Keep unrelated speech tests focused on status/submit calls. */
+export function withSpeechSettings(fetcher: typeof fetch): typeof fetch {
+  return async (input, init) => String(input).endsWith("/api/speech/settings")
+    ? jsonResponse({ sentence_batch_size: 4 })
+    : fetcher(input, init);
+}

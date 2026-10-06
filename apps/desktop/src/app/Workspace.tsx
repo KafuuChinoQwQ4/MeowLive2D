@@ -1,3 +1,4 @@
+import appIcon from "../../src-tauri/icons/icon.png";
 import { createContext, useEffect, useRef, type ReactNode } from "react";
 import { workspacePages, type WorkspacePage } from "./navigation";
 import { WorkspaceIcon } from "./WorkspaceIcon";
@@ -35,7 +36,7 @@ export function Workspace({ overview, pages, setup, ready, status, notice, admin
     <a className="skip-navigation" href="#studio-main" onClick={event => { event.preventDefault(); content.current?.focus(); }}>跳到功能内容</a>
     <aside className="studio-sidebar">
       <a className="studio-brand" href="#overview" onClick={event => { event.preventDefault(); navigate("overview"); }} aria-label="MeowLive2D 首页">
-        <span className="studio-brand-icon"><WorkspaceIcon name="cat" /></span><span>MeowLive2D<small>虚拟直播工作室</small></span>
+        <span className="studio-brand-icon"><img src={appIcon} alt="" /></span><span>MeowLive2D<small>虚拟直播工作室</small></span>
       </a>
       <nav className="studio-navigation" aria-label="功能导航">
         {workspacePages.map((item, index) => <div className="studio-nav-entry" key={item.id}>
@@ -60,7 +61,7 @@ export function Workspace({ overview, pages, setup, ready, status, notice, admin
             {(["setup", "resources", "speech"] as const).map(id => <button className="studio-shortcut" key={id} onClick={() => navigate(id)}><WorkspaceIcon name={id} /><span>{id === "setup" ? "环境与模型" : id === "speech" ? "试播一句话" : "角色与人物卡"}</span><WorkspaceIcon name="arrow" /></button>)}
           </div>
         </section>
-        <section className="studio-page studio-page-setup" aria-label="环境与模型" hidden={active !== "setup"}>{visited.has("setup") && <FeedbackScope name="setup"><DatabaseSetupPanel />{setup}</FeedbackScope>}</section>
+        <section className="studio-page studio-page-setup" aria-label="环境与模型" hidden={active !== "setup"}>{visited.has("setup") && <FeedbackScope name="setup">{setup}<details className="setup-optional"><summary>数据库与可选功能</summary><DatabaseSetupPanel /></details></FeedbackScope>}</section>
         <section className="studio-page studio-page-guide" aria-label="使用指南" hidden={active !== "guide"}>{visited.has("guide") && <GuidePanel onNavigate={navigate} />}</section>
         {active !== "overview" && active !== "setup" && active !== "guide" && active !== "logs" && !ready && <section className="panel studio-unavailable"><WorkspaceIcon name="overview" /><h2>正在等待主服务</h2><p>主服务自动就绪后即可使用；启动异常可在运行页查看。</p><button className="primary-button" onClick={() => navigate("overview")}>前往启动与运行</button></section>}
         <section className="studio-page studio-page-logs" aria-label="运行日志" hidden={active !== "logs"}>{visited.has("logs") && pages.logs}</section>

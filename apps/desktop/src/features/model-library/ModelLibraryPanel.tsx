@@ -43,20 +43,20 @@ export function ModelLibraryPanel({ client, token, onSelected }: { client: Model
         <div id={`${tabId}-catalog-panel`} role="tabpanel" aria-labelledby={`${tabId}-catalog`} hidden={tab !== "catalog"}>
           <div className="model-section-heading"><div><h2>模型库</h2><p className="muted">“已接入”可直接使用；“需适配”仅供下载。</p></div></div>
           <div className="model-search"><label>搜索语音模型<input type="search" placeholder="模型名称、语言或用途" value={query} onChange={event => { setQuery(event.target.value); setPages({}); }} /></label><label>使用范围<select className="model-scope-select" value={filter} onChange={event => { setFilter(event.target.value); setPages({}); }}><option value="all">全部模型</option><optgroup label="按模型用途"><option value="tts">音色训练与声音生成</option><option value="asr">语音转文本</option></optgroup><optgroup label="按接入状态"><option value="ready">本项目已接入</option><option value="download_only">可下载 · 需适配</option></optgroup></select></label></div>
-          <div className="model-catalog-groups" role="region" aria-label="可下载模型">{(["tts", "asr"] as const).map(kind => {
-            const items = models.filter(model => model.purpose === kind);
-            if (!items.length) return null;
-            const pageCount = Math.max(1, Math.ceil(items.length / 4));
-            const currentPage = Math.min(pages[kind] ?? 0, pageCount - 1);
-            return <section className="model-catalog-group" key={kind} aria-label={kind === "tts" ? "音色训练与声音生成" : "语音转文本"}>
-              <div className="model-category-heading"><div><h3>{kind === "tts" ? "音色训练与声音生成" : "语音转文本"}</h3><p>{kind === "tts" ? "克隆音色、训练声音，用于语音播报。" : "识别本地录音，自动填写参考文本与训练文本。"}</p></div><span className="model-badge">{items.length} 个模型</span></div>
-              <div className="model-catalog-grid">{items.slice(currentPage * 4, (currentPage + 1) * 4).map(model => {
+          <div className="model-catalog-groups" role="region" aria-label="可下载模型">{models.length > 0 && (() => {
+            const pageCount = Math.max(1, Math.ceil(models.length / 4));
+            const currentPage = Math.min(pages[filter] ?? 0, pageCount - 1);
+            const category = filter === "asr" ? "语音转文本" : filter === "tts" ? "音色训练与声音生成" : "全部模型";
+            const description = filter === "asr" ? "识别本地录音，自动填写参考文本与训练文本。" : filter === "tts" ? "克隆音色、训练声音，用于语音播报。" : "按标签筛选模型，每页展示四个模型。";
+            return <section className="model-catalog-group" aria-label={category}>
+              <div className="model-category-heading"><div><h3>{category}</h3><p>{description}</p></div><span className="model-badge">{models.length} 个模型</span></div>
+              <div className="model-catalog-grid">{models.slice(currentPage * 4, (currentPage + 1) * 4).map(model => {
             const downloading = activeDownloads.some(download => download.model_id === model.id);
             return <article className="model-catalog-card" key={model.id}><div className="model-card-title"><h3>{model.name}</h3><span className={`model-badge ${model.compatibility === "ready" ? "is-ready" : "is-pending"}`}>{model.compatibility === "ready" ? "已接入" : "需适配"}</span></div><p className="model-language">{model.purpose === "asr" ? "语音识别" : "声音生成"} · {model.languages}</p><p className="model-description">{model.description}</p><p className="model-compatibility">{model.note}</p><p className="model-license">许可：{model.license}</p><div className="model-card-actions"><button className={model.compatibility === "ready" ? "primary-button" : ""} disabled={disabled || downloading} onClick={() => { void run("download", model.id); chooseTab("downloads"); }}>{downloading ? "下载进行中" : "下载权重"}</button><a href={model.homepage} target="_blank" rel="noreferrer">官方说明 ↗</a><a href={model.source_url} target="_blank" rel="noreferrer">权重来源 ↗</a></div></article>;
               })}</div>
-              <div className="model-pagination"><span>共 {items.length} 个模型 · 第 {currentPage + 1} / {pageCount} 页</span>{pageCount > 1 && <div><button disabled={currentPage === 0} onClick={() => setPages(previous => ({ ...previous, [kind]: currentPage - 1 }))}>上一页</button><button disabled={currentPage + 1 >= pageCount} onClick={() => setPages(previous => ({ ...previous, [kind]: currentPage + 1 }))}>下一页</button></div>}</div>
+              <div className="model-pagination"><span>共 {models.length} 个模型 · 第 {currentPage + 1} / {pageCount} 页</span>{pageCount > 1 && <div><button disabled={currentPage === 0} onClick={() => setPages(previous => ({ ...previous, [filter]: currentPage - 1 }))}>上一页</button><button disabled={currentPage + 1 >= pageCount} onClick={() => setPages(previous => ({ ...previous, [filter]: currentPage + 1 }))}>下一页</button></div>}</div>
             </section>;
-          })}</div>
+          })()}</div>
           {!models.length && <p className="model-empty">没有匹配的模型，试试其他名称或语言。</p>}
         </div>
         <div id={`${tabId}-downloads-panel`} role="tabpanel" aria-labelledby={`${tabId}-downloads`} hidden={tab !== "downloads"}>

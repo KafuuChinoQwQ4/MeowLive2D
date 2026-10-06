@@ -72,9 +72,10 @@ impl AgentSession {
         let outcome = self.scheduler.submit(event.clone(), now_ms)?;
         if outcome == SubmitOutcome::Accepted
             && now_ms
-                < event
-                    .occurred_at_ms
-                    .saturating_add(event.response_ttl_ms(self.scheduler.limits.event_ttl_ms))
+                < event.occurred_at_ms.saturating_add(event.response_ttl_ms(
+                    self.scheduler.limits.event_ttl_ms,
+                    self.scheduler.limits.room_enter_ttl_ms,
+                ))
         {
             self.interaction.observe(&event, now_ms);
         }
@@ -89,7 +90,10 @@ impl AgentSession {
         now_ms: u64,
         age_ms: u64,
     ) -> Result<SubmitOutcome, String> {
-        let lifetime = event.response_ttl_ms(self.scheduler.limits.event_ttl_ms);
+        let lifetime = event.response_ttl_ms(
+            self.scheduler.limits.event_ttl_ms,
+            self.scheduler.limits.room_enter_ttl_ms,
+        );
         let outcome = self
             .scheduler
             .submit_with_age(event.clone(), now_ms, age_ms)?;

@@ -206,7 +206,7 @@ test('main service stop waits for Windows disconnection while TTS control stays 
   assert.deepEqual(calls, [['windows-stop'], ['server', false], ['tts', false], ['windows', true]]);
 });
 
-test('automatic Windows startup waits for the main service and does not repeat on initialization', async t => {
+test('panel initialization does not automatically start the Windows execution client', async t => {
   const f = await fixture(t);
   let ready;
   const boot = new Promise(resolve => { ready = resolve; });
@@ -217,13 +217,13 @@ test('automatic Windows startup waits for the main service and does not repeat o
   assert.equal(f.children.length, 0);
   ready();
   await starting;
-  assert.equal(f.children.length, 1, 'TTS failure must not block Windows audio connection');
+  assert.equal(f.children.length, 0);
   await manager.initialize();
-  assert.equal(f.children.length, 1);
-  assert.equal((await f.manager.snapshot()).state, 'starting');
+  assert.equal(f.children.length, 0);
+  assert.equal((await f.manager.snapshot()).state, 'stopped');
 });
 
-test('automatic Windows startup reports missing prerequisites without hiding the other services', async t => {
+test('panel initialization leaves Windows execution stopped even when prerequisites are missing', async t => {
   const f = await fixture(t);
   f.manager.issue = '未找到 Windows 执行程序';
   const supervisor = { token: 'token', initialize: async () => {},
@@ -231,8 +231,7 @@ test('automatic Windows startup reports missing prerequisites without hiding the
   const manager = managedServices(supervisor, f.manager);
   await manager.initialize();
   const snapshot = await manager.snapshot();
-  assert.equal(snapshot.services[2].state, 'failed');
-  assert.match(snapshot.services[2].message, /未找到/);
+  assert.equal(snapshot.services[2].state, 'stopped');
   assert.equal(f.children.length, 0);
 });
 

@@ -1,6 +1,12 @@
 //! GPT-SoVITS HTTP 适配入口：参考素材路径解析、合成参数映射与音频解码。
 
-use std::time::Duration;
+use std::{
+    sync::{
+        Arc,
+        atomic::{AtomicU8, Ordering},
+    },
+    time::Duration,
+};
 
 use meowlive_application::ports::speech::{
     PcmAudio, SpeechSynthesizer, SynthesisError, SynthesisFuture, SynthesisRequest,
@@ -30,6 +36,7 @@ pub struct GptSovits {
     endpoint: Url,
     config: GptSovitsConfig,
     wsl_distribution: Option<String>,
+    sentence_batch_size: Arc<AtomicU8>,
 }
 
 impl GptSovits {
@@ -97,9 +104,14 @@ impl GptSovits {
             endpoint,
             config,
             wsl_distribution: None,
+            sentence_batch_size: Arc::new(AtomicU8::new(4)),
         })
     }
 
+    pub fn with_sentence_batch_size(mut self, value: Arc<AtomicU8>) -> Self {
+        self.sentence_batch_size = value;
+        self
+    }
     pub fn with_wsl_distribution(mut self, distribution: Option<String>) -> Self {
         self.wsl_distribution = distribution;
         self
@@ -129,7 +141,11 @@ impl GptSovits {
             text_split_method: "cut5",
             media_type: "wav",
             streaming_mode: false,
-            batch_size: 1,
+            // Bound sentence parallelism instead of decoding each segment serially.
+            batch_size: self
+                .sentence_batch_size
+                .load(Ordering::Relaxed)
+                .clamp(1, 16),
         };
         let request = self
             .client

@@ -162,6 +162,7 @@ fn main() -> ExitCode {
         AudioFormat::decl(),
         AudioChunk::decl(),
         SpeechRequest::decl(),
+        SpeechSettings::decl(),
         SpeechStatus::decl(),
         SpeechSnapshot::decl(),
         ServerStatus::decl(),

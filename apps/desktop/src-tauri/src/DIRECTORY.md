@@ -6,17 +6,19 @@
 
 ```text
 src/  # 桌面启动、依赖组装与命令转发源码
-├── environment/  # Windows WSL 语音环境探测、安装、模型及进程管理
-└── updates/  # GitHub 签名更新与分块增量下载
+├── environment/  # Windows WSL 与 Linux 本机语音环境检测和配置保护
+├── platform/  # 操作系统专属桌面状态、启动及 IPC
+└── updates/  # GitHub 签名更新与分块增量下载及跨平台安装
 ```
 
 可继续查看各子目录的索引：
 
-- [environment/](environment/DIRECTORY.md)：Windows WSL 语音环境探测、安装、模型及进程管理
-- [updates/](updates/DIRECTORY.md)：GitHub 签名更新与分块增量下载
+- [environment/](environment/DIRECTORY.md)：Windows WSL 与 Linux 本机语音环境检测和配置保护
+- [platform/](platform/DIRECTORY.md)：操作系统专属桌面状态、启动及 IPC
+- [updates/](updates/DIRECTORY.md)：GitHub 签名更新与分块增量下载及跨平台安装
 
 用途说明源：`scripts/directory-descriptions.json`。新增、删除、移动文件或调整职责时先同步说明源，再运行生成命令。
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 3117716e1937453762136c979957732ea96d166efe5b3b0af674d960e27c99a8 -->
+<!-- directory-tree-sha256: 67d05613f9501f21d1b0fb85b3ad4259c9ad071341ecfc54f2e2f259eb5da4d7 -->

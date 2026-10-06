@@ -12,4 +12,4 @@ server/  # Rust 主服务 HTTP / WebSocket 客户端入口
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: a57a56b73b31c6d99c84b9a925b5497c54b38994f20b94e9d90d3f14f7fa4cb0 -->
+<!-- directory-tree-sha256: 87ada2b262fe74e59e7cd8d708015bb2517f81b121bd44f46ca787d9bd732097 -->

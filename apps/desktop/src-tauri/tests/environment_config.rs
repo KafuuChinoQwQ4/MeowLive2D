@@ -11,6 +11,9 @@ fn ready() -> EnvironmentSnapshot {
         backend: Backend {
             ready: true,
             gpu: true,
+            engine_root: "/opt/meowlive-voice/engine".into(),
+            python_path: "/opt/meowlive-voice/venv/bin/python".into(),
+            model_root: "/opt/meowlive-voice/models/gpt-sovits-v2".into(),
             ..Default::default()
         },
         models: vec![Model {
@@ -65,4 +68,42 @@ fn cpu_backend_enables_inference_without_claiming_training_ready() {
     let value: toml_edit::DocumentMut = configure("", &state).unwrap().parse().unwrap();
     assert_eq!(value["training"]["enabled"].as_bool(), Some(false));
     assert_eq!(value["training"]["managed_inference"].as_bool(), Some(true));
+}
+
+#[test]
+fn applies_existing_paths_and_keeps_downloaded_asr_in_managed_storage() {
+    let mut state = ready();
+    state.backend.engine_root = "/custom/engine".into();
+    state.backend.python_path = "/custom/env/bin/python".into();
+    state.backend.model_root = "/custom/engine".into();
+    state.models.push(Model {
+        id: "whisper".into(),
+        name: "Whisper".into(),
+        capability: "transcription".into(),
+        downloaded: true,
+        selected: true,
+    });
+    let original = "[training]\npython = '/keep/python'\nengine_root = '/keep/engine'";
+    let value: toml_edit::DocumentMut = configure(original, &state).unwrap().parse().unwrap();
+    assert_eq!(
+        value["training"]["wsl_python"].as_str(),
+        Some("/custom/env/bin/python")
+    );
+    assert_eq!(
+        value["training"]["wsl_engine_root"].as_str(),
+        Some("/custom/engine")
+    );
+    assert_eq!(value["training"]["python"].as_str(), Some("/keep/python"));
+    assert_eq!(
+        value["training"]["engine_root"].as_str(),
+        Some("/keep/engine")
+    );
+    assert_eq!(
+        value["training"]["default_sovits_weights"].as_str(),
+        Some("/custom/engine/GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s2G2333k.pth")
+    );
+    assert_eq!(
+        value["training"]["asr_model"].as_str(),
+        Some("/opt/meowlive-voice/models/whisper")
+    );
 }

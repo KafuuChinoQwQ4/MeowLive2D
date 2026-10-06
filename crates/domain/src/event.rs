@@ -98,14 +98,14 @@ impl LiveEvent {
     }
 
     /// Source-relative lifetime; caller preserves elapsed source age when scheduling.
-    pub fn response_ttl_ms(&self, ordinary_ttl_ms: u64) -> u64 {
+    pub fn response_ttl_ms(&self, ordinary_ttl_ms: u64, room_enter_ttl_ms: u64) -> u64 {
         match self.kind {
             EventKind::SuperChat {
                 start_at_ms,
                 end_at_ms,
                 ..
             } => end_at_ms.saturating_sub(start_at_ms),
-            EventKind::RoomEnter => ordinary_ttl_ms.min(15_000),
+            EventKind::RoomEnter => room_enter_ttl_ms,
             _ => ordinary_ttl_ms,
         }
     }

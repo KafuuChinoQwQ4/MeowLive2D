@@ -165,15 +165,28 @@ pub fn require_idle(state: &DesktopState) -> Result<(), String> {
 
 #[cfg(windows)]
 pub fn restart_server(state: &DesktopState) -> Result<(), String> {
+    start_server(state, true)
+}
+
+#[cfg(windows)]
+pub fn start_server(state: &DesktopState, require_managed: bool) -> Result<(), String> {
     let directory = Path::new(&state.config_path)
         .parent()
         .ok_or("配置目录不可用")?;
+    let environment = state.environment.snapshot();
+    let distro = environment
+        .selected_distro
+        .filter(|name| {
+            environment
+                .distros
+                .iter()
+                .any(|item| item.name == *name && item.version == 2)
+        })
+        .ok_or("尚未检测到可用的 WSL2 发行版，请在环境与模型页完成检测")?;
     let mut server = state.server.lock().unwrap_or_else(|e| e.into_inner());
     server.shutdown();
-    *server = crate::managed_server::ServerHandle::start(
-        std::env::current_exe()
-            .map_err(|e| e.to_string())?
-            .with_file_name("meowlive-server.exe"),
+    *server = crate::managed_server::ServerHandle::start_wsl(
+        distro,
         directory.to_owned(),
         state.server_url.clone(),
     )?;
@@ -186,14 +199,15 @@ pub fn restart_server(state: &DesktopState) -> Result<(), String> {
                 .unwrap_or_else(|e| e.into_inner())
                 .status()
         },
-        std::time::Duration::from_secs(35),
+        std::time::Duration::from_secs(185),
+        require_managed,
     );
-    if result.is_err() {
+    if let Err(error) = &result {
         state
             .server
             .lock()
             .unwrap_or_else(|e| e.into_inner())
-            .shutdown();
+            .shutdown_failed(error.clone());
     }
     result
 }
@@ -202,6 +216,7 @@ pub fn restart_server(state: &DesktopState) -> Result<(), String> {
 fn wait_ready(
     mut status: impl FnMut() -> crate::managed_server::ServerStatus,
     timeout: std::time::Duration,
+    require_managed: bool,
 ) -> Result<(), String> {
     let deadline = std::time::Instant::now() + timeout;
     loop {
@@ -210,7 +225,7 @@ fn wait_ready(
             return Err(error);
         }
         if status.ready {
-            return if status.managed {
+            return if status.managed || !require_managed {
                 Ok(())
             } else {
                 Err("重启时主服务端口被外部服务占用，未应用配置".into())
@@ -284,6 +299,7 @@ pub fn apply_environment(state: &DesktopState) -> Result<(), String> {
             action: "start_inference".into(),
             distro: snapshot.selected_distro,
             model_id: None,
+            config_path: None,
         })
         .map_err(|error| format!("主服务配置已应用，但推理启动未受理：{error}"))?;
     Ok(())
@@ -333,6 +349,7 @@ mod tests {
             || {
                 calls += 1;
                 crate::managed_server::ServerStatus {
+                    stopped: false,
                     ready: false,
                     managed: true,
                     last_error: if calls == 1 {
@@ -344,20 +361,40 @@ mod tests {
                 }
             },
             std::time::Duration::from_secs(1),
+            true,
         );
         assert_eq!(result.unwrap_err(), "config rejected");
         assert!(calls >= 2);
         assert!(
             wait_ready(
                 || crate::managed_server::ServerStatus {
+                    stopped: false,
                     ready: true,
                     managed: false,
                     last_error: None,
                     log_path: String::new()
                 },
-                std::time::Duration::ZERO
+                std::time::Duration::ZERO,
+                true,
             )
             .is_err()
+        );
+    }
+    #[test]
+    fn explicit_start_can_reconnect_to_a_healthy_external_server() {
+        assert!(
+            wait_ready(
+                || crate::managed_server::ServerStatus {
+                    stopped: false,
+                    ready: true,
+                    managed: false,
+                    last_error: None,
+                    log_path: String::new(),
+                },
+                std::time::Duration::ZERO,
+                false
+            )
+            .is_ok()
         );
     }
     #[test]

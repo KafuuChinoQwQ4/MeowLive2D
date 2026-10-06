@@ -16,6 +16,7 @@ async fn sends_explicit_wav_request_and_decodes_audio() {
             assert_eq!(body["ref_audio_path"], "/engine/reference.wav");
             assert_eq!(body["media_type"], "wav");
             assert_eq!(body["streaming_mode"], false);
+            assert_eq!(body["batch_size"], 4);
             support::wav(&[100, -100], 1)
         }),
     ))
@@ -111,5 +112,37 @@ async fn rejects_silent_synthesis_instead_of_reporting_successful_playback() {
     let error = result.unwrap_err();
     assert!(error.message.contains("静音"));
     assert!(error.message.contains("参考文本"));
+    task.abort();
+}
+
+#[tokio::test]
+async fn sentence_batch_size_changes_apply_to_the_next_engine_request() {
+    use std::sync::{
+        Arc, Mutex,
+        atomic::{AtomicU8, Ordering},
+    };
+    let batches = Arc::new(Mutex::new(Vec::new()));
+    let seen = batches.clone();
+    let (url, task) = http::engine(Router::new().route(
+        "/tts",
+        post(move |Json(body): Json<Value>| {
+            let seen = seen.clone();
+            async move {
+                seen.lock()
+                    .unwrap()
+                    .push(body["batch_size"].as_u64().unwrap());
+                support::wav(&[100, -100], 1)
+            }
+        }),
+    ))
+    .await;
+    let setting = Arc::new(AtomicU8::new(1));
+    let adapter = GptSovits::new(http::config(url))
+        .unwrap()
+        .with_sentence_batch_size(setting.clone());
+    adapter.synthesize(http::request()).await.unwrap();
+    setting.store(16, Ordering::Relaxed);
+    adapter.synthesize(http::request()).await.unwrap();
+    assert_eq!(*batches.lock().unwrap(), [1, 16]);
     task.abort();
 }

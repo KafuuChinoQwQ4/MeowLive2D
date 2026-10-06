@@ -17,30 +17,48 @@ pub fn configure(original: &str, environment: &EnvironmentSnapshot) -> Result<St
         .as_deref()
         .filter(|s| !s.is_empty() && !s.chars().any(char::is_control))
         .ok_or("请选择可用 WSL2 发行版")?;
+    if distro == "Linux" {
+        return Err("本机 Linux 语音环境尚未接入训练执行配置，未写入 WSL 路径".into());
+    }
     let mut doc: DocumentMut = original
         .parse()
         .map_err(|_| "主服务配置无法解析，未进行修改")?;
     doc["training"]["enabled"] = value(environment.backend.gpu);
     doc["training"]["managed_inference"] = value(true);
     doc["training"]["wsl_distribution"] = value(distro);
+    let engine_root = environment.backend.engine_root.trim_end_matches('/');
+    let model_root = &environment.backend.model_root;
+    for path in [
+        engine_root,
+        environment.backend.python_path.as_str(),
+        model_root.as_str(),
+    ] {
+        if !path.starts_with('/') || path.chars().any(char::is_control) {
+            return Err("后端路径无效，请重新检测环境".into());
+        }
+    }
     for (key, path) in [
-        ("wsl_python", "/opt/meowlive-voice/venv/bin/python"),
-        ("wsl_engine_root", "/opt/meowlive-voice/engine"),
+        ("wsl_python", environment.backend.python_path.clone()),
+        ("wsl_engine_root", engine_root.to_string()),
         (
             "wsl_runner",
-            "/opt/meowlive-voice/scripts/train-gpt-sovits.py",
+            "/opt/meowlive-voice/scripts/train-gpt-sovits.py".to_string(),
         ),
         (
             "wsl_bridge",
-            "/opt/meowlive-voice/scripts/wsl-training-bridge.py",
+            "/opt/meowlive-voice/scripts/wsl-training-bridge.py".to_string(),
         ),
         (
             "default_gpt_weights",
-            "/opt/meowlive-voice/models/gpt-sovits-v2/GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt",
+            format!(
+                "{model_root}/GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt"
+            ),
         ),
         (
             "default_sovits_weights",
-            "/opt/meowlive-voice/models/gpt-sovits-v2/GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s2G2333k.pth",
+            format!(
+                "{model_root}/GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s2G2333k.pth"
+            ),
         ),
     ] {
         doc["training"][key] = value(path);
@@ -60,4 +78,27 @@ pub fn configure(original: &str, environment: &EnvironmentSnapshot) -> Result<St
     // ResourceSynthesizer maps the actual Windows storage path into the selected distribution.
     doc["resources"]["engine_directory"] = value("");
     Ok(doc.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn native_linux_selection_is_not_serialized_as_a_wsl_distro() {
+        let mut environment: EnvironmentSnapshot = serde_json::from_value(serde_json::json!({
+            "phase":"idle", "busy":false, "message":"", "logs":[], "distros":[],
+            "selectedDistro":"Linux", "backend":{"ready":true,"engineRoot":"/opt/engine",
+            "pythonPath":"/opt/python","modelRoot":"/opt/models","gpu":false,"detail":""},
+            "models":[{"id":"gpt-sovits-v2","name":"v2","capability":"training_inference",
+            "downloaded":true,"selected":true}], "progress":100,"inferenceRunning":false
+        }))
+        .unwrap();
+        environment.backend.ready = true;
+        assert!(
+            configure("", &environment)
+                .unwrap_err()
+                .contains("尚未接入")
+        );
+    }
 }

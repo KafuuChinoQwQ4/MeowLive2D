@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { createServerClient } from "../../services/server";
-import { deferred, jsonResponse, serverStatus, speech } from "../../test/server-fixtures";
+import { withSpeechSettings, deferred, jsonResponse, serverStatus, speech } from "../../test/server-fixtures";
 import { SpeechPanel } from "./SpeechPanel";
 
 describe("状态刷新生命周期", () => {
@@ -13,7 +13,7 @@ describe("状态刷新生命周期", () => {
       pendingSignal = init?.signal;
       return first.promise;
     });
-    const client = createServerClient({ fetcher, timeoutMs: 30_000 });
+    const client = createServerClient({ fetcher: withSpeechSettings(fetcher), timeoutMs: 30_000 });
     const view = render(<SpeechPanel client={client} pollIntervalMs={100} />);
     await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
     expect(fetcher).toHaveBeenCalledTimes(1);
@@ -32,7 +32,7 @@ describe("状态刷新生命周期", () => {
     const fetcher = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(jsonResponse(serverStatus({ speeches: [speech({ status: "playing" })] })))
       .mockImplementation(async () => jsonResponse(serverStatus({ speeches: [speech({ status: "completed" })] })));
-    render(<SpeechPanel client={createServerClient({ fetcher })} pollIntervalMs={100} />);
+    render(<SpeechPanel client={createServerClient({ fetcher: withSpeechSettings(fetcher) })} pollIntervalMs={100} />);
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
     expect(screen.getByText("播放中")).toBeVisible();
     await act(async () => { await vi.advanceTimersByTimeAsync(100); });
@@ -48,7 +48,7 @@ describe("状态刷新生命周期", () => {
       statusCalls += 1;
       return statusCalls === 1 ? jsonResponse(serverStatus({ speeches: [speech({ status: "playing" })] })) : late.promise;
     });
-    render(<SpeechPanel client={createServerClient({ fetcher })} pollIntervalMs={100} />);
+    render(<SpeechPanel client={createServerClient({ fetcher: withSpeechSettings(fetcher) })} pollIntervalMs={100} />);
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
     await act(async () => { await vi.advanceTimersByTimeAsync(100); });
     fireEvent.click(screen.getByRole("button", { name: "停止全部播报" }));
@@ -66,7 +66,7 @@ describe("状态刷新生命周期", () => {
     vi.useFakeTimers();
     const fetcher = vi.fn<typeof fetch>().mockRejectedValueOnce(new TypeError("Failed to fetch"))
       .mockImplementation(async () => jsonResponse(serverStatus()));
-    render(<SpeechPanel client={createServerClient({ fetcher })} pollIntervalMs={100} />);
+    render(<SpeechPanel client={createServerClient({ fetcher: withSpeechSettings(fetcher) })} pollIntervalMs={100} />);
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
     expect(screen.getByRole("alert")).toHaveTextContent("连接");
     await act(async () => { await vi.advanceTimersByTimeAsync(100); });

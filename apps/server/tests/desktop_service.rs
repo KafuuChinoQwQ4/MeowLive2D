@@ -19,6 +19,7 @@ fn start(root: &std::path::Path, url: &str) -> ServerHandle {
         env!("CARGO_BIN_EXE_meowlive-server").into(),
         root.into(),
         url.into(),
+        true,
     )
     .unwrap()
 }
@@ -101,7 +102,7 @@ fn occupied_port_is_visible_failure_and_never_launches_server() {
 #[test]
 fn missing_bundled_executable_is_reported_without_hanging() {
     let (root, url) = fixture();
-    let handle = ServerHandle::start(root.join("missing.exe"), root.clone(), url).unwrap();
+    let handle = ServerHandle::start(root.join("missing.exe"), root.clone(), url, true).unwrap();
     let deadline = Instant::now() + Duration::from_secs(5);
     while handle.status().last_error.is_none() {
         assert!(Instant::now() < deadline);

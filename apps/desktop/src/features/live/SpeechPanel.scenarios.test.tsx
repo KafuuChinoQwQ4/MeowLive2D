@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { createServerClient } from "../../services/server";
-import { deferred, jsonResponse, serverStatus, speech } from "../../test/server-fixtures";
+import { withSpeechSettings, deferred, jsonResponse, serverStatus, speech } from "../../test/server-fixtures";
 import { SpeechPanel } from "./SpeechPanel";
 
 describe("播报操作场景", () => {
@@ -9,7 +9,7 @@ describe("播报操作场景", () => {
     const fetcher = vi.fn<typeof fetch>().mockImplementation(async (url) => String(url).endsWith("/api/stop")
       ? jsonResponse(serverStatus({ generation: 1, speeches: [speech({ status: "cancelled" })] }))
       : jsonResponse(serverStatus({ speeches: [speech({ status: "playing" })] })));
-    render(<SpeechPanel client={createServerClient({ fetcher })} pollIntervalMs={10_000} />);
+    render(<SpeechPanel client={createServerClient({ fetcher: withSpeechSettings(fetcher) })} pollIntervalMs={10_000} />);
     await screen.findByText("播放中");
     fireEvent.click(screen.getByRole("button", { name: "停止全部播报" }));
     await screen.findByText("已取消");
@@ -20,7 +20,7 @@ describe("播报操作场景", () => {
     const fetcher = vi.fn<typeof fetch>().mockImplementation(async (url) => String(url).endsWith("/api/speech")
       ? jsonResponse({ code: "queue_full", message: "播报队列已满" }, 429)
       : jsonResponse(serverStatus()));
-    render(<SpeechPanel client={createServerClient({ fetcher })} />);
+    render(<SpeechPanel client={createServerClient({ fetcher: withSpeechSettings(fetcher) })} />);
     await screen.findByText("桌面执行端已连接");
     fireEvent.change(screen.getByLabelText("播报文本"), { target: { value: "你好" } });
     fireEvent.click(screen.getByRole("button", { name: "加入播报队列" }));
@@ -32,7 +32,7 @@ describe("播报操作场景", () => {
   it("请求未完成时阻止重复提交", async () => {
     const pending = deferred<Response>();
     const fetcher = vi.fn<typeof fetch>().mockImplementation(async (url) => String(url).endsWith("/api/speech") ? pending.promise : jsonResponse(serverStatus()));
-    render(<SpeechPanel client={createServerClient({ fetcher })} />);
+    render(<SpeechPanel client={createServerClient({ fetcher: withSpeechSettings(fetcher) })} />);
     await screen.findByText("桌面执行端已连接");
     fireEvent.change(screen.getByLabelText("播报文本"), { target: { value: "你好" } });
     fireEvent.click(screen.getByRole("button", { name: "加入播报队列" }));
@@ -44,7 +44,7 @@ describe("播报操作场景", () => {
 
   it("主服务不可达时呈现连接错误并禁止提交", async () => {
     const fetcher = vi.fn<typeof fetch>().mockRejectedValue(new TypeError("Failed to fetch"));
-    render(<SpeechPanel client={createServerClient({ fetcher })} />);
+    render(<SpeechPanel client={createServerClient({ fetcher: withSpeechSettings(fetcher) })} />);
     expect(await screen.findByRole("alert")).toHaveTextContent("连接");
     expect(screen.getByRole("button", { name: "加入播报队列" })).toBeDisabled();
   });

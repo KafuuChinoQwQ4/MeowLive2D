@@ -167,7 +167,13 @@ async fn admit(state: &AppState, cancel: &CancellationToken, session: &str, mut 
             _ => {}
         }
         let age = crate::viewers::event_age_ms(&event, crate::viewers::utc_ms());
-        if cancel.is_cancelled() || age >= event.response_ttl_ms(state.config.agent.event_ttl_ms) {
+        if cancel.is_cancelled()
+            || age
+                >= event.response_ttl_ms(
+                    state.config.agent.event_ttl_ms,
+                    state.config.agent.room_enter_ttl_ms,
+                )
+        {
             inner.live.snapshot.last_error =
                 Some("事件已持久保存，因取消或时效未进入回应队列。".into());
             return;

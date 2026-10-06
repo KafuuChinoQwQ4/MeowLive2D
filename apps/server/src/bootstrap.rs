@@ -87,6 +87,9 @@ pub async fn run(config_path: &Path) -> Result<(), String> {
         }
     };
     let live_source = build_live_source(&config.live)?;
+    let speech_settings = Arc::new(crate::speech_settings::SpeechSettingsStore::open(
+        config.resources.directory.join("speech-settings.json"),
+    )?);
     let speech = &config.speech;
     let wsl_distribution = config.training.wsl_config()?.map(|wsl| wsl.distribution);
     let synthesizer: Arc<dyn SpeechSynthesizer> = if speech.reference_audio.trim().is_empty() {
@@ -104,7 +107,8 @@ pub async fn run(config_path: &Path) -> Result<(), String> {
                 max_audio_bytes: speech.max_audio_bytes,
             })
             .map_err(|e| e.to_string())?
-            .with_wsl_distribution(wsl_distribution.clone()),
+            .with_wsl_distribution(wsl_distribution.clone())
+            .with_sentence_batch_size(speech_settings.batch_size.clone()),
         )
     };
     let synthesizer = Arc::new(
@@ -118,7 +122,8 @@ pub async fn run(config_path: &Path) -> Result<(), String> {
             },
         )
         .map_err(|e| e.to_string())?
-        .with_wsl_distribution(wsl_distribution.clone()),
+        .with_wsl_distribution(wsl_distribution.clone())
+        .with_sentence_batch_size(speech_settings.batch_size.clone()),
     );
     let model_synthesizer = if config.training.managed_inference {
         Some(Arc::new(
@@ -156,6 +161,7 @@ pub async fn run(config_path: &Path) -> Result<(), String> {
         listener.local_addr().map_err(|e| e.to_string())?
     );
     let mut state = AppState::with_services(config, synthesizer, model, live_source);
+    state.speech_settings = speech_settings;
     state.llm_runtime = Arc::new(crate::llm_runtime::RuntimeStore::open(
         state.config.resources.directory.join("agent-runtime"),
     )?);

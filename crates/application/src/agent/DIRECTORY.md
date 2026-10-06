@@ -12,4 +12,4 @@ agent/  # Agent 配置、输出校验、播放关联及状态类型
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: eaaca017d4f9023d68c516f377fb1c1d6db6f79b464f3208b2bd62d1b4c0d6a8 -->
+<!-- directory-tree-sha256: fce32eb9e6d77e69eeaaac219fe30048a39fad21e5c232ea7a356a5ed69ad567 -->

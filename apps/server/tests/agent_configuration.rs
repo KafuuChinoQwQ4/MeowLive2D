@@ -8,6 +8,7 @@ fn old_configuration_keeps_agent_paused_and_llm_unconfigured() {
     assert!(!config.agent.proactive_enabled);
     assert_eq!(config.agent.cooldown_ms, 30_000);
     assert_eq!(config.agent.limits().pending_capacity, 128);
+    assert_eq!(config.agent.limits().room_enter_ttl_ms, 60_000);
 }
 
 #[test]
@@ -20,6 +21,7 @@ topic = "游戏"
 proactive_enabled = true
 cooldown_ms = 12000
 pending_capacity = 64
+room_enter_ttl_ms = 90000
 [llm]
 base_url = "http://127.0.0.1:9000/v1"
 model = "test-model"
@@ -34,6 +36,7 @@ max_retries = 1
     .unwrap();
     assert_eq!(config.agent.settings().persona, "温柔的猫咪主播");
     assert_eq!(config.agent.limits().pending_capacity, 64);
+    assert_eq!(config.agent.limits().room_enter_ttl_ms, 90_000);
     assert!(config.llm.is_configured());
     assert!(!config.llm.json_mode);
 }
@@ -45,6 +48,8 @@ fn rejects_unknown_fields_and_invalid_resource_bounds_before_startup() {
         "[agent]\npersona=''",
         "[agent]\npending_capacity=0",
         "[agent]\nbatch_size=17",
+        "[agent]\nroom_enter_ttl_ms=999",
+        "[agent]\nroom_enter_ttl_ms=600001",
         "[llm]\napi_key='secret'",
         "[llm]\nmax_retries=20",
         "[llm]\ntimeout_seconds=0",

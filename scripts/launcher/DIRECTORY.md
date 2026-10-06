@@ -12,4 +12,4 @@ launcher/  # Linux 本机服务启动管理、配置读取、状态探测与控�
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: e3bf30c5810080ccf447be70402485bcea3c185d6303b3ad35ac9b481ea1fd3a -->
+<!-- directory-tree-sha256: cf76575be8b8428a5e325989cdc0350428120539a74cbee073e9e56a55bece6a -->

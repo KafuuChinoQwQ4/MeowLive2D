@@ -30,3 +30,5 @@ pub mod memory;
 mod relationships;
 
 mod viewer_merge;
+
+pub mod speech_settings;

@@ -1,5 +1,5 @@
 import { PROTOCOL_VERSION } from "@meowlive/contracts";
-import type { ErrorResponse, ServerStatus, SpeechSnapshot, SpeechStatus } from "@meowlive/contracts";
+import type { ErrorResponse, ServerStatus, SpeechSnapshot, SpeechStatus, SpeechSettings } from "@meowlive/contracts";
 
 export class ServerRequestError extends Error {
   constructor(readonly code: string, message: string, readonly status?: number) {
@@ -49,4 +49,12 @@ export function readServerError(value: unknown): ErrorResponse | null {
   return isRecord(value) && typeof value.code === "string" && typeof value.message === "string"
     ? { code: value.code, message: value.message }
     : null;
+}
+
+export function readSpeechSettings(value: unknown): SpeechSettings {
+  if (!isRecord(value) || !Number.isInteger(value.sentence_batch_size)
+    || typeof value.sentence_batch_size !== "number" || value.sentence_batch_size < 1 || value.sentence_batch_size > 16) {
+    throw new ServerRequestError("invalid_response", "主服务返回了无效的语音合成设置。");
+  }
+  return { sentence_batch_size: value.sentence_batch_size };
 }

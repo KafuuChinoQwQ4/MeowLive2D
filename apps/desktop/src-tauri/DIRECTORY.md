@@ -1,11 +1,11 @@
 # src-tauri 目录索引
 
-Windows Tauri 薄外壳、窗口配置与执行库生命周期
+Windows 与 Linux Tauri 桌面外壳、平台配置与执行库生命周期
 
 本文件由 `npm run tree:update` 生成，只列本目录的直接子目录；进入对应子目录查看下一层。每项右侧为大致用途。
 
 ```text
-src-tauri/  # Windows Tauri 薄外壳、窗口配置与执行库生命周期
+src-tauri/  # Windows 与 Linux Tauri 桌面外壳、平台配置与执行库生命周期
 ├── capabilities/  # 桌面窗口的 Tauri 能力声明
 ├── icons/  # 沿用控制台绿色 M 标志的图标源及窗口构建资源
 ├── src/  # 桌面启动、依赖组装与命令转发源码
@@ -23,4 +23,4 @@ src-tauri/  # Windows Tauri 薄外壳、窗口配置与执行库生命周期
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 88130839fd58711f30fb95ad6f0b14fbb16cf6b40532d111a0a957dbb9bd1ed5 -->
+<!-- directory-tree-sha256: 62e79be838b3d4d571a950e32d29c4ee45b563d9691313baa3548086d18702c1 -->

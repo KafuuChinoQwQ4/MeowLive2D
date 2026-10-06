@@ -61,21 +61,47 @@ pub(super) fn parse_decision_content(
     if content.is_empty() {
         return Err(invalid_response());
     }
-    let content = if let Some(fenced) = content
-        .strip_prefix("```json")
-        .or_else(|| content.strip_prefix("```"))
-    {
-        fenced
-            .strip_prefix("\r\n")
-            .or_else(|| fenced.strip_prefix('\n'))
-            .and_then(|body| body.strip_suffix("```"))
-            .map(str::trim)
-            .ok_or_else(invalid_response)?
-    } else {
-        content
-    };
-    let decision: Decision = serde_json::from_str(content).map_err(|_| invalid_response())?;
+    let decision = decode_decision(content).ok_or_else(invalid_response)?;
     validate_decision(decision, request)
+}
+
+// Some compatibility gateways put reasoning in content instead of a separate
+// reasoning field. Accept only a complete final JSON object on its own line;
+// never turn surrounding prose into speech or repair a malformed JSON decision.
+fn decode_decision(content: &str) -> Option<Decision> {
+    fn decode(content: &str) -> Option<Decision> {
+        let body = if let Some(fenced) = content
+            .strip_prefix("```json")
+            .or_else(|| content.strip_prefix("```"))
+        {
+            fenced
+                .strip_prefix("\r\n")
+                .or_else(|| fenced.strip_prefix('\n'))?
+                .strip_suffix("```")?
+                .trim()
+        } else {
+            content
+        };
+        serde_json::from_str(body).ok()
+    }
+    if let Some(decision) = decode(content) {
+        return Some(decision);
+    }
+    // A bare JSON object/array must stand on its own, even if it is invalid.
+    if content.starts_with(['{', '[']) {
+        return None;
+    }
+    let mut offset = 0;
+    for line in content.split_inclusive('\n') {
+        let candidate = content[offset..].trim();
+        if (line.trim_start().starts_with('{') || line.trim_start().starts_with("```"))
+            && let Some(decision) = decode(candidate)
+        {
+            return Some(decision);
+        }
+        offset += line.len();
+    }
+    None
 }
 
 fn validate_decision(

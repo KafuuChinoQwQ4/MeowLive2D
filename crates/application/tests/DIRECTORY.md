@@ -19,4 +19,4 @@ tests/  # 应用用例的队列与状态流转集成测试
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 54dc7605218a0ebb556d3aeb96ec4e7ec88e770d44887a1652d4b8a931635dbf -->
+<!-- directory-tree-sha256: 3e20938705fa96d7a210bb8933864c737a30803902ef640854d166aa9da97992 -->

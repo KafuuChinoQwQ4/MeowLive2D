@@ -173,3 +173,22 @@ def configure_inference_memory(work, mode):
         raise ValueError("上游中文推理入口已变化，无法应用内存模式；请检查引擎兼容性")
     if updated != original:
         path.write_text(updated)
+
+
+def configure_inference_audio(work):
+    """Avoid librosa's first-request JIT in the owned reference-audio reader."""
+    path = Path(work) / "GPT_SoVITS/TTS_infer_pack/TTS.py"
+    source = path.read_text()
+    marker = "            wav16k, sr = librosa.load(ref_wav_path, sr=16000)"
+    replacement = (
+        "            # MeowLive: reuse the already loaded Torch audio frontend.\n"
+        "            ref_wave, ref_sr = torchaudio.load(ref_wav_path)\n"
+        "            ref_wave = ref_wave.float().mean(dim=0)\n"
+        "            if ref_sr != 16000:\n"
+        "                ref_wave = torchaudio.functional.resample(ref_wave, ref_sr, 16000)\n"
+        "            wav16k, sr = ref_wave.numpy(), 16000"
+    )
+    if source.count(marker) == 1:
+        path.write_text(source.replace(marker, replacement))
+    elif replacement not in source:
+        raise ValueError("上游参考音频入口已变化，无法配置低延迟读取")

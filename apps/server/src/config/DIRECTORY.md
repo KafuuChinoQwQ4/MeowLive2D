@@ -12,4 +12,4 @@ config/  # 按 Agent 与模型能力拆分的配置校验
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: a378ec19d8130fe997f3fbc17c5b9b351406d6d86607266eaf45b25e51e876a8 -->
+<!-- directory-tree-sha256: f8957bb9a8392f8a46713c4e023e7f0374fcbac4a9d354d323b455e56e041996 -->

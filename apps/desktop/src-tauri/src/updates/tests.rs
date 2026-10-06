@@ -2,7 +2,7 @@ use super::*;
 use ed25519_dalek::{Signer, SigningKey};
 #[test]
 fn chunks_use_separate_release_with_legacy_fallback() {
-    let urls = chunk_urls("v0.1.2", "abc").unwrap();
+    let urls = chunk_urls("v0.1.2", None, "abc").unwrap();
     assert_eq!(
         urls,
         [
@@ -15,6 +15,28 @@ fn chunks_use_separate_release_with_legacy_fallback() {
         version("v0.1.2-windows-preview.20261004-updates-windows-x86_64"),
         None
     );
+}
+
+#[test]
+fn linux_updates_use_linux_chunk_release_and_package_bound_installers() {
+    let urls = chunk_urls("v0.1.2", Some("linux-appimage-x86_64"), "abc").unwrap();
+    assert!(urls[0].contains("v0.1.2-updates-linux-x86_64"));
+    assert!(installer_matches_target(
+        "MeowLive2D.AppImage",
+        Some("linux-appimage-x86_64")
+    ));
+    assert!(installer_matches_target(
+        "meowlive.deb",
+        Some("linux-deb-x86_64")
+    ));
+    assert!(!installer_matches_target(
+        "MeowLive2D_setup.exe",
+        Some("linux-appimage-x86_64")
+    ));
+    assert!(!installer_matches_target(
+        "MeowLive2D.AppImage",
+        Some("linux-deb-x86_64")
+    ));
 }
 #[test]
 fn dated_previews_and_stable_versions_are_ordered() {
@@ -32,6 +54,7 @@ fn signature_binds_manifest_and_release_tag() {
     let manifest = Manifest {
         schema: 1,
         tag: "v0.1.1".into(),
+        target: Some("windows-x64".into()),
         installer: "app-setup.exe".into(),
         size: bytes.len() as u64,
         sha256: digest(bytes),
@@ -133,6 +156,7 @@ fn installation_rechecks_file_even_after_download() {
     let manifest = Manifest {
         schema: 1,
         tag: "v0.1.1".into(),
+        target: Some("windows-x64".into()),
         installer: "app-setup.exe".into(),
         size: bytes.len() as u64,
         sha256: digest(bytes),
@@ -153,6 +177,7 @@ fn signed_manifest_accepts_content_defined_boundaries() {
     let manifest = Manifest {
         schema: 1,
         tag: "v0.1.2".into(),
+        target: Some("windows-x64".into()),
         installer: "app-setup.exe".into(),
         size: (first.len() + last.len()) as u64,
         sha256: digest(&[first.as_slice(), last].concat()),
@@ -173,4 +198,10 @@ fn signed_manifest_accepts_content_defined_boundaries() {
         signature: BASE64.encode(key.sign(&payload).to_bytes()),
     };
     assert!(verify_manifest(&envelope, &public, "v0.1.2").is_ok());
+}
+
+#[test]
+fn plain_release_tag_is_recognized_without_accepting_update_resource_tags() {
+    assert_eq!(version("0.1.3"), Some((0, 1, 3, u64::MAX)));
+    assert_eq!(version("0.1.3-updates-linux-x86_64"), None);
 }

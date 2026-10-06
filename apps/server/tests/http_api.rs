@@ -44,3 +44,48 @@ async fn stop_advances_generation_without_requiring_device() {
     assert_eq!(code, 200);
     assert_eq!(body["generation"], 1);
 }
+
+#[tokio::test]
+async fn speech_sentence_parallelism_is_bounded_and_shared_between_clients() {
+    let state = support::state();
+    let (code, body) = support::request(
+        router(state.clone()),
+        "GET",
+        "/api/speech/settings",
+        json!({}),
+    )
+    .await;
+    assert_eq!(code, 200);
+    assert_eq!(body["sentence_batch_size"], 4);
+    for value in [1, 16] {
+        let (code, body) = support::request(
+            router(state.clone()),
+            "POST",
+            "/api/speech/settings",
+            json!({"sentence_batch_size":value}),
+        )
+        .await;
+        assert_eq!(code, 200);
+        assert_eq!(body["sentence_batch_size"], value);
+        let (_, body) = support::request(
+            router(state.clone()),
+            "GET",
+            "/api/speech/settings",
+            json!({}),
+        )
+        .await;
+        assert_eq!(body["sentence_batch_size"], value);
+    }
+    for value in [json!(0), json!(17), json!(1.5), json!("4")] {
+        let (code, _) = support::request(
+            router(state.clone()),
+            "POST",
+            "/api/speech/settings",
+            json!({"sentence_batch_size":value}),
+        )
+        .await;
+        assert_eq!(code, 400);
+    }
+    let (_, body) = support::request(router(state), "GET", "/api/speech/settings", json!({})).await;
+    assert_eq!(body["sentence_batch_size"], 16);
+}

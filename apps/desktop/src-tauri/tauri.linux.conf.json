@@ -1,0 +1,33 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "icon": [
+      "icons/icon.png"
+    ],
+    "targets": [
+      "appimage",
+      "deb"
+    ],
+    "externalBin": [
+      "../../../target/linux-bundle/meowlive-server"
+    ],
+    "resources": {
+      "../dist/": "control-panel/"
+    }
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "MeowLive2D",
+        "width": 1280,
+        "height": 900,
+        "minWidth": 960,
+        "minHeight": 640,
+        "decorations": false,
+        "transparent": false,
+        "backgroundColor": "#F8D5E5"
+      }
+    ]
+  }
+}

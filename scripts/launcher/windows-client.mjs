@@ -51,7 +51,7 @@ export class WindowsClientSupervisor {
     this.probe = probe; this.spawnHelper = spawnHelper;
     this.translate = translate ?? (async path => (await execute('wslpath', ['-w', path], { timeout: 3000, maxBuffer: 8192 })).stdout.trim());
     this.startupMs = startupMs; this.stopMs = stopMs;
-    this.state = 'stopped'; this.message = '主服务就绪后会自动启动 Windows 执行端并连接。';
+    this.state = 'stopped'; this.message = '请先启动主服务，再手动打开 Windows 执行端。';
     this.queue = Promise.resolve(); this.closed = false; this.session = null;
     this.timer = setInterval(() => void this.refresh().catch(() => {}), pollMs); this.timer.unref();
   }
@@ -119,7 +119,7 @@ export class WindowsClientSupervisor {
     await this.refresh();
     const managed = Boolean(this.session);
     return { id: 'windows', state: this.state, managed, url: this.url,
-      message: this.issue ?? (!managed && !this.bridge?.ready && this.state === 'stopped' ? '正在等待主服务就绪，随后自动连接 Windows 执行端。' : this.message),
+      message: this.issue ?? (!managed && !this.bridge?.ready && this.state === 'stopped' ? '请先启动主服务，再手动打开 Windows 执行端。' : this.message),
       log_path: displayPath(this.session?.path ?? join(this.root, 'data/windows-launcher'), this.root),
       can_start: !this.closed && !this.issue && !managed && this.state !== 'external' && Boolean(this.bridge?.ready),
       can_stop: managed && this.state !== 'stopping' };
@@ -136,7 +136,7 @@ export class WindowsClientSupervisor {
       this.lastExit = null;
       if (this.issue) throw new Error(this.issue);
       const bridge = await this.probe(this.url);
-      if (!bridge.ready) throw new Error('请等待主服务自动启动并就绪。');
+      if (!bridge.ready) throw new Error('请先打开主服务开关并等待主服务就绪。');
       if (bridge.connected) { this.state = 'external'; this.message = '已有执行端连接，请使用当前执行端。'; return; }
       try { await enableWindowsVts(this.paths.config); }
       catch (error) {
@@ -203,22 +203,9 @@ export class WindowsClientSupervisor {
 }
 
 export function managedServices(supervisor, windows) {
-  let initializing;
   windows.events = supervisor.events;
   return { token: supervisor.token, events: supervisor.events,
-    async initialize() {
-      initializing ??= (async () => {
-        await supervisor.initialize();
-        if (supervisor.closed || windows.closed) return;
-        const server = (await supervisor.snapshot()).services.find(service => service.id === 'server');
-        if (!['running', 'external'].includes(server?.state)) return;
-        try { await windows.setEnabled(true); }
-        catch (error) {
-          if (!windows.closed && !windows.session) { windows.state = 'failed'; windows.message = error.message; windows.observe(); }
-        }
-      })();
-      await initializing;
-    },
+    async initialize() { return; },
     async snapshot() { const [snapshot, client] = await Promise.all([supervisor.snapshot(), windows.snapshot()]); return { ...snapshot, services: [...snapshot.services, client] }; },
     async setEnabled(id, enabled) {
       if (id === 'windows') return windows.setEnabled(enabled);

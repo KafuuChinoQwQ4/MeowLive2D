@@ -12,4 +12,4 @@ speech/  # GPT-SoVITS 等语音引擎的请求和音频格式适配
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: f72fd10a68a9cb05e747cd5ec0204b0a90e5f4c27cec92a67e81c7028a97eea2 -->
+<!-- directory-tree-sha256: be71a2720ca1bc61f5e5c7189552879c2e7229884f0e83096520466d365c7fc1 -->

@@ -28,7 +28,7 @@ it("links LLM setup to the configuration page and explains that launcher status 
   expect(screen.getByText(/保存后重启主服务/)).toBeVisible();
 });
 
-it("shows automatic startup progress until the server is ready", async () => {
+it("shows service startup progress after the user enables it", async () => {
   render(<LauncherPanel client={client(launcherSnapshot("starting"))}><h2>文字播报</h2></LauncherPanel>);
   expect(await screen.findByText("启动中")).toBeInTheDocument();
   expect(screen.queryByRole("heading", { name: "文字播报" })).not.toBeInTheDocument();

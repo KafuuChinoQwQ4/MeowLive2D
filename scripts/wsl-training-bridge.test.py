@@ -41,6 +41,24 @@ class BridgeTests(unittest.TestCase):
                 self.assertEqual(child.returncode, 0)
                 self.assertEqual(value, {'args': ['--audio', str(root/'audio.wav'), '--language', 'zh', '--engine-root', folder, '--model', '/opt/asr model'], 'stdin': '', 'model': '/opt/asr model'})
 
+    def test_training_reuses_complete_existing_model_directory(self):
+        import json
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            catalog = json.loads(SCRIPT.with_name('voice-backend-models.json').read_text())
+            markers = [name for name in catalog[0]['markers'] if name != 'G2PWModel.zip']
+            markers += ['GPT_SoVITS/text/G2PWModel/g2pW.onnx', 'GPT_SoVITS/text/G2PWModel/config.py']
+            for name in markers:
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b'data')
+            runner = root / 'runner.py'
+            runner.write_text('import os; print(os.environ["MEOWLIVE_GPT_SOVITS_MODELS"],flush=True)')
+            with subprocess.Popen([sys.executable, str(SCRIPT), '--runner', str(runner), '--engine-root', folder, '--job', str(root/'job.json')], stdin=subprocess.PIPE, stdout=subprocess.PIPE) as child:
+                self.assertEqual(child.stdout.readline().decode().strip(), folder)
+                child.wait(timeout=5)
+                self.assertEqual(child.returncode, 0)
+
     def test_stdin_disconnect_terminates_descendants(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

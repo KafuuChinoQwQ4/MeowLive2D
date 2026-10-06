@@ -21,4 +21,4 @@ tests/  # GPT-SoVITS、WAV 与 LLM 适配器的集成和输入输出边界测试
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 58719a50aae7ba862f7674cac5b5f95c7ac5710162dc8fb088f157d9dc4f2b1e -->
+<!-- directory-tree-sha256: 59d220f9422afc43bc9bcbb1c27d92e4d068e92a3c0ba9ced04f892cdecde394 -->

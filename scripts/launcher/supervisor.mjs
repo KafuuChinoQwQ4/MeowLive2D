@@ -34,20 +34,7 @@ export class Supervisor {
   }
 
   async initialize() {
-    this.initializing ??= (async () => {
-      try {
-        await this.setEnabled('server', true);
-        await this.waitUntilReady('server');
-      } catch (error) {
-        this.startFailed('server', error);
-        return;
-      }
-      if (this.records.has('tts')) {
-        try { await this.setEnabled('tts', true); }
-        catch (error) { this.startFailed('tts', error); }
-      }
-    })();
-    await this.initializing;
+    // Compatibility hook: opening the control panel never starts services.
     return this;
   }
 
@@ -191,7 +178,7 @@ export class Supervisor {
       const resumePrevious = Boolean(record.child);
       if (record.child) {
         if (record.state !== 'stopping') this.terminate(record, 'stopped', '旧模型已停止，正在切换语音模型…');
-        record.message = '正在暂停 TTS 并释放旧模型，切换完成后自动启动…';
+        record.message = '正在暂停 TTS 并释放旧模型，切换完成后保持关闭…';
         await record.completion;
       }
       if (this.closed) throw new Error('控制面板正在退出。');
@@ -205,7 +192,7 @@ export class Supervisor {
         throw error;
       }
       record.state = 'stopped'; record.occupied = false;
-      record.message = record.def.issue ?? '模型已选择，TTS 将自动启动。';
+      record.message = record.def.issue ?? '模型已选择，请在“启动与运行”中手动启动 TTS。';
       if (restart) {
         try { await this.changeEnabled(record, true); }
         catch (error) { this.startFailed('tts', error); throw error; }

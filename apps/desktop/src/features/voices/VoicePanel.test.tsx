@@ -25,6 +25,8 @@ function clients(snapshot = resourceSnapshot()) {
   const speechClient: ServerClient = {
     baseUrl: "http://localhost:19600",
     getStatus: vi.fn(),
+    getSpeechSettings: vi.fn(),
+    saveSpeechSettings: vi.fn(),
     stop: vi.fn(),
     submitSpeech: vi.fn().mockResolvedValue({
       id: "speech-preview", generation: 1, text: voice().reference_text,

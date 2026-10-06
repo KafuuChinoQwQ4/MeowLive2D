@@ -14,4 +14,10 @@ pub mod environment;
 
 pub mod environment_config;
 
+#[cfg(any(windows, target_os = "linux", test))]
+pub mod browser_panel;
+
 mod maintenance;
+
+#[cfg(target_os = "linux")]
+pub mod platform;

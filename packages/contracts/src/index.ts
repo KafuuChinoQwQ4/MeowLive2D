@@ -2,13 +2,13 @@
 
 export const PROTOCOL_VERSION = 3 as const;
 
-export type EnvironmentRequest = { action: string, distro: string | null, modelId: string | null, };
+export type EnvironmentRequest = { action: string, distro: string | null, modelId: string | null, configPath: string | null, };
 
 export type EnvironmentSnapshot = { phase: string, busy: boolean, message: string, logs: Array<string>, distros: Array<Distro>, selectedDistro: string | null, backend: Backend, models: Array<Model>, progress: number, inferenceRunning: boolean, };
 
 export type Distro = { name: string, version: number, };
 
-export type Backend = { ready: boolean, engineRoot: string, pythonPath: string, gpu: boolean, detail: string, };
+export type Backend = { ready: boolean, engineRoot: string, pythonPath: string, modelRoot: string, gpu: boolean, detail: string, };
 
 export type Model = { id: string, name: string, capability: string, downloaded: boolean, selected: boolean, };
 
@@ -339,6 +339,8 @@ export type AudioFormat = { sample_rate: number, channels: number, };
 export type AudioChunk = { utterance_id: string, generation: number, sequence: number, samples: Array<number>, end: boolean, };
 
 export type SpeechRequest = { text: string, voice_id: string, };
+
+export type SpeechSettings = { sentence_batch_size: number, };
 
 export type SpeechStatus = "queued" | "synthesizing" | "ready" | "playing" | "completed" | "cancelled" | "failed" | "unknown";
 

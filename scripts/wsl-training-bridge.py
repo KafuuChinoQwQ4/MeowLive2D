@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run a Windows-owned training job in WSL; stdin lifetime owns the Linux process group."""
 import argparse
+import importlib.util
 import os
 from pathlib import Path
 import signal
@@ -75,7 +76,12 @@ def main():
     for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
         signal.signal(sig, lambda *_: stop.set())
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1', PYTHONUNBUFFERED='1', MEOWLIVE_GPT_SOVITS_ROOT=linux_path(args.engine_root))
-    env.setdefault('MEOWLIVE_GPT_SOVITS_MODELS', '/opt/meowlive-voice/models/gpt-sovits-v2')
+    spec = importlib.util.spec_from_file_location('voice_backend', Path(__file__).with_name('voice-backend.py'))
+    backend = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(backend)
+    engine = Path(env['MEOWLIVE_GPT_SOVITS_ROOT'])
+    models = backend.model_directory(backend.model('gpt-sovits-v2'), engine, engine == backend.ROOT / 'engine')
+    env.setdefault('MEOWLIVE_GPT_SOVITS_MODELS', str(models))
     if args.model:
         env['MEOWLIVE_ASR_MODEL'] = linux_path(args.model)
     command = [sys.executable, '-s', args.runner]

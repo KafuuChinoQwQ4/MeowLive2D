@@ -58,6 +58,18 @@ label > :is(input:not(:is([type="checkbox"], [type="radio"], [type="range"])), t
 .live-workspace { display: grid; gap: 1rem; margin-bottom: 1.4rem; }
 .connection-card, .panel { background: white; border: 1px solid #e0e6eb; border-radius: 1rem; }
 .connection-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.2rem 1.5rem; }
+.app-update-card { align-items: stretch; display: grid; grid-template-columns: minmax(180px, .8fr) minmax(180px, 1fr) minmax(280px, 1.6fr); gap: 1.5rem; padding: 1.35rem 1.6rem; }
+.app-update-intro, .app-update-state, .app-update-actions { min-width: 0; }
+.app-update-intro h2 { margin: .15rem 0 .35rem; }
+.app-update-intro p:last-child, .app-update-state p, .app-update-actions > p { margin: .4rem 0 0; color: #74818b; font-size: .8rem; line-height: 1.55; }
+.app-update-intro .eyebrow, .app-update-label { color: #a26486; font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.app-update-state { display: flex; flex-direction: column; justify-content: center; padding-left: 1.5rem; border-left: 1px solid #f0e3e9; }
+.app-update-state strong { margin-top: .35rem; overflow-wrap: anywhere; font-size: .95rem; }
+.app-update-available { color: #a34e78; font-size: .78rem; }
+.app-update-actions { display: flex; flex-direction: column; justify-content: center; }
+.app-update-progress { margin-bottom: .5rem; }
+.app-update-progress progress { width: 100%; height: .45rem; accent-color: #bb6d99; }
+.app-update-progress p { margin: .25rem 0 0; color: #74818b; font-size: .75rem; }
 .connection-card h2 { font-size: .9rem; }
 .server-address { margin-top: .35rem; color: #74818b; font-size: .8rem; overflow-wrap: anywhere; }
 .connection-indicators { display: flex; flex-wrap: wrap; gap: .6rem; }
@@ -117,6 +129,8 @@ p.field-hint, .field-error { margin-top: .45rem; }
 .task-skipped, .task-expired, .task-cancelled { color: #766b5d; background: #f6f1ea; }
 .task-deciding, .task-pending { color: #76598e; background: #f6effa; }
 @media (max-width: 760px) {
+  .app-update-card { grid-template-columns: 1fr; gap: .8rem; }
+  .app-update-state { padding: .8rem 0 0; border-top: 1px solid #f0e3e9; border-left: 0; }
   main { padding: 1.5rem 1rem 3rem; }
   .workspace-columns { grid-template-columns: 1fr; }
   .connection-card { align-items: flex-start; flex-direction: column; }
@@ -171,3 +185,11 @@ p.field-hint, .field-error { margin-top: .45rem; }
 .launcher-waiting { padding: 2rem; text-align: center; color: #687884; font-size: .9rem; }
 @media (max-width: 760px) { .launcher-services, .launcher-steps { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .service-switch, .service-switch span { transition: none; } }
+
+.app-update-actions .button-row { display: flex; align-items: center; flex-wrap: wrap; gap: .65rem 1rem; }
+.app-update-actions .button-row :is(button, a) { white-space: nowrap; }
+.app-update-actions details, .app-update-available { overflow-wrap: anywhere; }
+@media (min-width: 761px) and (max-width: 1100px) {
+  .app-update-card { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .app-update-actions { grid-column: 1 / -1; padding-top: .8rem; border-top: 1px solid #f0e3e9; }
+}

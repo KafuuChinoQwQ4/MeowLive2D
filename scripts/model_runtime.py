@@ -11,6 +11,11 @@ import shutil
 import sys
 import threading
 import traceback
+import tempfile
+import time
+import wave
+import math
+from array import array
 
 
 class RuntimeUnavailable(RuntimeError):
@@ -140,12 +145,41 @@ class ModelLeaseMiddleware:
         await asyncio.shield(task)
 
 
+def warmup_pipeline(pipeline):
+    """Run a discarded short sample before advertising the model as loaded."""
+    if not callable(getattr(pipeline, "run", None)):
+        return
+    started = time.perf_counter()
+    print("语音模型预热中：初始化音频、文本处理与 GPU 推理；不会播放测试音频。", flush=True)
+    with tempfile.TemporaryDirectory(prefix="meowlive-tts-warmup-") as temporary:
+        reference = Path(temporary) / "reference.wav"
+        samples = array("h", (int(2000 * math.sin(2 * math.pi * 220 * i / 32000))
+                              for i in range(32000 * 4)))
+        if sys.byteorder != "little":
+            samples.byteswap()
+        with wave.open(str(reference), "wb") as output:
+            output.setnchannels(1)
+            output.setsampwidth(2)
+            output.setframerate(32000)
+            output.writeframes(samples.tobytes())
+        for _ in pipeline.run({"text": "你好。", "text_lang": "zh",
+                               "ref_audio_path": str(reference), "prompt_text": "你好。",
+                               "prompt_lang": "zh", "text_split_method": "cut5",
+                               "streaming_mode": False, "batch_size": 1}):
+            pass
+    print(f"语音模型预热完成：{time.perf_counter() - started:.2f} 秒，直播合成可开始。", flush=True)
+
+
 def install_model_runtime(app, pipeline_type, config):
     from starlette.responses import JSONResponse
     # TTS mutates its config when switching weights and stores device tensors in
     # it. Keep the startup configuration isolated across enable/disable cycles.
     startup_config = copy.deepcopy(config)
-    runtime = ModelRuntime(lambda: pipeline_type(copy.deepcopy(startup_config)), release_model_memory)
+    def create_pipeline():
+        pipeline = pipeline_type(copy.deepcopy(startup_config))
+        warmup_pipeline(pipeline)
+        return pipeline
+    runtime = ModelRuntime(create_pipeline, release_model_memory)
 
     if os.environ.get("MEOWLIVE_AUTO_ENABLE_MODELS") == "1":
         previous_lifespan = app.router.lifespan_context

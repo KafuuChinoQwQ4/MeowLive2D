@@ -33,4 +33,4 @@ Tauri 只负责窗口、配置、主服务生命周期和 `desktop-runtime::host
 
 同一“环境与模型”页面提供 GitHub Releases 更新检查、版本说明、下载和“安装并重启”。签名验证通过后才执行安装；环境任务、训练和直播期间不能安装更新。更新保留用户数据和模型。首次没有缓存时完整下载，后续按内容分块复用，页面显示真实下载量与复用量；无法提供分块时回退完整安装包。发布者须配置签名密钥，步骤与旧版本迁移见 [更新发布说明](../../../releases/UPDATING.md)。
 
-WSL 环境选择记录保存在 `desktop-environment.json`，语音后端独立安装在所选发行版的 `/opt/meowlive-voice`。切换模型前先停止语音引擎，选择后点击“连接训练后端”应用配置；现有配置会备份为 `server/server.toml.before-voice`。App 不删除用户已有 WSL 发行版。环境操作进行中关闭窗口会被阻止，应先取消或等待完成。
+WSL 环境选择记录保存在 `desktop-environment.json`，语音后端独立安装在所选发行版的 `/opt/meowlive-voice`。切换模型前先停止语音引擎，选择后点击“连接训练后端”应用配置；现有配置会备份为 `server/server.toml.before-voice`。已有 GPT-SoVITS 环境可直接复用：重新检测会读取 WSL 用户目录下 `code/MeowLive2D/config/server.local.toml` 或 `MeowLive2D/config/server.local.toml`，识别其中的 `[training] python` 和 `engine_root`；其他位置可展开“使用已有训练环境”填写配置文件的 WSL 绝对路径。检测成功后选用 GPT-SoVITS v2 并连接后端。已安装完整的模型会复用，缺失模型下载到专用后端目录，不覆盖原引擎；运行语音引擎期间请先停止再更换环境。App 不删除用户已有 WSL 发行版。环境操作进行中关闭窗口会被阻止，应先取消或等待完成。

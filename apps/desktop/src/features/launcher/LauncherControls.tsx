@@ -1,4 +1,4 @@
-import type { LauncherServiceId, LauncherServiceState } from "@meowlive/contracts";
+import type { LauncherService, LauncherServiceId, LauncherServiceState } from "@meowlive/contracts";
 import type { useLauncher } from "./useLauncher";
 
 const labels: Record<LauncherServiceState, string> = {
@@ -21,22 +21,7 @@ export function LauncherControls({ controller }: { controller: ReturnType<typeof
   return <section className="panel launcher-panel" aria-labelledby="launcher-heading">
       <div className="section-title"><div><h2 id="launcher-heading">启动与运行</h2></div>
         <button onClick={refresh} disabled={busy}>刷新服务状态</button></div>
-      <div className="launcher-services">
-        {services.map(({ id, title, description }) => {
-          const service = snapshot?.services.find(value => value.id === id);
-          const on = !!service && ["starting", "running", "stopping", "external"].includes(service.state);
-          return <article className="launcher-service" key={id}>
-            <div className="launcher-service-heading"><div><h3>{title}</h3><p>{description}</p></div>
-              <button type="button" role="switch" aria-label={title} aria-checked={on} className="service-switch"
-                disabled={busy || stale || !service || service.state === "external" || (on ? !service.can_stop : !service.can_start)}
-                onClick={() => void setEnabled(id, !on)}><span /></button></div>
-            <div className="launcher-state-line"><span className={`task-status task-${service?.state ?? "unknown"}`}>{stale || !service ? "状态待确认" : launcherStateLabel(id, service.state)}</span></div>
-            <p className="launcher-message" role={service?.state === "failed" ? "alert" : undefined}>{stale ? "正在等待启动管理响应…" : service?.message}</p>
-            {id === "server" && service?.state === "failed" && <p className="field-hint">请查看日志、处理错误后重新打开应用或启动器。</p>}
-            {service?.state === "external" && <p className="field-hint">{id === "windows" ? "此连接由其他设备管理，请先在原设备退出。" : "正在使用其他终端启动的服务，请回原终端管理。"}</p>}
-          </article>;
-        })}
-      </div>
+      <LauncherServiceCards items={snapshot?.services} busy={busy} stale={stale} setEnabled={setEnabled} />
       {error && <div className="error-banner" role="alert">{error} 请保持 Linux 中运行 <code>./launchers/start.sh</code> 的终端打开。</div>}
       {snapshot && <>
         <p className={snapshot.setup.llm_configured ? "field-hint" : "availability-note"}>{snapshot.setup.llm_message} <a href="#llm">前往 LLM 接入</a> · 保存后重启主服务生效。</p>
@@ -47,4 +32,29 @@ export function LauncherControls({ controller }: { controller: ReturnType<typeof
         </details>
       </>}
     </section>;
+}
+
+/** Shared service cards for the source launcher and the Windows native host. */
+export function LauncherServiceCards({ items, busy, stale, setEnabled, windowsStatusMode = "connection", visibleServices = ["server", "tts", "windows"] }: {
+  items?: LauncherService[]; busy: boolean; stale: boolean; windowsStatusMode?: "connection" | "runtime"; visibleServices?: LauncherServiceId[];
+  setEnabled: (id: LauncherServiceId, enabled: boolean) => Promise<void>;
+}) {
+  return (
+      <div className="launcher-services">
+        {services.filter(({ id }) => visibleServices.includes(id)).map(({ id, title, description }) => {
+          const service = items?.find(value => value.id === id);
+          const on = !!service && ["starting", "running", "stopping", "external"].includes(service.state);
+          return <article className="launcher-service" key={id}>
+            <div className="launcher-service-heading"><div><h3>{title}</h3><p>{description}</p></div>
+              <button type="button" role="switch" aria-label={title} aria-checked={on} className="service-switch"
+                disabled={busy || stale || !service || service.state === "external" || (on ? !service.can_stop : !service.can_start)}
+                onClick={() => void setEnabled(id, !on)}><span /></button></div>
+            <div className="launcher-state-line"><span className={`task-status task-${service?.state ?? "unknown"}`}>{stale || !service ? "状态待确认" : (id === "windows" && windowsStatusMode === "runtime" ? labels[service.state] : launcherStateLabel(id, service.state))}</span></div>
+            <p className="launcher-message" role={service?.state === "failed" ? "alert" : undefined}>{stale ? "正在等待启动管理响应…" : service?.message}</p>
+            {id === "server" && service?.state === "failed" && <p className="field-hint">请查看日志，处理错误后再次打开主服务开关。</p>}
+            {service?.state === "external" && <p className="field-hint">{id === "windows" ? "此连接由其他设备管理，请先在原设备退出。" : "正在使用其他终端启动的服务，请回原终端管理。"}</p>}
+          </article>;
+        })}
+      </div>
+  );
 }

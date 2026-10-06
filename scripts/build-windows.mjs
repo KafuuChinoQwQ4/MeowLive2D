@@ -22,5 +22,5 @@ await mkdir(binaries, { recursive: true });
 await copyFile(join(root, `target/${target}/release/meowlive-server.exe`), join(binaries, `meowlive-server-${target}.exe`));
 // Invoke the local CLI through Node so Windows needs no shell or global Tauri install.
 run(process.execPath, [join(root, 'node_modules/@tauri-apps/cli/tauri.js'), 'build',
-  '--config', join(root, 'apps/desktop/src-tauri/tauri.conf.json'),
+  '--config', join(root, 'apps/desktop/src-tauri/tauri.windows.conf.json'),
   ...(cross ? ['--runner', 'cargo-xwin'] : []), '--target', target, '--ci', '--', '--locked']);

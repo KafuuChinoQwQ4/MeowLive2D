@@ -12,4 +12,4 @@ config/  # 独立数据库部署配置与 Linux、Windows 配置示例
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: b5245aca36170867b0f61e2cc9af396371d53069b0b10f6de56fdcbf41e8f947 -->
+<!-- directory-tree-sha256: 0730d22bc365b873f5de5f3350f65436aec797302d9ad81651abc666802628af -->

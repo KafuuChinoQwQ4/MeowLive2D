@@ -3,14 +3,16 @@
  * 前端各 feature 通过此处访问后端；只消费 @meowlive/contracts 的协议类型。
  * 本模块不读取 LLM 或 TTS 的服务凭据，也不直连模型服务。
  */
-import type { ServerStatus, SpeechRequest, SpeechSnapshot } from "@meowlive/contracts";
-import { readServerError, readServerStatus, readSpeech, ServerRequestError } from "./responses";
+import type { ServerStatus, SpeechRequest, SpeechSnapshot, SpeechSettings } from "@meowlive/contracts";
+import { readServerError, readServerStatus, readSpeech, readSpeechSettings, ServerRequestError } from "./responses";
 import { createAuthenticatedFetch } from "./auth";
 
 export { ServerRequestError } from "./responses";
 
 export interface ServerClient {
   readonly baseUrl: string;
+  getSpeechSettings(signal?: AbortSignal): Promise<SpeechSettings>;
+  saveSpeechSettings(settings: SpeechSettings, signal?: AbortSignal): Promise<SpeechSettings>;
   getStatus(signal?: AbortSignal): Promise<ServerStatus>;
   submitSpeech(request: SpeechRequest, signal?: AbortSignal): Promise<SpeechSnapshot>;
   stop(signal?: AbortSignal): Promise<ServerStatus>;
@@ -21,7 +23,7 @@ export function createServerClient(options: { baseUrl?: string; fetcher?: typeof
   const fetcher = options.fetcher ?? createAuthenticatedFetch(baseUrl);
   const timeoutMs = options.timeoutMs ?? 8_000;
 
-  async function request<T>(path: string, method: "GET" | "POST", read: (value: unknown) => T, signal?: AbortSignal, body?: SpeechRequest): Promise<T> {
+  async function request<T>(path: string, method: "GET" | "POST", read: (value: unknown) => T, signal?: AbortSignal, body?: SpeechRequest | SpeechSettings): Promise<T> {
     signal?.throwIfAborted();
     const controller = new AbortController();
     const cancel = () => controller.abort();
@@ -58,6 +60,8 @@ export function createServerClient(options: { baseUrl?: string; fetcher?: typeof
 
   return {
     baseUrl,
+    getSpeechSettings: (signal) => request("/api/speech/settings", "GET", readSpeechSettings, signal),
+    saveSpeechSettings: (body, signal) => request("/api/speech/settings", "POST", readSpeechSettings, signal, body),
     getStatus: (signal) => request("/api/status", "GET", readServerStatus, signal),
     submitSpeech: (body, signal) => request("/api/speech", "POST", readSpeech, signal, body),
     stop: (signal) => request("/api/stop", "POST", readServerStatus, signal),

@@ -21,6 +21,7 @@ pub struct AppState {
     pub llm_runtime: Arc<crate::llm_runtime::RuntimeStore>,
     pub agent_observability: Arc<crate::agent_observability::AgentTraceStore>,
     pub logs: Arc<crate::logs::RuntimeLogStore>,
+    pub speech_settings: Arc<crate::speech_settings::SpeechSettingsStore>,
     pub llm_settings: Arc<crate::llm_settings::LlmSettingsStore>,
     pub live_settings: Arc<crate::live_settings::LiveSettingsStore>,
     pub agent_settings: Arc<crate::agent_settings::AgentSettingsStore>,
@@ -117,6 +118,7 @@ impl AppState {
             .expect("validated Agent configuration");
         let live = crate::live::LiveState::new(&config.live, live_source);
         Self {
+            speech_settings: Arc::new(crate::speech_settings::SpeechSettingsStore::default()),
             live_settings: Arc::new(crate::live_settings::LiveSettingsStore::default()),
             agent_settings: Arc::new(crate::agent_settings::AgentSettingsStore::default()),
             llm_runtime: Arc::new(crate::llm_runtime::RuntimeStore::memory()),
