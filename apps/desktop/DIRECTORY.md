@@ -19,4 +19,4 @@ desktop/  # React 控制面板与 Windows、Linux 桌面外壳
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: b1086231b722210a7ba0277da134da59a0d8e5d65ed9a6aff6be0f6b73c2fc69 -->
+<!-- directory-tree-sha256: 1533191484a9990ab5adb9bce61e986957933e04214ca2abd747e0a6b3d0eb55 -->

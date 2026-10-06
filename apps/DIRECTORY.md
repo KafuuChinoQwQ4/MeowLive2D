@@ -19,4 +19,4 @@ apps/  # 可执行应用入口与依赖组装
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: a8d6d15189de5f77676b93b859f763d1b319e3f89c0aa4a581b347db59464f84 -->
+<!-- directory-tree-sha256: 75fecb7e14c9964e37cbae4efa238f69b64fe8e8f4370a1ab4d8b34364ed6b70 -->

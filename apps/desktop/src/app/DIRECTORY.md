@@ -21,4 +21,4 @@ app/  # React 根页面组装与全局样式
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: c87b05c73d0fd84bd64bd74598724e0cb14edb2362ce4b1ee9c1206402f37417 -->
+<!-- directory-tree-sha256: 222249461c971a9e0fc9b792125ac38240219204d5bc1e309c14b7b9d6d99677 -->

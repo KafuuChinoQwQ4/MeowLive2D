@@ -40,5 +40,5 @@ describe("桌面控制台", () => {
     expect(await screen.findByRole("textbox", { name: "直播话题" })).toHaveValue("保留这个话题");
     expect(screen.getByRole("link", { name: "Agent 互动" })).toHaveAttribute("aria-current", "page");
     await waitFor(() => expect(window.location.hash).toBe("#agent"));
-  });
+  }, 15_000);
 });

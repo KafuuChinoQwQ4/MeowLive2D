@@ -865,12 +865,11 @@ for p in paths:
             self.save()
         }
     }
+    #[cfg(test)]
+    mod tests {
+        include!("tests.rs");
+    }
 }
 
 #[cfg(not(target_os = "linux"))]
 pub use windows::EnvironmentManager;
-#[cfg(not(target_os = "linux"))]
-use windows::*;
-#[cfg(all(test, not(target_os = "linux")))]
-#[path = "tests.rs"]
-mod tests;

@@ -25,4 +25,4 @@ src/  # 按应用组装、业务功能、外部服务和公共能力组织的前
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 97496c80a2937a7d91c796eabd8f19d9c5fad4ac5aaa59e46418533575969fbc -->
+<!-- directory-tree-sha256: 2f6de5e39e859ff475db2fed066f4618661132606d3e2588c5e4d181e7e9b0a2 -->
