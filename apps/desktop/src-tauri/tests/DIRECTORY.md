@@ -12,4 +12,4 @@ tests/  # 可跨平台验证的桌面配置与启动测试
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 72a8ff3d216d4ef7ee4080ed5a53369917c13fb0a021a6db61b4eaf6cf2e232f -->
+<!-- directory-tree-sha256: 1a391dd6bdb75d3f92999d5dfe185345faddbdf6e8a748cc344b67c00e18b309 -->

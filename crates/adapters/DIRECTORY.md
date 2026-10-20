@@ -21,4 +21,4 @@ adapters/  # 外部服务和存储实现，适配 application 定义的能力
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: f34e7a67ffed82f67380ad6941312c1bf3580ffb2f0d4c3c53ec77219a825d79 -->
+<!-- directory-tree-sha256: f10a3fb967d29350d9573dd1c2dd86c4fa6c1e6866d4d5db0e9ab9965f71ee2c -->

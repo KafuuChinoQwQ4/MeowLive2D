@@ -38,7 +38,11 @@ fn snapshot(training: &TrainingManager) -> TrainingSnapshot {
             voice_id: job.parameters.voice_id.clone(),
             name: job.parameters.name.clone(),
             engine: "gpt-sovits".into(),
-            model_version: "v2".into(),
+            model_version: job
+                .artifacts
+                .as_ref()
+                .map(|pair| pair.model_version.clone())
+                .unwrap_or_default(),
             auditioned: job.auditioned,
             saved: job.saved,
             active: state.active_versions.get(&job.parameters.voice_id) == Some(&job.id),
@@ -121,6 +125,7 @@ pub async fn create(
     ensure_training_released(&state, performance.gpu_index).await?;
     *state.measurement.lock().await = None;
     let parameters = TrainingParameters {
+        model_version: metadata.model_version,
         name: metadata.name,
         voice_id: metadata.voice_id,
         sovits_epochs: metadata.sovits_epochs,

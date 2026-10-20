@@ -12,4 +12,4 @@ desktop-environment/  # App 内 WSL 环境安装和声音模型选择界面
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 7864464485c746aa57c9a32b77b8c357be08eeecc80b7aa363d54ddb03ec74af -->
+<!-- directory-tree-sha256: a72800ab73a9193766ddcafa79c50af9ab1ba22735f996cd127f997270f10cb2 -->

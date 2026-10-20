@@ -5,6 +5,7 @@ import { DesktopLauncherControls } from "../features/launcher/DesktopLauncherCon
 import { listenForExitBlocked } from "../services/desktop/lifecycle";
 import { AppUpdatePanel } from "../features/updates/AppUpdatePanel";
 import { DesktopEnvironmentPanel } from "../features/desktop-environment/DesktopEnvironmentPanel";
+import { selectedTrainingModelVersion } from "../services/desktop/environment";
 import { SpeechPanel } from "../features/live";
 import { AgentPanel } from "../features/agent";
 import { AgentObservabilityPanel } from "../features/agent-observability";
@@ -84,13 +85,14 @@ function AppContent() {
     return () => { disposed = true; unlisten?.(); };
   }, [feedback]);
   const baseUrl = desktop?.server_url;
+  const desktopConnected = !!desktop;
   const clients = useMemo(() => ({
     speech: createServerClient({ baseUrl }), agent: createAgentClient({ baseUrl }),
     live: createLiveClient({ baseUrl }), resources: createResourceClient({ baseUrl }),
-    training: createTrainingClient({ baseUrl }), obs: createObsClient({ baseUrl }),
+    training: createTrainingClient({ baseUrl, resolveModelVersion: desktopConnected ? selectedTrainingModelVersion : undefined }), obs: createObsClient({ baseUrl }),
     llm: createLlmClient({ baseUrl }), runtime: createLlmRuntimeClient({ baseUrl }), viewers: createViewerClient({ baseUrl }),
     auth: createAdminSessionClient({ baseUrl }), observability: createAgentObservabilityClient({ baseUrl }), logs: createRuntimeLogClient({ baseUrl }), launcherLogs: import.meta.env.VITE_MEOWLIVE_LAUNCHER === "true" ? createLauncherLogClient() : undefined,
-  }), [baseUrl]);
+  }), [baseUrl, desktopConnected]);
   const panels: WorkspaceProps["pages"] = {
     live: <ConnectionPanel client={clients.live} />,
     obs: <ObsPanel client={clients.obs} />,

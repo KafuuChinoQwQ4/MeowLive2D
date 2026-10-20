@@ -680,15 +680,15 @@ for p in paths:
             let model_ready = s
                 .models
                 .iter()
-                .any(|m| m.id == "gpt-sovits-v2" && m.downloaded);
+                .any(|m| m.capability == "training_inference" && m.downloaded);
             let model_selected = s
                 .models
                 .iter()
-                .any(|m| m.id == "gpt-sovits-v2" && m.selected);
+                .any(|m| m.capability == "training_inference" && m.selected);
             drop(s);
             self.log(format!("后端检测：{detail}"));
             self.log(format!(
-                "GPT-SoVITS v2 模型：{}",
+                "GPT-SoVITS 模型：{}",
                 if model_selected {
                     "已选用"
                 } else if model_ready {
@@ -833,8 +833,13 @@ for p in paths:
                     if !model.downloaded || model.capability == "download_only" {
                         return Err("模型未下载完整或尚未适配".into());
                     }
-                    if s.inference_running {
-                        return Err("请先停止推理再选择模型".into());
+                    if model.capability == "training_inference" {
+                        drop(s);
+                        self.deploy(&distro)?;
+                        let mut cmd = self.wsl(&distro);
+                        cmd.args(["python3", CONTROLLER, "select", &id]);
+                        self.run(cmd, None, Duration::from_secs(30))?;
+                        s = self.state.lock().unwrap();
                     }
                     for item in &mut s.models {
                         if item.capability == model.capability {
@@ -847,9 +852,9 @@ for p in paths:
                         .snapshot()
                         .models
                         .iter()
-                        .any(|x| x.id == "gpt-sovits-v2" && x.selected && x.downloaded)
+                        .any(|x| x.capability == "training_inference" && x.selected && x.downloaded)
                     {
-                        return Err("请先下载并选择 GPT-SoVITS v2".into());
+                        return Err("请先下载并选择 GPT-SoVITS 模型".into());
                     }
                     self.deploy(&distro)?;
                     let mut cmd = self.wsl(&distro);

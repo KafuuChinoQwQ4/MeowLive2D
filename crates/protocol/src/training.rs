@@ -79,6 +79,9 @@ pub enum TrainingTextMode {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
 #[serde(deny_unknown_fields)]
 pub struct TrainingCreateRequest {
+    #[serde(default)]
+    #[ts(optional)]
+    pub model_version: Option<String>,
     pub name: String,
     pub voice_id: String,
     pub sovits_epochs: u16,

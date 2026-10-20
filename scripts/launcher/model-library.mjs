@@ -52,6 +52,7 @@ export class ModelLibrary {
     this.selection = await readSelection(this.settings.root);
     await this.scan();
     const preferred = this.installed.find(item => item.purpose === 'tts' && item.id === this.selection?.id && item.path === this.selection?.path && item.ready)
+      ?? this.installed.find(item => item.model_id === 'gpt-sovits-v2proplus' && item.path === this.settings.engine && item.ready)
       ?? this.installed.find(item => item.purpose === 'tts' && item.path === this.settings.engine && item.ready);
     try { await this.applySelection(preferred ?? null, false); }
     catch { /* An external TTS already listening is left untouched. */ }
@@ -107,13 +108,14 @@ export class ModelLibrary {
               : !this.asrReady ? '训练 Python 尚不能加载 faster-whisper，请安装识别依赖后重新扫描。'
                 : '可用于训练录音提取文本。选择后对下一次转写生效，使用 CPU，不占训练显存。' });
         } else if (model.compatibility === 'ready') {
-          const inspection = await inspectGptModels(canonical);
-          const partial = await exists(join(canonical, 'GPT_SoVITS/pretrained_models/gsv-v2final-pretrained'));
+          const inspection = await inspectGptModels(canonical, model.id);
+          const weightMarkers = (model.markers ?? []).filter(name => /s2G/u.test(name));
+          const partial = inspection.ready || await hasDownloadReceipt(canonical, model.id) || (weightMarkers.length > 0 && await markersPresent(canonical, weightMarkers));
           if (!inspection.ready && !partial) continue;
           const ready = inspection.ready && this.runtime.ready;
           installed.push({ id: installedId(model.id, canonical), model_id: model.id, purpose: model.purpose, name: model.name, path: canonical,
             ready, selected: false, message: ready ? '文件检查通过，可选择并启动。' : inspection.ready ? this.runtime.message
-              : `模型文件不完整，缺少 ${inspection.missing.length} 项。可在下载目录补齐完整模型。` });
+              : `模型文件不完整，缺少 ${inspection.missing.join("、")}。请重新下载补齐。` });
         } else if (await hasDownloadReceipt(canonical, model.id) || (await this.manualIdentityMatches(canonical, model) && await markersPresent(canonical, model.markers))) {
           installed.push({ id: installedId(model.id, canonical), model_id: model.id, purpose: model.purpose, name: model.name, path: canonical,
             ready: false, selected: false, message: '已发现模型文件。本项目尚未适配该引擎，可查看官方说明使用。' });
@@ -143,19 +145,20 @@ export class ModelLibrary {
   }
 
   async applySelection(item, persist = true) {
-    if (item && (!item.ready || !(await inspectGptModels(item.path)).ready)) throw new Error('所选模型缺少运行文件或尚未适配。');
+    if (item && (!item.ready || !(await inspectGptModels(item.path, item.model_id)).ready)) throw new Error('所选模型缺少运行文件或尚未适配。');
     await this.supervisor.configureTts(async () => {
       if (persist) {
         const path = join(this.settings.root, 'config/local/model-selection.json');
         await mkdir(join(this.settings.root, 'config/local'), { recursive: true, mode: 0o700 });
-        await writeFile(`${path}.tmp`, JSON.stringify(item ? { id: item.id, path: item.path } : {}), { mode: 0o600 });
+        await writeFile(`${path}.tmp`, JSON.stringify(item ? { id: item.id, model_id: item.model_id, path: item.path } : {}), { mode: 0o600 });
         await rename(`${path}.tmp`, path);
       }
       const definition = { ...this.originalTts, args: [...this.originalTts.args] };
       if (item) {
-        definition.args.push('--model-root', item.path);
+        const version = { 'gpt-sovits-v2': 'v2', 'gpt-sovits-v2pro': 'v2Pro', 'gpt-sovits-v2proplus': 'v2ProPlus', 'gpt-sovits-v3': 'v3', 'gpt-sovits-v4': 'v4' }[item.model_id];
+        definition.args.push('--model-version', version, '--model-root', item.path);
         definition.args[definition.args.indexOf('--data-dir') + 1] = join(this.settings.root, 'data/control-panel-inference', item.id);
-      } else definition.issue ??= '尚未发现完整的 GPT-SoVITS v2 模型，请先进入“环境与模型”下载或重新扫描。';
+      } else definition.issue ??= '尚未发现完整的 GPT-SoVITS v2ProPlus 模型，请先进入“环境与模型”下载或重新扫描。';
       this.selected = item?.id ?? null; this.markSelected();
       return definition;
     }, { restart: false });
@@ -226,7 +229,7 @@ export class ModelLibrary {
           join(job.path, 'GPT_SoVITS/text')], { signal: job.controller.signal, timeout: 120_000, maxBuffer: 4096 });
       }
       await this.scan();
-      if (model.compatibility === 'ready' && !(await (model.purpose === 'asr' ? inspectWhisperModel : inspectGptModels)(job.path)).ready) throw new Error('下载已结束，但运行文件不完整，请查看官方安装说明。');
+      if (model.compatibility === 'ready' && !(await (model.purpose === 'asr' ? inspectWhisperModel(job.path) : inspectGptModels(job.path, model.id))).ready) throw new Error('下载已结束，但运行文件不完整，请查看官方安装说明。');
       job.controller.signal.throwIfAborted();
       job.state = 'completed'; job.message = model.compatibility === 'ready'
         ? '下载与校验完成，请在“本地模型”选择；运行环境缺失时请先安装引擎。' : '模型文件已下载，尚需按官方说明安装引擎并适配本项目接口。';

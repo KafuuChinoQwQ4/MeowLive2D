@@ -73,6 +73,9 @@ describe("训练契约回归", () => {
     });
     const client = createTrainingClient({ baseUrl: "http://localhost:19600", fetcher });
     expect((await client.save("version-1")).versions[0].saved).toBe(true);
+    expect(readTraining({ ...value, versions: [{ ...version, model_version: "v2ProPlus" }] }).versions[0].model_version).toBe("v2ProPlus");
+    for (const model_version of ["v2Pro", "v3", "v4"]) expect(readTraining({ ...value, versions: [{ ...version, model_version }] }).versions[0].model_version).toBe(model_version);
+    expect(() => readTraining({ ...value, versions: [{ ...version, model_version: "v5" }] })).toThrow("无效");
     expect(() => readTraining({ ...value, versions: [{ ...version, auditioned: false }] })).toThrow("无效");
     expect(() => readTraining({ ...value, versions: [{ ...version, saved: "true" }] })).toThrow("无效");
   });
@@ -108,6 +111,17 @@ it("删除训练版本使用 ID 并返回剩余快照，保留删除失败原因
 describe("训练性能和模型内存开关", () => {
   const job = { id: "job", voice_id: "voice-1", name: "任务", status: "training", progress: 40, message: "训练中", clip_count: 2, created_at_ms: 1, updated_at_ms: 1, version_id: null };
   const performance = { batch_size: 1, data_workers: 1, cpu_threads: 2, gpu_index: 0, low_memory: true };
+  it("每次提交跟随当前模型选择，显式版本优先", async () => {
+    const resolveModelVersion = vi.fn().mockResolvedValueOnce("v3").mockResolvedValueOnce("v4");
+    const fetcher = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify(job)));
+    const client = createTrainingClient({ fetcher, resolveModelVersion });
+    const metadata = { name: "测试", voice_id: "voice-1", sovits_epochs: 1, gpt_epochs: 1, text_mode: "audio_only" as const, reviewed: false, performance, clips: [] };
+    await client.create(metadata, []);
+    await client.create(metadata, []);
+    await client.create({ ...metadata, model_version: "v2Pro" }, []);
+    expect(fetcher.mock.calls.map(call => JSON.parse((call[1]!.body as FormData).get("metadata") as string).model_version)).toEqual(["v3", "v4", "v2Pro"]);
+    expect(resolveModelVersion).toHaveBeenCalledTimes(2);
+  });
   it("旧任务缺少性能参数时补默认值，拒绝越界的新参数", () => {
     expect(readTraining({ ...snapshot, jobs: [job] }).jobs[0].performance).toEqual(performance);
     for (const invalid of [{ batch_size: 0 }, { batch_size: 17 }, { data_workers: 9 }, { cpu_threads: 0 }, { gpu_index: 16 }, { low_memory: "true" }, { batch_size: 1.5 }]) {

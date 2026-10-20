@@ -4,6 +4,7 @@ import { mkdtemp, mkdir, open, writeFile, readFile, rm } from 'node:fs/promises'
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createServer } from 'node:http';
+import { MODEL_CATALOG } from './model-catalog.mjs';
 import { ModelLibrary } from './model-library.mjs';
 import { Supervisor } from './supervisor.mjs';
 import { detectEnvironment, gptRequiredFiles } from './model-environment.mjs';
@@ -117,4 +118,45 @@ test('filesystem failures keep the download location portable without echoing na
   assert.equal(job.path, './data/models/gpt-sovits-v2');
   assert.equal(job.message.includes(root), false);
   assert.match(job.message, /文件/);
+});
+
+
+test('Plus selection requires speaker encoder and persists version identity', async t => {
+  const { engine, root, library } = await fixture(t, true, { catalog: MODEL_CATALOG });
+  const model = MODEL_CATALOG.find(item => item.id === 'gpt-sovits-v2proplus');
+  for (const relative of model.markers.filter(name => !name.endsWith('.zip'))) {
+    const file = join(engine, relative); await mkdir(dirname(file), { recursive: true });
+    const handle = await open(file, 'w'); await handle.truncate(1024 * 1024); await handle.close();
+  }
+  await library.action('scan');
+  const item = (await library.snapshot()).installed.find(item => item.model_id === model.id && item.ready);
+  assert.ok(item);
+  await library.action('select', item.id);
+  assert.equal(JSON.parse(await readFile(join(root, 'config/local/model-selection.json'), 'utf8')).model_id, model.id);
+  await rm(join(engine, 'GPT_SoVITS/pretrained_models/sv/pretrained_eres2netv2w24s4ep4.ckpt'));
+  await assert.rejects(library.action('select', item.id), /缺少运行文件/);
+});
+
+
+test('all GPT versions switch the actual runner version and reject missing vocoders', async t => {
+  const { engine, library, supervisor } = await fixture(t, true, { catalog: MODEL_CATALOG });
+  for (const model of MODEL_CATALOG.filter(model => model.id.startsWith('gpt-sovits-'))) {
+    for (const relative of model.markers.filter(name => !name.endsWith('.zip'))) {
+      const file = join(engine, relative); await mkdir(dirname(file), { recursive: true });
+      const handle = await open(file, 'w'); await handle.truncate(1024 * 1024); await handle.close();
+    }
+  }
+  await library.action('scan');
+  for (const version of ['v2', 'v2Pro', 'v2ProPlus', 'v3', 'v4']) {
+    const item = (await library.snapshot()).installed.find(item => item.model_id === 'gpt-sovits-' + version.toLowerCase() && item.ready);
+    assert.ok(item, version);
+    await library.action('select', item.id);
+    const args = supervisor.records.get('tts').def.args;
+    assert.equal(args[args.indexOf('--model-version') + 1], version);
+  }
+  await rm(join(engine, 'GPT_SoVITS/pretrained_models/gsv-v4-pretrained/vocoder.pth'));
+  await library.action('scan');
+  const broken = (await library.snapshot()).installed.find(item => item.model_id === 'gpt-sovits-v4');
+  assert.equal(broken.ready, false);
+  assert.match(broken.message, /vocoder.pth/);
 });

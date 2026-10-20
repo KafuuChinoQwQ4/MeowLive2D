@@ -218,7 +218,12 @@ def run_blocking(function):
     async def run(*args, **kwargs):
         # Upstream inference/weight loading is synchronous even in async routes.
         # Keep the ASGI loop available for model status and readiness probes.
-        return await asyncio.to_thread(function, *args, **kwargs)
+        def invoke():
+            if function.__name__ == "set_sovits_weights":
+                from _meowlive_engine_workspace import link_inference_assets
+                link_inference_assets(Path(__file__).parent)
+            return function(*args, **kwargs)
+        return await asyncio.to_thread(invoke)
     return run
 
 

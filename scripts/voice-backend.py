@@ -28,7 +28,7 @@ def model(identifier):
 
 def downloaded(item, root):
     markers = list(item['markers'])
-    if item['id'] == 'gpt-sovits-v2' or 'G2PWModel.zip' in markers:
+    if item['id'] == 'gpt-sovits-v2proplus' or 'G2PWModel.zip' in markers:
         markers = [name for name in markers if name != 'G2PWModel.zip']
         markers += ['GPT_SoVITS/text/G2PWModel/g2pW.onnx', 'GPT_SoVITS/text/G2PWModel/config.py']
     return all((root / name).is_file() and (root / name).stat().st_size > 0 for name in markers)
@@ -110,9 +110,33 @@ def installation():
 
 
 def model_directory(item, engine, managed):
-    if item['id'] == 'gpt-sovits-v2' and not managed and downloaded(item, engine):
+    if item['id'].startswith('gpt-sovits-') and not managed and downloaded(item, engine):
         return engine
     return ROOT / 'models' / item['id']
+
+
+def selected_identifier():
+    try:
+        value = json.loads((ROOT / 'model-selection.json').read_text())
+        item = model(value['model_id'])
+        if item['compatibility'] == 'ready' and item.get('purpose') != 'asr':
+            return item['id']
+    except (OSError, ValueError, KeyError):
+        pass
+    return 'gpt-sovits-v2proplus'
+
+
+def select(identifier):
+    item = model(identifier)
+    engine, _, managed = installation()
+    if item['compatibility'] != 'ready' or item.get('purpose') == 'asr' or not downloaded(item, model_directory(item, engine, managed)):
+        raise ValueError('模型未下载完整或尚未适配')
+    if running():
+        stop(ROOT / 'runtime/inference.pid')
+    ROOT.mkdir(parents=True, exist_ok=True)
+    pending = ROOT / 'model-selection.json.tmp'
+    pending.write_text(json.dumps({'model_id': identifier}))
+    pending.replace(ROOT / 'model-selection.json')
 
 
 def probe(existing=None):
@@ -144,7 +168,7 @@ def probe(existing=None):
     except Exception as error:
         detail = '后端检测未通过：' + str(error)
     return {'backend': {'ready': ready, 'engineRoot': str(engine),
-                        'pythonPath': str(python), 'modelRoot': str(model_directory(model('gpt-sovits-v2'), engine, managed)), 'gpu': gpu, 'detail': detail},
+                        'pythonPath': str(python), 'modelRoot': str(model_directory(model(selected_identifier()), engine, managed)), 'gpu': gpu, 'detail': detail},
             'models': [{'id': item['id'], 'name': item['name'],
                         'capability': ('transcription' if item.get('purpose') == 'asr' else 'training_inference')
                         if item['compatibility'] == 'ready' else 'download_only',
@@ -196,11 +220,11 @@ def start():
     if running():
         ensure_loaded()
         return
-    item = model('gpt-sovits-v2')
+    item = model(selected_identifier())
     engine, python, managed = installation()
     models = model_directory(item, engine, managed)
     if not downloaded(item, models):
-        raise ValueError('请先完整下载并选择 GPT-SoVITS v2')
+        raise ValueError('请先完整下载并选择 GPT-SoVITS 模型')
     state = probe()
     if not state['backend']['ready']:
         raise ValueError(state['backend']['detail'])
@@ -213,8 +237,8 @@ def start():
     runtime.mkdir(parents=True, exist_ok=True)
     with (runtime / 'inference.log').open('ab') as log:
         child = subprocess.Popen([str(python), '-s', str(ROOT / 'scripts/start-managed-inference.py'),
-            '--engine-root', str(engine), '--data-dir', str(runtime / 'inference'),
-            '--model-root', str(models), '--device', 'cuda' if state['backend']['gpu'] else 'cpu'],
+            '--engine-root', str(engine), '--data-dir', str(runtime / 'inference' / item['id']),
+            '--model-version', {'gpt-sovits-v2': 'v2', 'gpt-sovits-v2pro': 'v2Pro', 'gpt-sovits-v2proplus': 'v2ProPlus', 'gpt-sovits-v3': 'v3', 'gpt-sovits-v4': 'v4'}[item['id']], '--model-root', str(models), '--device', 'cuda' if state['backend']['gpu'] else 'cpu'],
             start_new_session=True, stdin=subprocess.DEVNULL, stdout=log, stderr=log,
             env={**os.environ, 'MEOWLIVE_AUTO_ENABLE_MODELS': '1'})
     record_process(runtime / 'inference.pid', child.pid)
@@ -244,7 +268,7 @@ def start():
 def main():
     os.umask(0o022)
     parser = argparse.ArgumentParser()
-    parser.add_argument('action', choices=['probe', 'download', 'start', 'stop', 'cancel', 'status'])
+    parser.add_argument('action', choices=['probe', 'download', 'select', 'start', 'stop', 'cancel', 'status'])
     parser.add_argument('model', nargs='?')
     parser.add_argument('--existing-python')
     parser.add_argument('--existing-engine')
@@ -283,6 +307,8 @@ def main():
         if Path(sys.executable).absolute() != python.absolute():
             os.execv(str(python), [str(python), '-s', __file__, 'download', args.model])
         download(args.model)
+    elif args.action == 'select':
+        select(args.model)
     elif args.action == 'start':
         start()
     print(json.dumps(probe(), ensure_ascii=False), flush=True)

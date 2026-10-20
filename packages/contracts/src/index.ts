@@ -234,7 +234,7 @@ export type TrainingClipMetadata = { text: string, language: string, };
 
 export type TrainingTextMode = "audio_only" | "reviewed_text";
 
-export type TrainingCreateRequest = { name: string, voice_id: string, sovits_epochs: number, gpt_epochs: number, reviewed: boolean, text_mode: TrainingTextMode, performance: TrainingPerformance, clips: Array<TrainingClipMetadata>, };
+export type TrainingCreateRequest = { model_version?: string, name: string, voice_id: string, sovits_epochs: number, gpt_epochs: number, reviewed: boolean, text_mode: TrainingTextMode, performance: TrainingPerformance, clips: Array<TrainingClipMetadata>, };
 
 export type TrainingTranscribeRequest = { language: string, };
 

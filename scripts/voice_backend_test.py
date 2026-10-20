@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import tempfile
 import subprocess
 import sys
@@ -21,11 +22,23 @@ class BackendTests(unittest.TestCase):
         ], cwd=scripts.parent, text=True)
         self.assertEqual(backend.CATALOG, json.loads(exported))
 
+    def test_switch_persists_actual_backend_model_and_stops_previous_inference(self):
+        with tempfile.TemporaryDirectory() as temp, mock.patch.object(backend, 'ROOT', Path(temp)), \
+             mock.patch.object(backend, 'installation', return_value=(Path(temp) / 'engine', Path(temp) / 'python', True)), \
+             mock.patch.object(backend, 'downloaded', return_value=True), mock.patch.object(backend, 'running', return_value=True), \
+             mock.patch.object(backend, 'stop') as stopped:
+            for version in ['v2', 'v2pro', 'v2proplus', 'v3', 'v4']:
+                identifier = 'gpt-sovits-' + version
+                backend.select(identifier)
+                self.assertEqual(backend.selected_identifier(), identifier)
+            self.assertEqual(stopped.call_count, 5)
+            self.assertEqual(json.loads((Path(temp) / 'model-selection.json').read_text())['model_id'], 'gpt-sovits-v4')
+
     def test_all_catalog_entries_are_probed_with_supported_capabilities_only(self):
         with tempfile.TemporaryDirectory() as directory, mock.patch.object(backend, 'ROOT', Path(directory)), \
              mock.patch.object(backend, 'LEGACY_ENGINE', Path(directory) / 'missing'):
             state = backend.probe()
-        supported = {'gpt-sovits-v2': 'training_inference',
+        supported = {**{f'gpt-sovits-{version}': 'training_inference' for version in ['v2', 'v2pro', 'v2proplus', 'v3', 'v4']},
                      'faster-whisper-large-v3-turbo': 'transcription',
                      'faster-whisper-large-v3': 'transcription'}
         for item in state['models']:
@@ -37,7 +50,7 @@ class BackendTests(unittest.TestCase):
     def test_gpt_versions_require_extracted_g2pw_not_just_archive(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            for identifier in ['gpt-sovits-v2', 'gpt-sovits-v3', 'gpt-sovits-v4']:
+            for identifier in ['gpt-sovits-v2proplus', 'gpt-sovits-v3', 'gpt-sovits-v4']:
                 item = {'id': identifier, 'markers': ['weights.pth', 'G2PWModel.zip']}
                 (root / 'weights.pth').write_bytes(b'data')
                 (root / 'G2PWModel.zip').write_bytes(b'archive')
@@ -50,6 +63,15 @@ class BackendTests(unittest.TestCase):
                 self.assertTrue(backend.downloaded(item, root), identifier)
                 for name in ['g2pW.onnx', 'config.py']:
                     (root / 'GPT_SoVITS/text/G2PWModel' / name).unlink()
+
+    def test_plus_is_available_with_complete_dependencies(self):
+        item = backend.model('gpt-sovits-v2proplus')
+        self.assertEqual(item['compatibility'], 'ready')
+        self.assertIn('GPT_SoVITS/pretrained_models/s1v3.ckpt', item['markers'])
+        self.assertIn('GPT_SoVITS/pretrained_models/v2Pro/s2Gv2ProPlus.pth', item['markers'])
+        self.assertIn('GPT_SoVITS/pretrained_models/sv/pretrained_eres2netv2w24s4ep4.ckpt', item['markers'])
+        for identifier in ['gpt-sovits-v2pro', 'gpt-sovits-v3', 'gpt-sovits-v4']:
+            self.assertTrue(backend.model(identifier)['sources'])
 
     def test_catalog_rejects_arbitrary_model_ids(self):
         self.assertTrue(hasattr(backend, 'model'), 'curated model lookup required')
@@ -70,7 +92,7 @@ class BackendTests(unittest.TestCase):
     def test_unpacked_g2pw_does_not_require_download_archive(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            item = {'id': 'gpt-sovits-v2', 'markers': ['weights.pth', 'G2PWModel.zip']}
+            item = {'id': 'gpt-sovits-v2proplus', 'markers': ['weights.pth', 'G2PWModel.zip']}
             for name in ['weights.pth', 'GPT_SoVITS/text/G2PWModel/g2pW.onnx', 'GPT_SoVITS/text/G2PWModel/config.py']:
                 path = root / name
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -90,15 +112,15 @@ class BackendTests(unittest.TestCase):
                 path = root / 'engine' / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text('# train')
-            model_file = root / 'models/gpt-sovits-v2/weights.bin'
+            model_file = root / 'models/gpt-sovits-v2proplus/weights.bin'
             model_file.parent.mkdir(parents=True)
             model_file.write_bytes(b'weights')
             for name in ['g2pW.onnx', 'config.py']:
-                path = root / 'models/gpt-sovits-v2/GPT_SoVITS/text/G2PWModel' / name
+                path = root / 'models/gpt-sovits-v2proplus/GPT_SoVITS/text/G2PWModel' / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(b'data')
             with mock.patch.object(backend, 'ROOT', root), \
-                 mock.patch.object(backend, 'CATALOG', [{'id': 'gpt-sovits-v2', 'name': 'sample', 'compatibility': 'ready', 'markers': ['weights.bin']}]), \
+                 mock.patch.object(backend, 'CATALOG', [{'id': 'gpt-sovits-v2proplus', 'name': 'sample', 'compatibility': 'ready', 'markers': ['weights.bin']}]), \
                  mock.patch.object(backend.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, 'true', '')), \
                  mock.patch.object(backend.subprocess, 'check_output', return_value=backend.REVISION):
                 result = backend.probe()
@@ -109,8 +131,8 @@ class BackendTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             engine = Path(directory) / 'external'
             engine.mkdir()
-            item = {'id': 'gpt-sovits-v2', 'markers': ['weights.pth']}
-            self.assertEqual(backend.model_directory(item, engine, False), backend.ROOT / 'models/gpt-sovits-v2')
+            item = {'id': 'gpt-sovits-v2proplus', 'markers': ['weights.pth']}
+            self.assertEqual(backend.model_directory(item, engine, False), backend.ROOT / 'models/gpt-sovits-v2proplus')
             for name in ['weights.pth', 'GPT_SoVITS/text/G2PWModel/g2pW.onnx', 'GPT_SoVITS/text/G2PWModel/config.py']:
                 path = engine / name
                 path.parent.mkdir(parents=True, exist_ok=True)

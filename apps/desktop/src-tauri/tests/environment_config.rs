@@ -13,11 +13,11 @@ fn ready() -> EnvironmentSnapshot {
             gpu: true,
             engine_root: "/opt/meowlive-voice/engine".into(),
             python_path: "/opt/meowlive-voice/venv/bin/python".into(),
-            model_root: "/opt/meowlive-voice/models/gpt-sovits-v2".into(),
+            model_root: "/opt/meowlive-voice/models/gpt-sovits-v2proplus".into(),
             ..Default::default()
         },
         models: vec![Model {
-            id: "gpt-sovits-v2".into(),
+            id: "gpt-sovits-v2proplus".into(),
             name: "v2".into(),
             capability: "training_inference".into(),
             downloaded: true,
@@ -100,10 +100,43 @@ fn applies_existing_paths_and_keeps_downloaded_asr_in_managed_storage() {
     );
     assert_eq!(
         value["training"]["default_sovits_weights"].as_str(),
-        Some("/custom/engine/GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s2G2333k.pth")
+        Some("/custom/engine/GPT_SoVITS/pretrained_models/v2Pro/s2Gv2ProPlus.pth")
     );
     assert_eq!(
         value["training"]["asr_model"].as_str(),
         Some("/opt/meowlive-voice/models/whisper")
     );
+}
+
+#[test]
+fn every_selected_gpt_version_configures_its_actual_pair() {
+    for (id, gpt, sovits) in [
+        (
+            "gpt-sovits-v2",
+            "s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt",
+            "s2G2333k.pth",
+        ),
+        ("gpt-sovits-v2pro", "s1v3.ckpt", "s2Gv2Pro.pth"),
+        ("gpt-sovits-v2proplus", "s1v3.ckpt", "s2Gv2ProPlus.pth"),
+        ("gpt-sovits-v3", "s1v3.ckpt", "s2Gv3.pth"),
+        ("gpt-sovits-v4", "s1v3.ckpt", "s2Gv4.pth"),
+    ] {
+        let mut environment = ready();
+        environment.models[0].id = id.into();
+        environment.backend.model_root = format!("/opt/meowlive-voice/models/{id}");
+        let configured = configure("", &environment).unwrap();
+        let doc: toml_edit::DocumentMut = configured.parse().unwrap();
+        assert!(
+            doc["training"]["default_gpt_weights"]
+                .as_str()
+                .unwrap()
+                .ends_with(gpt)
+        );
+        assert!(
+            doc["training"]["default_sovits_weights"]
+                .as_str()
+                .unwrap()
+                .ends_with(sovits)
+        );
+    }
 }

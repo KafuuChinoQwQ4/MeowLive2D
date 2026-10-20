@@ -8,9 +8,9 @@ pub fn configure(original: &str, environment: &EnvironmentSnapshot) -> Result<St
         || !environment
             .models
             .iter()
-            .any(|m| m.id == "gpt-sovits-v2" && m.selected && m.downloaded)
+            .any(|m| m.capability == "training_inference" && m.selected && m.downloaded)
     {
-        return Err("请先安装训练后端，下载并选用 GPT-SoVITS v2".into());
+        return Err("请先安装训练后端，下载并选用 GPT-SoVITS 模型".into());
     }
     let distro = environment
         .selected_distro
@@ -37,6 +37,22 @@ pub fn configure(original: &str, environment: &EnvironmentSnapshot) -> Result<St
             return Err("后端路径无效，请重新检测环境".into());
         }
     }
+    let selected = environment
+        .models
+        .iter()
+        .find(|m| m.capability == "training_inference" && m.selected && m.downloaded)
+        .ok_or("请选择模型")?;
+    let (gpt, sovits) = match selected.id.as_str() {
+        "gpt-sovits-v2" => (
+            "gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt",
+            "gsv-v2final-pretrained/s2G2333k.pth",
+        ),
+        "gpt-sovits-v2pro" => ("s1v3.ckpt", "v2Pro/s2Gv2Pro.pth"),
+        "gpt-sovits-v2proplus" => ("s1v3.ckpt", "v2Pro/s2Gv2ProPlus.pth"),
+        "gpt-sovits-v3" => ("s1v3.ckpt", "s2Gv3.pth"),
+        "gpt-sovits-v4" => ("s1v3.ckpt", "gsv-v4-pretrained/s2Gv4.pth"),
+        _ => return Err("模型版本尚未适配".into()),
+    };
     for (key, path) in [
         ("wsl_python", environment.backend.python_path.clone()),
         ("wsl_engine_root", engine_root.to_string()),
@@ -50,15 +66,11 @@ pub fn configure(original: &str, environment: &EnvironmentSnapshot) -> Result<St
         ),
         (
             "default_gpt_weights",
-            format!(
-                "{model_root}/GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt"
-            ),
+            format!("{model_root}/GPT_SoVITS/pretrained_models/{gpt}"),
         ),
         (
             "default_sovits_weights",
-            format!(
-                "{model_root}/GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s2G2333k.pth"
-            ),
+            format!("{model_root}/GPT_SoVITS/pretrained_models/{sovits}"),
         ),
     ] {
         doc["training"][key] = value(path);
@@ -90,7 +102,7 @@ mod tests {
             "phase":"idle", "busy":false, "message":"", "logs":[], "distros":[],
             "selectedDistro":"Linux", "backend":{"ready":true,"engineRoot":"/opt/engine",
             "pythonPath":"/opt/python","modelRoot":"/opt/models","gpu":false,"detail":""},
-            "models":[{"id":"gpt-sovits-v2","name":"v2","capability":"training_inference",
+            "models":[{"id":"gpt-sovits-v2proplus","name":"v2","capability":"training_inference",
             "downloaded":true,"selected":true}], "progress":100,"inferenceRunning":false
         }))
         .unwrap();

@@ -4,6 +4,7 @@ import { defaultTrainingPerformance } from "./server/training";
 export type TrainingPerformancePreset = "low" | "balanced" | "high" | "custom";
 export interface TrainingPreferences {
   epochs: number;
+  modelVersion?: string;
   performancePreset: TrainingPerformancePreset;
   performance: TrainingPerformance;
   textMode: boolean;
@@ -13,6 +14,7 @@ export interface TrainingPreferences {
 function defaults(): TrainingPreferences {
   return {
     epochs: 1,
+    modelVersion: "",
     performancePreset: "low",
     performance: { ...defaultTrainingPerformance },
     textMode: false,
@@ -33,6 +35,7 @@ function validate(value: unknown): TrainingPreferences | undefined {
     || !integer(performance.cpu_threads, 1, 16) || !integer(performance.gpu_index, 0, 15) || typeof performance.low_memory !== "boolean") return;
   return {
     epochs: value.epochs,
+    modelVersion: typeof value.modelVersion === "string" && ["", "v2", "v2Pro", "v2ProPlus", "v3", "v4"].includes(value.modelVersion) ? value.modelVersion : "",
     performancePreset: value.performancePreset as TrainingPerformancePreset,
     performance: {
       batch_size: performance.batch_size,

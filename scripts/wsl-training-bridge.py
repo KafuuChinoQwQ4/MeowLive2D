@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run a Windows-owned training job in WSL; stdin lifetime owns the Linux process group."""
 import argparse
+import json
 import importlib.util
 import os
 from pathlib import Path
@@ -80,7 +81,14 @@ def main():
     backend = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(backend)
     engine = Path(env['MEOWLIVE_GPT_SOVITS_ROOT'])
-    models = backend.model_directory(backend.model('gpt-sovits-v2'), engine, engine == backend.ROOT / 'engine')
+    identifier = 'gpt-sovits-v2proplus'
+    if args.job:
+        manifest = json.loads(Path(linux_path(args.job)).read_text())
+        version = manifest.get('model_version', 'v2ProPlus')
+        if version not in {'v2', 'v2Pro', 'v2ProPlus', 'v3', 'v4'}:
+            raise ValueError('模型版本未适配')
+        identifier = 'gpt-sovits-' + version.lower()
+    models = backend.model_directory(backend.model(identifier), engine, engine == backend.ROOT / 'engine')
     env.setdefault('MEOWLIVE_GPT_SOVITS_MODELS', str(models))
     if args.model:
         env['MEOWLIVE_ASR_MODEL'] = linux_path(args.model)

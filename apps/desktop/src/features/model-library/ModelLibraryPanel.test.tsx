@@ -20,7 +20,7 @@ it("shows ASR downloads on the same page and starts only the requested download"
   await userEvent.selectOptions(screen.getByRole("combobox", { name: "使用范围" }), "asr");
   const catalog = screen.getByRole("region", { name: "可下载模型" });
   expect(within(catalog).getAllByRole("article")).toHaveLength(2);
-  expect(within(catalog).queryByText("GPT-SoVITS v2")).not.toBeInTheDocument();
+  expect(within(catalog).queryByText("GPT-SoVITS v2ProPlus")).not.toBeInTheDocument();
   expect(api.download).not.toHaveBeenCalled();
   const turbo = screen.getByRole("heading", { name: "Whisper large-v3-turbo" }).closest("article")!;
   await userEvent.click(within(turbo).getByRole("button", { name: "下载权重" }));
@@ -57,7 +57,7 @@ it("paginates catalog and keeps unsupported engines explicit", async () => {
   expect(screen.getByRole("heading", { name: "语音模型 5" })).toBeInTheDocument();
   await userEvent.type(screen.getByRole("searchbox", { name: "搜索语音模型" }), "GPT");
   expect(within(catalog).getAllByRole("article")).toHaveLength(1);
-  expect(screen.getByRole("heading", { name: "GPT-SoVITS v2" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "GPT-SoVITS v2ProPlus" })).toBeInTheDocument();
 });
 it("blocks writes while the launcher token is stale", async () => {
   render(<ModelLibraryPanel client={client()} token={null} onSelected={vi.fn()} />);
@@ -86,7 +86,7 @@ it("shows upgrade instructions and blocks model actions on WSL1", async () => {
 
 it("cancels the exact download job and reports progress", async () => {
   const api = client();
-  vi.mocked(api.getStatus).mockResolvedValue(modelLibrarySnapshot({ downloads: [{ id: "job-7", model_id: "gpt-sovits-v2", state: "downloading", message: "正在下载权重", path: "./data/models/gpt", downloaded_bytes: 1048576, total_bytes: 2097152 }] }));
+  vi.mocked(api.getStatus).mockResolvedValue(modelLibrarySnapshot({ downloads: [{ id: "job-7", model_id: "gpt-sovits-v2proplus", state: "downloading", message: "正在下载权重", path: "./data/models/gpt", downloaded_bytes: 1048576, total_bytes: 2097152 }] }));
   render(<ModelLibraryPanel client={api} token={"a".repeat(64)} onSelected={vi.fn()} />);
   await userEvent.click(await screen.findByRole("tab", { name: /下载任务/ }));
   expect(screen.getByRole("progressbar")).toHaveAttribute("value", "1048576");

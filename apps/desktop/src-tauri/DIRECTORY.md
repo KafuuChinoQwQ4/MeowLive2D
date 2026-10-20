@@ -23,4 +23,4 @@ src-tauri/  # Windows 与 Linux Tauri 桌面外壳、平台配置与执行库生
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 10180fba157d2a80029fe802d0590a27dec4b18f25817e71e6f8930bef7df3a2 -->
+<!-- directory-tree-sha256: 5c958fc0269848f163bd054980a61b5d933f29ae642c4b9c9209df3c4161169c -->

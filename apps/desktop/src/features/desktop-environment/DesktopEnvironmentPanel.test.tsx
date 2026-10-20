@@ -14,12 +14,12 @@ function client(state: EnvironmentSnapshot): EnvironmentClient {
 }
 it("searches the full catalog by name or id and keeps download-only models unavailable for selection", async () => {
   const api = client(snapshot({ backend: { ready: true, engineRoot: "/engine", pythonPath: "/python", modelRoot: "/models", gpu: true, detail: "就绪" },
-    models: [{ id: "gpt-sovits-v2", name: "GPT-SoVITS v2", capability: "training_inference", downloaded: true, selected: false },
+    models: [{ id: "gpt-sovits-v2proplus", name: "GPT-SoVITS v2ProPlus", capability: "training_inference", downloaded: true, selected: false },
       { id: "qwen3-asr-1.7b", name: "Qwen3-ASR 1.7B", capability: "download_only", downloaded: false, selected: false }] }));
   render(<DesktopEnvironmentPanel client={api} />);
   const search = await screen.findByRole("searchbox", { name: "搜索声音模型" });
   await userEvent.type(search, "QWEN3-ASR-1.7b");
-  expect(screen.queryByRole("heading", { name: "GPT-SoVITS v2" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("heading", { name: "GPT-SoVITS v2ProPlus" })).not.toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "Qwen3-ASR 1.7B" })).toBeVisible();
   expect(screen.getByRole("button", { name: "选用 Qwen3-ASR 1.7B" })).toBeDisabled();
   await userEvent.click(screen.getByRole("button", { name: "下载 Qwen3-ASR 1.7B" }));
@@ -39,13 +39,13 @@ it("allows installation without a ready main service and requires a WSL2 choice"
 });
 it("keeps model selection separate from applying and does not enable unsupported models", async () => {
   const api = client(snapshot({ backend: { ready: true, engineRoot: "/engine", pythonPath: "/python", modelRoot: "/models", gpu: true, detail: "就绪" },
-    models: [{ id: "gpt-sovits-v2", name: "GPT-SoVITS v2", capability: "training_inference", downloaded: true, selected: false },
+    models: [{ id: "gpt-sovits-v2proplus", name: "GPT-SoVITS v2ProPlus", capability: "training_inference", downloaded: true, selected: false },
       { id: "other", name: "未适配模型", capability: "download_only", downloaded: true, selected: false }] }));
   render(<DesktopEnvironmentPanel client={api} />);
-  await screen.findByText("GPT-SoVITS v2");
+  await screen.findByText("GPT-SoVITS v2ProPlus");
   expect(screen.getByRole("button", { name: "选用 未适配模型" })).toBeDisabled();
-  await userEvent.click(screen.getByRole("button", { name: "选用 GPT-SoVITS v2" }));
-  expect(api.action).toHaveBeenCalledWith({ action: "select_model", distro: "Ubuntu", modelId: "gpt-sovits-v2" });
+  await userEvent.click(screen.getByRole("button", { name: "选用 GPT-SoVITS v2ProPlus" }));
+  expect(api.action).toHaveBeenCalledWith({ action: "select_model", distro: "Ubuntu", modelId: "gpt-sovits-v2proplus" });
   expect(api.apply).not.toHaveBeenCalled();
 });
 it("reports installation failure and keeps a retry path", async () => {
@@ -71,7 +71,7 @@ it("imports an existing config and exposes the detected paths before connecting"
   vi.mocked(api.action).mockImplementation(async request => {
     if (request.configPath !== "/home/me/custom config.toml" || request.distro !== "Ubuntu") throw new Error("错误的配置路径");
     return snapshot({ backend: { ready: true, engineRoot: "/custom/GPT-SoVITS", pythonPath: "/custom/python", modelRoot: "/custom/models", gpu: true, detail: "现有环境可用" },
-      models: [{ id: "gpt-sovits-v2", name: "GPT-SoVITS v2", capability: "training_inference", downloaded: true, selected: false }] });
+      models: [{ id: "gpt-sovits-v2proplus", name: "GPT-SoVITS v2ProPlus", capability: "training_inference", downloaded: true, selected: false }] });
   });
   render(<DesktopEnvironmentPanel client={api} />);
   await screen.findByText("需要安装");
@@ -81,16 +81,16 @@ it("imports an existing config and exposes the detected paths before connecting"
   await userEvent.click(screen.getByRole("button", { name: "重新检测" }));
   expect(await screen.findByText("现有环境可用")).toBeVisible();
   expect(screen.getByText(/Python：/)).toHaveTextContent("/custom/python");
-  expect(screen.getByRole("button", { name: "选用 GPT-SoVITS v2" })).toBeEnabled();
+  expect(screen.getByRole("button", { name: "选用 GPT-SoVITS v2ProPlus" })).toBeEnabled();
   expect(screen.getByRole("button", { name: "连接训练后端" })).toBeDisabled();
 });
 
 it("explains the blocked connection and lets the user select the detected model beside it", async () => {
   const state = snapshot({ backend: { ready: true, engineRoot: "/engine", pythonPath: "/python", modelRoot: "/models", gpu: true, detail: "现有环境可用" },
-    models: [{ id: "gpt-sovits-v2", name: "GPT-SoVITS v2", capability: "training_inference", downloaded: true, selected: false }] });
+    models: [{ id: "gpt-sovits-v2proplus", name: "GPT-SoVITS v2ProPlus", capability: "training_inference", downloaded: true, selected: false }] });
   const api = client(state);
   vi.mocked(api.action).mockImplementation(async request => {
-    if (request.action !== "select_model" || request.modelId !== "gpt-sovits-v2") throw new Error("错误的模型选择");
+    if (request.action !== "select_model" || request.modelId !== "gpt-sovits-v2proplus") throw new Error("错误的模型选择");
     return { ...state, models: [{ ...state.models[0], selected: true }] };
   });
   render(<DesktopEnvironmentPanel client={api} />);

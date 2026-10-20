@@ -25,4 +25,4 @@ src/  # 按外部能力组织的适配器源码
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: fd4f1dfd5999994d4a6134408fd79b28e042ec05f9f2c02b122e39608062e027 -->
+<!-- directory-tree-sha256: bf1318a40f0631bbebc957898e0bf6d2bf92635c83f89966f85845d630905fa3 -->

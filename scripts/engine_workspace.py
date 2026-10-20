@@ -5,19 +5,58 @@ import re
 import shutil
 import sys
 import sysconfig
+import json
 
-GPT = "gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt"
-SOVITS = "gsv-v2final-pretrained/s2G2333k.pth"
-DISCRIMINATOR = "gsv-v2final-pretrained/s2D2333k.pth"
+GPT = "s1v3.ckpt"
+SOVITS = "v2Pro/s2Gv2ProPlus.pth"
+DISCRIMINATOR = "v2Pro/s2Dv2ProPlus.pth"
+SV = "sv/pretrained_eres2netv2w24s4ep4.ckpt"
 
 
-def assets(engine, models_root=None):
+def link_inference_assets(destination):
+    """Refresh fixed upstream auxiliary paths, including packages downloaded later."""
+    destination = Path(destination)
+    roots = [Path(root) for root in json.loads((destination / "model-sources.json").read_text())]
+    for name in (SV, "s2Gv3.pth", "gsv-v4-pretrained/s2Gv4.pth", "gsv-v4-pretrained/vocoder.pth",
+                 "models--nvidia--bigvgan_v2_24khz_100band_256x/bigvgan_generator.pt",
+                 "models--nvidia--bigvgan_v2_24khz_100band_256x/config.json"):
+        target = destination / "GPT_SoVITS/pretrained_models" / name
+        if target.exists():
+            continue
+        for root in roots:
+            source = root / "GPT_SoVITS/pretrained_models" / name
+            if source.is_file():
+                target.parent.mkdir(parents=True, exist_ok=True)
+                if target.is_symlink():
+                    target.unlink()
+                target.symlink_to(source.resolve())
+                break
+
+
+def assets(engine, models_root=None, version="v2ProPlus"):
     root = Path(models_root or engine).resolve(strict=True) / "GPT_SoVITS/pretrained_models"
-    result = {"gpt": root / GPT, "sovits": root / SOVITS, "discriminator": root / DISCRIMINATOR,
-              "bert": root / "chinese-roberta-wwm-ext-large", "hubert": root / "chinese-hubert-base", "language": root / "fast_langdetect/lid.176.bin"}
+    versions = {
+        "v2": ("gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt", "gsv-v2final-pretrained/s2G2333k.pth", "gsv-v2final-pretrained/s2D2333k.pth"),
+        "v2Pro": (GPT, "v2Pro/s2Gv2Pro.pth", "v2Pro/s2Dv2Pro.pth"),
+        "v2ProPlus": (GPT, SOVITS, DISCRIMINATOR),
+        "v3": (GPT, "s2Gv3.pth"),
+        "v4": (GPT, "gsv-v4-pretrained/s2Gv4.pth"),
+    }
+    if version not in versions:
+        raise ValueError("尚未接入此模型版本")
+    result = dict(zip(("gpt", "sovits", "discriminator"), (root / name for name in versions[version])))
+    if version == "v3":
+        result["vocoder"] = root / "models--nvidia--bigvgan_v2_24khz_100band_256x/bigvgan_generator.pt"
+        result["vocoder_config"] = result["vocoder"].parent / "config.json"
+    elif version == "v4":
+        result["vocoder"] = root / "gsv-v4-pretrained/vocoder.pth"
+    result.update(bert=root / "chinese-roberta-wwm-ext-large", hubert=root / "chinese-hubert-base",
+                  language=root / "fast_langdetect/lid.176.bin")
+    if version in {"v2Pro", "v2ProPlus"}:
+        result["sv"] = root / SV
     for value in result.values():
         if not value.exists():
-            raise ValueError("本地 v2 预训练文件缺失")
+            raise ValueError(f"本地 {version} 预训练文件缺失：{value.name}")
     return result
 
 
@@ -69,6 +108,14 @@ def workspace(engine, destination, models_root=None):
     language_target.parent.mkdir(parents=True, exist_ok=True)
     if not language_target.exists():
         language_target.symlink_to(language_source.resolve())
+    project = Path(__file__).resolve().parents[1]
+    libraries = {model_source.parent, project / "data/models", project / "models"}
+    sources = [model_source, engine]
+    for library in sorted(libraries):
+        sources.extend(library / ("gpt-sovits-" + version) for version in ("v2", "v2pro", "v2proplus", "v3", "v4"))
+    (destination / "model-sources.json").write_text(json.dumps([str(root) for root in sources]))
+    shutil.copyfile(Path(__file__), destination / "_meowlive_engine_workspace.py")
+    link_inference_assets(destination)
     # Text disambiguation need not occupy CUDA alongside the two TTS models.
     onnx = destination / "GPT_SoVITS/text/g2pw/onnx_api.py"
     code = onnx.read_text()
@@ -80,7 +127,7 @@ def workspace(engine, destination, models_root=None):
     return destination
 
 
-def environment(work, models, performance=None):
+def environment(work, models, performance=None, version="v2ProPlus"):
     performance = performance or {
         "cpu_threads": 2,
         "gpu_index": 0,
@@ -102,7 +149,7 @@ def environment(work, models, performance=None):
                CUDA_VISIBLE_DEVICES=str(performance["gpu_index"]),
                _CUDA_VISIBLE_DEVICES=str(performance["gpu_index"]),
                OMP_NUM_THREADS=str(performance["cpu_threads"]),
-               version="v2", hz="25hz", bert_path=str(models["bert"]), GRADIO_ANALYTICS_ENABLED="False")
+               version=version, hz="25hz", bert_path=str(models["bert"]), GRADIO_ANALYTICS_ENABLED="False")
     return env
 
 
@@ -192,3 +239,32 @@ def configure_inference_audio(work):
         path.write_text(source.replace(marker, replacement))
     elif replacement not in source:
         raise ValueError("上游参考音频入口已变化，无法配置低延迟读取")
+
+
+def configure_lora_training(work):
+    """Load the immutable previous adapter after wrapping the base flow model."""
+    path = work / "GPT_SoVITS/s2_train_v3_lora.py"
+    code = path.read_text()
+    marker = "        net_g.cfm = get_peft_model(net_g.cfm, lora_config)\n"
+    replacement = marker + (
+        "        # MeowLive: job-owned LoRA continuation\n"
+        "        if getattr(hps.train, 'pretrained_lora', ''):\n"
+        "            previous = torch.load(hps.train.pretrained_lora, map_location='cpu', weights_only=True)\n"
+        "            if previous.get('lora_rank') != hps.train.lora_rank:\n"
+        "                raise ValueError('LoRA continuation rank mismatch')\n"
+        "            result = net_g.load_state_dict(previous['weight'], strict=False)\n"
+        "            if result.unexpected_keys:\n"
+        "                raise ValueError('LoRA continuation keys mismatch')\n"
+    )
+    if "MeowLive: job-owned LoRA continuation" not in code:
+        if code.count(marker) != 2:
+            raise ValueError("上游 LoRA 入口已变化，请检查训练兼容性")
+        # Only the fresh initialization branch; automatic resumes have their own checkpoint.
+        pos = code.rindex(marker)
+        code = code[:pos] + code[pos:].replace(marker, replacement, 1)
+    code, count = re.subn(r'(?m)^    worker_count = .+$', '    worker_count = hps.data.num_workers', code)
+    if count != 1:
+        raise ValueError("上游 LoRA 数据加载入口已变化")
+    code = code.replace('loader_kwargs["persistent_workers"] = True', 'loader_kwargs["persistent_workers"] = False')
+    code = code.replace('loader_kwargs["prefetch_factor"] = 2 if os.name == "nt" else 3', 'loader_kwargs["prefetch_factor"] = 2')
+    path.write_text(code)

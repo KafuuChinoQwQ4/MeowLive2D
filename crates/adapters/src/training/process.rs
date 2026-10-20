@@ -252,7 +252,18 @@ impl TrainingEngine for ProcessTrainingEngine {
             state: TrainingState::Validating,
             progress: 99,
         });
-        Ok(ArtifactPair::v2())
+        let manifest: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&job.job_file).map_err(|_| engine_error())?)
+                .map_err(|_| engine_error())?;
+        let pair = ArtifactPair {
+            model_version: manifest["model_version"]
+                .as_str()
+                .ok_or_else(engine_error)?
+                .into(),
+            ..ArtifactPair::v2()
+        };
+        pair.validate()?;
+        Ok(pair)
     }
 }
 #[derive(serde::Deserialize)]

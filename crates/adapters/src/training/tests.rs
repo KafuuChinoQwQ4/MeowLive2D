@@ -55,6 +55,7 @@ fn parameters() -> TrainingParameters {
         sovits_epochs: 1,
         gpt_epochs: 1,
         performance: TrainingPerformance::default(),
+        model_version: None,
     }
 }
 
@@ -168,6 +169,7 @@ fn performance_is_persisted_in_catalog_and_job_manifest() {
     });
     assert_eq!(catalog["jobs"][0]["performance"], expected);
     assert_eq!(manifest["performance"], expected);
+    assert_eq!(manifest["model_version"], "v2ProPlus");
 }
 struct FakeEngine {
     complete_pair: bool,
@@ -569,7 +571,7 @@ fn subprocess_requires_success_event_and_honors_timeout() {
         job_file: temp.0.join("job.json"),
         work_dir: temp.0.clone(),
     };
-    fs::write(&prepared.job_file, "{}").unwrap();
+    fs::write(&prepared.job_file, r#"{"model_version":"v2ProPlus"}"#).unwrap();
     let start = Instant::now();
     assert!(
         engine
@@ -688,7 +690,7 @@ fn stderr_is_drained_into_a_bounded_private_log() {
         job_file: temp.0.join("job.json"),
         work_dir: temp.0.clone(),
     };
-    fs::write(&prepared.job_file, "{}").unwrap();
+    fs::write(&prepared.job_file, r#"{"model_version":"v2ProPlus"}"#).unwrap();
     assert!(
         engine
             .run(&prepared, &AtomicBool::new(false), &mut |_| {})
@@ -1181,5 +1183,62 @@ fn transcription_holds_admission_until_shutdown_reaps_the_owned_process_tree() {
     let pid = fs::read_to_string(pid_file).unwrap();
     if let Ok(stat) = fs::read_to_string(format!("/proc/{pid}/stat")) {
         assert_eq!(stat.split_whitespace().nth(2), Some("Z"));
+    }
+}
+
+#[test]
+fn selected_training_version_is_frozen_and_explicit_version_is_persisted() {
+    let temp = Temp::new();
+    let selection = temp.0.join("selection.json");
+    fs::write(
+        &selection,
+        r#"{"model_id":"gpt-sovits-v3","path":"/models/v3"}"#,
+    )
+    .unwrap();
+    let store = Arc::new(
+        FileTrainingStore::open(&temp.0)
+            .unwrap()
+            .with_model_selection(selection.clone()),
+    );
+    let manager = TrainingManager::open(
+        store.clone(),
+        Arc::new(FakeEngine {
+            complete_pair: true,
+        }),
+    )
+    .unwrap();
+    let first = manager.create(parameters(), vec![clip(); 2]).unwrap();
+    fs::write(
+        &selection,
+        r#"{"model_id":"gpt-sovits-v4","path":"/models/v4"}"#,
+    )
+    .unwrap();
+    let manifest: serde_json::Value =
+        serde_json::from_slice(&fs::read(store.prepared(&first.id).unwrap().job_file).unwrap())
+            .unwrap();
+    assert_eq!(manifest["model_version"], "v3");
+    assert_eq!(manifest["model_root"], "/models/v3");
+    manager.cancel(&first.id).unwrap();
+    for version in ["v2", "v2Pro", "v2ProPlus", "v3", "v4"] {
+        let mut params = parameters();
+        params.model_version = Some(version.into());
+        let job = manager.create(params, vec![clip(); 2]).unwrap();
+        let manifest: serde_json::Value =
+            serde_json::from_slice(&fs::read(store.prepared(&job.id).unwrap().job_file).unwrap())
+                .unwrap();
+        assert_eq!(manifest["model_version"], version);
+        assert_eq!(
+            store
+                .load()
+                .unwrap()
+                .jobs
+                .last()
+                .unwrap()
+                .parameters
+                .model_version
+                .as_deref(),
+            Some(version)
+        );
+        manager.cancel(&job.id).unwrap();
     }
 }

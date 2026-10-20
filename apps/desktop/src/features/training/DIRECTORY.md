@@ -12,4 +12,4 @@ training/  # 仅音频与可选文本训练、转写校对、任务版本和离�
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 2cb8731dbc05efee7dd8d02d78d5ee1879950c2f8de3896cf09d10010337bbc5 -->
+<!-- directory-tree-sha256: cd6491d37a08919bbbea5e6218a4a697443059f15ab3db9883bb7cc49160710e -->

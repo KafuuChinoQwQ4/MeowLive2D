@@ -14,6 +14,7 @@ def main():
     parser.add_argument("--engine-root", type=Path, required=True)
     parser.add_argument("--data-dir", type=Path, required=True)
     parser.add_argument("--model-root", type=Path)
+    parser.add_argument("--model-version", choices=["v2", "v2Pro", "v2ProPlus", "v3", "v4"], default="v2ProPlus")
     parser.add_argument("--port", type=int, default=9880)
     parser.add_argument("--device", choices=["cuda", "cpu"], default="cuda")
     parser.add_argument("--memory-mode", choices=["low", "standard"], default="low")
@@ -21,19 +22,19 @@ def main():
     args = parser.parse_args()
     if not 1024 <= args.port <= 65535:
         parser.error("port must be between 1024 and 65535")
-    models = assets(args.engine_root, args.model_root)
+    models = assets(args.engine_root, args.model_root, args.model_version)
     root = args.data_dir.resolve()
     work = workspace(args.engine_root, root / "work", args.model_root)
     configure_inference_memory(work, args.memory_mode)
     configure_inference_audio(work)
     prepare_runtime(work)
-    env = environment(work, models)
+    env = environment(work, models, version=args.model_version)
     # Forward only this explicit startup flag through the inference environment allowlist.
     env["MEOWLIVE_AUTO_ENABLE_MODELS"] = "1" if os.environ.get("MEOWLIVE_AUTO_ENABLE_MODELS") == "1" else "0"
     config = root / "tts-infer.yaml"
     # JSON is valid YAML. The upstream API will update only this private config.
     config.write_text(json.dumps({"custom": {
-        "version": "v2", "device": args.device, "is_half": args.device == "cuda",
+        "version": args.model_version, "device": args.device, "is_half": args.device == "cuda",
         "bert_base_path": str(models["bert"]), "cnhuhbert_base_path": str(models["hubert"]),
         "t2s_weights_path": str(models["gpt"]), "vits_weights_path": str(models["sovits"]),
     }}, indent=2))

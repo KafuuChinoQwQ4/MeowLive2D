@@ -56,6 +56,7 @@ function TrainingPanelContent({ client, resources, onResourcesChanged }: { clien
   const canSynthesize = runtime?.state === "loaded" || runtime?.state === "unsupported";
   const modelSwitchDisabled = c.pending || !!c.snapshot?.busy || !runtime?.supported || modelsTransitioning || runtime.state === "unavailable";
 
+  const [modelVersion, setModelVersion] = useState(initialPreferences.modelVersion ?? "");
   const [name, setName] = useState("");
   const [voice, setVoice] = useState("");
   const [clips, setClips] = useState<{ file: File; sourceName: string; text: string; language: string }[]>([]);
@@ -81,8 +82,8 @@ function TrainingPanelContent({ client, resources, onResourcesChanged }: { clien
   const [epochs, setEpochs] = useState(initialPreferences.epochs);
   const [text, setText] = useState(initialPreferences.auditionText);
   useEffect(() => {
-    saveTrainingPreferences(resources.baseUrl, { epochs, performancePreset, performance, textMode, auditionText: text });
-  }, [resources.baseUrl, epochs, performancePreset, performance, textMode, text]);
+    saveTrainingPreferences(resources.baseUrl, { epochs, modelVersion, performancePreset, performance, textMode, auditionText: text });
+  }, [resources.baseUrl, modelVersion, epochs, performancePreset, performance, textMode, text]);
   const voiceAvailable = c.voices.some(item => item.id === voice && item.available);
   useEffect(() => { if (!voiceAvailable) { setVoice(""); setReviewed(false); } }, [voiceAvailable]);
   const disabled = c.pending || c.snapshot?.busy || !c.snapshot;
@@ -204,13 +205,17 @@ function TrainingPanelContent({ client, resources, onResourcesChanged }: { clien
         if (hasBlankText) { void transcribeBlankClips(); return; }
         if (!ready) return;
         void c.action(async signal => {
-          const job = await client.create({ name, voice_id: voice, sovits_epochs: epochs, gpt_epochs: epochs, text_mode: textMode ? "reviewed_text" : "audio_only", reviewed: textMode && reviewed, performance,
+          const job = await client.create({ model_version: modelVersion || undefined, name, voice_id: voice, sovits_epochs: epochs, gpt_epochs: epochs, text_mode: textMode ? "reviewed_text" : "audio_only", reviewed: textMode && reviewed, performance,
             clips: clips.map(({ text, language }) => ({ text: textMode ? text : "", language })) }, clips.map(x => x.file), signal);
           if (!signal.aborted) c.trackJob(job);
         }, { operation: "提交训练", successTitle: "训练已提交", success: "任务已接收，请到“训练记录”查看进度。训练完成或失败时会另外通知。" });
       }}>
         <div className="training-fields">
           <label>训练音色<select value={voice} onChange={e => { setVoice(e.target.value); setReviewed(false); }} disabled={c.pending} aria-describedby="training-voice-hint"><option value="">请选择本次训练的音色</option>{c.voices.filter(v => v.available).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</select></label>
+          <label>训练模型<select aria-label="训练模型" value={modelVersion} onChange={e => setModelVersion(e.target.value)} disabled={c.pending}>
+            <option value="">跟随模型页面选择（默认 v2ProPlus）</option>
+            {["v2", "v2Pro", "v2ProPlus", "v3", "v4"].map(version => <option key={version} value={version}>GPT-SoVITS {version}{["v3", "v4"].includes(version) ? " · LoRA" : ""}</option>)}
+          </select></label>
           <label>训练名称<input value={name} maxLength={80} onChange={e => setName(e.target.value)} disabled={c.pending} /></label>
           <label>GPT / SoVITS 轮次<input type="number" min={1} max={20} value={epochs} onChange={e => setEpochs(bounded(e.target.value, 1, 20))} disabled={c.pending} /></label>
           <label>训练片段<input type="file" accept={AUDIO_FILE_ACCEPT} multiple disabled={c.pending} onChange={e => {
@@ -232,7 +237,7 @@ function TrainingPanelContent({ client, resources, onResourcesChanged }: { clien
             <label className="training-checkbox"><input type="checkbox" checked={performance.low_memory} onChange={event => setPerformance(previous => ({ ...previous, low_memory: event.target.checked }))} />节省显存</label></div>
           <p className="field-hint">每批 {performance.batch_size} 段 · {performance.data_workers} 个加载进程 · {performance.cpu_threads} 个 CPU 线程</p>
         </fieldset>
-        <p id="training-voice-hint" className="field-hint">已有成功版本时会继续训练，新版本单独保存。</p>
+        <p id="training-voice-hint" className="field-hint">已有成功版本时沿用原版本继续训练；切换模型用于首次训练的音色。任务提交后模型固定，新版本单独保存。v3 / v4 使用 LoRA，需要对应基础权重和声码器。</p>
         <label><input type="checkbox" checked={textMode} disabled={c.pending} onChange={e => { cancelTranscription(); setTextMode(e.target.checked); }} />输入并校对文本</label>
         <p className="field-hint">{textMode ? "留空可先提取文本，训练前逐片校对。" : "仅声音训练需配置本地语音识别。"}</p>
         {c.snapshot?.enabled === false && <p className="availability-note">训练未配置，可先准备素材。</p>}

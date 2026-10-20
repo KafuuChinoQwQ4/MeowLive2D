@@ -1,0 +1,28 @@
+{
+  "npm.autoDetect": "off",
+  "search.followSymlinks": false,
+  "search.exclude": {
+    "**/target": true,
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.vite": true,
+    "**/coverage": true,
+    "**/.venv": true,
+    "**/__pycache__": true,
+    "**/src-tauri/gen": true,
+    "data": true,
+    "logs": true
+  },
+  "files.watcherExclude": {
+    "**/target/**": true,
+    "**/node_modules/**": true,
+    "**/dist/**": true,
+    "**/.vite/**": true,
+    "**/coverage/**": true,
+    "**/.venv/**": true,
+    "**/__pycache__/**": true,
+    "**/src-tauri/gen/**": true,
+    "data/**": true,
+    "logs/**": true
+  }
+}

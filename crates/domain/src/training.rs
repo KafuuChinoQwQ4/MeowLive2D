@@ -17,6 +17,7 @@ mod tests {
             sovits_epochs: 1,
             gpt_epochs: 1,
             performance: TrainingPerformance::default(),
+            model_version: None,
         };
         assert!(parameters.validate().is_ok());
         parameters.voice_id = "../voice".into();
@@ -177,10 +178,18 @@ pub struct TrainingParameters {
     pub sovits_epochs: u16,
     pub gpt_epochs: u16,
     pub performance: TrainingPerformance,
+    pub model_version: Option<String>,
 }
 impl TrainingParameters {
     pub fn validate(&self) -> Result<(), TrainingError> {
         self.performance.validate()?;
+        if self
+            .model_version
+            .as_deref()
+            .is_some_and(|version| !matches!(version, "v2" | "v2Pro" | "v2ProPlus" | "v3" | "v4"))
+        {
+            return Err(TrainingError::Invalid("模型版本尚未适配".into()));
+        }
         if !crate::resources::valid_name(&self.name)
             || crate::voice::VoiceId::new(&self.voice_id).is_err()
             || !(1..=20).contains(&self.sovits_epochs)
@@ -229,9 +238,14 @@ impl ArtifactPair {
         }
     }
     pub fn validate(&self) -> Result<(), TrainingError> {
-        if self != &Self::v2() {
+        if !matches!(
+            self.model_version.as_str(),
+            "v2" | "v2Pro" | "v2ProPlus" | "v3" | "v4"
+        ) || self.gpt != "artifacts/gpt.ckpt"
+            || self.sovits != "artifacts/sovits.pth"
+        {
             return Err(TrainingError::Invalid(
-                "训练产物必须是任务内成对的 v2 模型".into(),
+                "训练产物必须是任务内成对的 GPT-SoVITS 模型".into(),
             ));
         }
         Ok(())

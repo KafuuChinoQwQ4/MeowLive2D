@@ -15,7 +15,7 @@ export const featureGuides: Record<Exclude<WorkspacePage, "guide">, GuideTopic> 
     steps: [
       "Windows 安装版可在“环境与模型”检测或安装 WSL2 语音后端、下载模型；Docker 和数据库按需要另行准备。",
       "源码版先准备 GPT-SoVITS 引擎，在 config/local/launcher.json 配置 Python 和引擎目录。",
-      "在本地模型中选择 GPT-SoVITS v2；缺少权重时下载后重新扫描。标记「需适配」的模型暂不能直接使用。",
+      "在本地模型中选择 GPT-SoVITS v2ProPlus；缺少权重时下载后重新扫描。标记「需适配」的模型暂不能直接使用。",
       "需要观众存储时，展开「数据库与可选功能」，按步骤准备 PostgreSQL + pgvector 并启用。",
     ],
     note: "原生 Windows App 基础功能不需要 WSL；声音环境向导可补齐 WSL2 语音后端，保留原有主服务和用户数据。",

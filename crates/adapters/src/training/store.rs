@@ -16,6 +16,8 @@ const MAX_ARTIFACT_BYTES: u64 = 8 * 1024 * 1024 * 1024;
 type VerifiedIdentity = (u64, u64, i64, i64, i64, i64, u64, String);
 pub struct FileTrainingStore {
     root: PathBuf,
+    model_selection: Option<PathBuf>,
+    default_model_version: String,
     #[cfg(unix)]
     verified: std::sync::Mutex<std::collections::HashMap<PathBuf, VerifiedIdentity>>,
 }
@@ -26,9 +28,32 @@ impl FileTrainingStore {
         ensure_directory(&root.join("jobs"))?;
         Ok(Self {
             root,
+            model_selection: None,
+            default_model_version: "v2ProPlus".into(),
             #[cfg(unix)]
             verified: std::sync::Mutex::new(std::collections::HashMap::new()),
         })
+    }
+    pub fn with_default_model_version(mut self, version: &str) -> Self {
+        self.default_model_version = version.into();
+        self
+    }
+    pub fn with_model_selection(mut self, path: PathBuf) -> Self {
+        self.model_selection = Some(path);
+        self
+    }
+    fn selected_model(&self) -> Option<(String, String)> {
+        let value: serde_json::Value =
+            serde_json::from_slice(&fs::read(self.model_selection.as_ref()?).ok()?).ok()?;
+        let version = match value.get("model_id")?.as_str()? {
+            "gpt-sovits-v2" => "v2",
+            "gpt-sovits-v2pro" => "v2Pro",
+            "gpt-sovits-v2proplus" => "v2ProPlus",
+            "gpt-sovits-v3" => "v3",
+            "gpt-sovits-v4" => "v4",
+            _ => return None,
+        };
+        Some((version.into(), value.get("path")?.as_str()?.into()))
     }
     fn job_dir(&self, id: &str) -> Result<PathBuf, TrainingError> {
         if !valid_job_id(id) {
@@ -132,7 +157,13 @@ impl TrainingStore for FileTrainingStore {
                 "reviewed_text"
             };
             let performance = &job.parameters.performance;
-            let mut manifest = serde_json::json!({ "schema":1, "text_mode":text_mode, "id":job.id, "voice_id":job.parameters.voice_id, "name":job.parameters.name, "model_version":"v2", "sovits_epochs":job.parameters.sovits_epochs, "gpt_epochs":job.parameters.gpt_epochs, "performance": { "batch_size":performance.batch_size, "data_workers":performance.data_workers, "cpu_threads":performance.cpu_threads, "gpu_index":performance.gpu_index, "low_memory":performance.low_memory }, "fp16":true, "clips":manifest_clips, "artifacts": { "gpt":"artifacts/gpt.ckpt", "sovits":"artifacts/sovits.pth" } });
+            let selected = self.selected_model();
+            let mut manifest = serde_json::json!({ "schema":1, "text_mode":text_mode, "id":job.id, "voice_id":job.parameters.voice_id, "name":job.parameters.name, "model_version":base.and_then(|job| job.artifacts.as_ref()).map(|pair| pair.model_version.as_str()).unwrap_or(job.parameters.model_version.as_deref().unwrap_or(selected.as_ref().map(|(version, _)| version.as_str()).unwrap_or(self.default_model_version.as_str()))), "sovits_epochs":job.parameters.sovits_epochs, "gpt_epochs":job.parameters.gpt_epochs, "performance": { "batch_size":performance.batch_size, "data_workers":performance.data_workers, "cpu_threads":performance.cpu_threads, "gpu_index":performance.gpu_index, "low_memory":performance.low_memory }, "fp16":true, "clips":manifest_clips, "artifacts": { "gpt":"artifacts/gpt.ckpt", "sovits":"artifacts/sovits.pth" } });
+            if let Some((version, path)) = selected {
+                if manifest["model_version"].as_str() == Some(version.as_str()) {
+                    manifest["model_root"] = serde_json::json!(path);
+                }
+            }
             if let (Some(previous), Some(pair)) = (base, base_pair.as_ref()) {
                 fs::create_dir(staging.join("base")).map_err(|_| failure())?;
                 let expected: ArtifactManifest = serde_json::from_slice(&read_bounded(
@@ -209,7 +240,7 @@ impl TrainingStore for FileTrainingStore {
             4096,
         )?)
         .map_err(|_| failure())?;
-        if manifest.job_id != id || manifest.model_version != "v2" {
+        if manifest.job_id != id || manifest.model_version != pair.model_version {
             return Err(failure());
         }
         let resolve = |relative: &str, name: &str| {
@@ -422,6 +453,8 @@ struct JobDto {
     gpt_epochs: u16,
     #[serde(default)]
     performance: PerformanceDto,
+    #[serde(default)]
+    model_version: Option<String>,
     state: String,
     clip_count: usize,
     total_bytes: usize,
@@ -484,6 +517,7 @@ impl JobDto {
             sovits_epochs: job.parameters.sovits_epochs,
             gpt_epochs: job.parameters.gpt_epochs,
             performance: PerformanceDto::from_domain(job.parameters.performance),
+            model_version: job.parameters.model_version.clone(),
             state: job.state.as_str().into(),
             clip_count: job.clip_count,
             total_bytes: job.total_bytes,
@@ -509,6 +543,7 @@ impl JobDto {
                 sovits_epochs: self.sovits_epochs,
                 gpt_epochs: self.gpt_epochs,
                 performance: self.performance.into_domain(),
+                model_version: self.model_version,
             },
             state: TrainingState::parse(&self.state).ok_or_else(failure)?,
             clip_count: self.clip_count,

@@ -36,3 +36,10 @@ export function createEnvironmentClient(): EnvironmentClient {
     apply: async () => { await call("environment_apply"); },
   };
 }
+
+export async function selectedTrainingModelVersion(): Promise<string | undefined> {
+  const snapshot = await createEnvironmentClient().status();
+  const selected = snapshot.models.find(model => model.selected && model.downloaded && model.capability === "training_inference");
+  const versions: Record<string, string> = { "gpt-sovits-v2": "v2", "gpt-sovits-v2pro": "v2Pro", "gpt-sovits-v2proplus": "v2ProPlus", "gpt-sovits-v3": "v3", "gpt-sovits-v4": "v4" };
+  return selected ? versions[selected.id] : undefined;
+}

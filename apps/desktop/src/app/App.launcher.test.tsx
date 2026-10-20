@@ -80,7 +80,7 @@ it("shows browser startup cards without a build-time launcher flag", async () =>
 
 it("controls the packaged App from a browser and exposes its model downloads", async () => {
   const token = "b".repeat(64);
-  const environment = { phase: "idle", busy: false, message: "环境任务完成", logs: [], distros: [{ name: "archlinux", version: 2 }], selectedDistro: "archlinux", backend: { ready: true, gpu: true, engineRoot: "/engine", pythonPath: "/python", modelRoot: "/models", detail: "" }, models: [{ id: "gpt-sovits-v2", name: "GPT-SoVITS v2", capability: "training_inference", downloaded: true, selected: true }, { id: "cosyvoice3", name: "CosyVoice3", capability: "download_only", downloaded: false, selected: false }], progress: 0, inferenceRunning: true };
+  const environment = { phase: "idle", busy: false, message: "环境任务完成", logs: [], distros: [{ name: "archlinux", version: 2 }], selectedDistro: "archlinux", backend: { ready: true, gpu: true, engineRoot: "/engine", pythonPath: "/python", modelRoot: "/models", detail: "" }, models: [{ id: "gpt-sovits-v2proplus", name: "GPT-SoVITS v2ProPlus", capability: "training_inference", downloaded: true, selected: true }, { id: "cosyvoice3", name: "CosyVoice3", capability: "download_only", downloaded: false, selected: false }], progress: 0, inferenceRunning: true };
   const status = { platform: "windows", config_path: "desktop.toml", server_url: "http://127.0.0.1:19600", server: { ready: true, managed: true, last_error: null, log_path: "server.log" }, runtime: { running: true, simulation: false, last_error: null }, environment };
   const fetcher = vi.fn<typeof fetch>(async (url, init) => {
     if (String(url) === "/api/desktop/status") return jsonResponse({ status, token });

@@ -14,6 +14,7 @@ mod tests {
                     sovits_epochs: 1,
                     gpt_epochs: 1,
                     performance: TrainingPerformance::default(),
+                    model_version: None,
                 },
                 vec![]
             ),

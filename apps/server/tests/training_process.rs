@@ -79,7 +79,7 @@ else:
         data=('controlled '+name+' weights').encode()
         (root/path).write_bytes(data)
         hashes[name]=hashlib.sha256(data).hexdigest()
-    (root/'artifacts/manifest.json').write_text(json.dumps({'job_id':job['id'],'model_version':'v2','sha256':hashes}))
+    (root/'artifacts/manifest.json').write_text(json.dumps({'job_id':job['id'],'model_version':job['model_version'],'sha256':hashes}))
     print(json.dumps({'state':'succeeded','progress':100}),flush=True)
 "#,
         );

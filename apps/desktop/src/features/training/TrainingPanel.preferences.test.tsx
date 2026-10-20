@@ -27,6 +27,7 @@ describe("训练面板本地偏好", () => {
     const deps = setup();
     const view = render(<TrainingPanel {...deps} />);
     await screen.findByText("训练就绪");
+    await user.selectOptions(screen.getByLabelText("训练模型"), "v4");
     fireEvent.change(screen.getByLabelText("GPT / SoVITS 轮次"), { target: { value: "7" } });
     fireEvent.change(screen.getByLabelText("每批片段数"), { target: { value: "3" } });
     fireEvent.change(screen.getByLabelText("数据加载进程"), { target: { value: "0" } });
@@ -48,6 +49,7 @@ describe("训练面板本地偏好", () => {
     const reopened = setup();
     render(<TrainingPanel {...reopened} />);
     await screen.findByText("训练就绪");
+    expect(screen.getByLabelText("训练模型")).toHaveValue("v4");
     expect(screen.getByLabelText("GPT / SoVITS 轮次")).toHaveValue(7);
     expect(screen.getByLabelText("性能预设")).toHaveValue("custom");
     expect(screen.getByLabelText("每批片段数")).toHaveValue(3);

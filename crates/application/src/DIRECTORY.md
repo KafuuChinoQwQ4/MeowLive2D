@@ -21,4 +21,4 @@ src/  # Agent、事件调度、语音与资源任务用例
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: d0b638f93ec973e9790248b8739accd64f3263413468a1633d454c19d24e94b6 -->
+<!-- directory-tree-sha256: b63cc5809a5feb48325eac3b67ba55e35888452fb0e38bd4e030d89744137e2a -->

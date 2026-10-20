@@ -33,6 +33,7 @@ class BridgeTests(unittest.TestCase):
         import json
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
+            (root / 'job.json').write_text('{"model_version":"v2ProPlus"}')
             runner = root / 'transcribe-training.py'
             runner.write_text('import sys,json,os\nprint(json.dumps({"args":sys.argv[1:],"stdin":sys.stdin.read(),"model":os.environ["MEOWLIVE_ASR_MODEL"]}),flush=True)\n')
             with subprocess.Popen([sys.executable, str(SCRIPT), '--runner', str(runner), '--engine-root', folder, '--audio', str(root/'audio.wav'), '--language', 'zh', '--model', '/opt/asr model'], stdin=subprocess.PIPE, stdout=subprocess.PIPE) as child:
@@ -45,6 +46,7 @@ class BridgeTests(unittest.TestCase):
         import json
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
+            (root / 'job.json').write_text('{"model_version":"v2ProPlus"}')
             catalog = json.loads(SCRIPT.with_name('voice-backend-models.json').read_text())
             markers = [name for name in catalog[0]['markers'] if name != 'G2PWModel.zip']
             markers += ['GPT_SoVITS/text/G2PWModel/g2pW.onnx', 'GPT_SoVITS/text/G2PWModel/config.py']
@@ -62,6 +64,7 @@ class BridgeTests(unittest.TestCase):
     def test_stdin_disconnect_terminates_descendants(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
+            (root / 'job.json').write_text('{"model_version":"v2ProPlus"}')
             runner = root / 'runner.py'
             marker = root / 'late-write'
             runner.write_text('import subprocess,sys,time\nsubprocess.Popen([sys.executable,"-c",'+repr('import time,pathlib,signal; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(2); pathlib.Path('+repr(str(marker))+').touch()')+'])\nprint("ready",flush=True)\ntime.sleep(20)\n')

@@ -346,7 +346,24 @@ pub fn build_training(
         return Ok(Arc::new(TrainingManager::disabled()));
     }
     let runner = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scripts/train-gpt-sovits.py");
-    let store = FileTrainingStore::open(&config.directory).map_err(|e| e.to_string())?;
+    let weights = config.default_sovits_weights.to_string_lossy();
+    let default_version = if weights.ends_with("s2Gv2Pro.pth") {
+        "v2Pro"
+    } else if weights.ends_with("s2G2333k.pth") {
+        "v2"
+    } else if weights.ends_with("s2Gv3.pth") {
+        "v3"
+    } else if weights.ends_with("s2Gv4.pth") {
+        "v4"
+    } else {
+        "v2ProPlus"
+    };
+    let store = FileTrainingStore::open(&config.directory)
+        .map_err(|e| e.to_string())?
+        .with_default_model_version(default_version)
+        .with_model_selection(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../config/local/model-selection.json"),
+        );
     let engine = if let Some(wsl) = config.wsl_config()? {
         ProcessTrainingEngine::new_wsl(wsl, Duration::from_secs(config.timeout_seconds))
     } else {

@@ -13,14 +13,14 @@
 - 语音播报：自行准备 TTS 引擎和模型。
 - Live2D 形象：自行安装 VTube Studio，加载模型并开启插件 API。
 - 观众档案、积分和记忆：准备 PostgreSQL + pgvector，按[数据库启用步骤](config/windows-database.md)配置。首次默认关闭观众存储。
-- 本地声音训练：在 App「环境与模型」检测或安装 WSL2 语音后端，下载并选用 GPT-SoVITS v2；训练需要可用 CUDA GPU。
+- 本地声音训练：在 App「环境与模型」检测或安装 WSL2 语音后端，下载并选用 GPT-SoVITS v2ProPlus；训练需要可用 CUDA GPU。
 - 推流与录制：按需安装 OBS。
 
 原生 App 基础功能不需要 WSL。声音环境向导可在用户点击后安装 WSL2 和独立语音后端；系统授权和重启由用户完成。桌面配置与打包见 [Windows App 说明](apps/desktop/src-tauri/README.md)。
 
 ## 开始使用
 
-1. **准备声音**：配置 TTS，使用已适配的 GPT-SoVITS v2 模型。在「声音训练」上传 3–10 秒参考录音，填写原文并选用音色；不必先训练。
+1. **准备声音**：配置 TTS，使用已适配的 GPT-SoVITS v2ProPlus 模型。在「声音训练」上传 3–10 秒参考录音，填写原文并选用音色；不必先训练。
 2. **试播**：确认服务就绪，在「语音播报」输入文字并加入队列。
 3. **设置角色**：连接 VTube Studio，在「角色与人物卡」选择形象并填写人设。嘴型输入使用 `MeowMouthOpen`，范围 `0–1`。
 4. **连接 AI**：在「LLM 接入」填写地址和密钥，获取模型、测试并保存，然后重启 App 或启动器。

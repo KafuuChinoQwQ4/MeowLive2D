@@ -8,7 +8,7 @@ export function GuidePanel({ onNavigate }: { onNavigate: (page: WorkspacePage) =
       <div className="section-title"><h2 id="guide-start-heading">新手入门</h2><span className="field-hint">从第一次播报开始</span></div>
       <ol className="guide-steps">
         <li><strong>打开应用</strong><p>Windows 安装版直接打开 App；源码版使用项目启动器。</p></li>
-        <li><strong>准备语音</strong><p>自行准备 TTS 引擎和 GPT-SoVITS v2 模型，确认服务已就绪。</p></li>
+        <li><strong>准备语音</strong><p>自行准备 TTS 引擎和 GPT-SoVITS v2ProPlus 模型，确认服务已就绪。</p></li>
         <li><strong>添加音色</strong><p>上传 3–10 秒录音，填写原文，设为当前音色。</p></li>
         <li><strong>试播一句</strong><p>到「语音播报」输入文字；需要角色动嘴时再连接 VTube Studio。</p></li>
       </ol>

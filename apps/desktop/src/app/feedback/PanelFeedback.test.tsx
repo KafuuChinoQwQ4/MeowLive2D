@@ -110,10 +110,10 @@ it("reports replay validation failure before submitting events", async () => {
 
 it("acknowledges downloading separately from model availability", async () => {
   const snapshot = modelLibrarySnapshot();
-  const client: ModelLibraryClient = { getStatus: vi.fn().mockResolvedValue(snapshot), scan: vi.fn(), select: vi.fn(), cancel: vi.fn(), download: vi.fn().mockResolvedValue({ ...snapshot, downloads: [{ id: "download-1", model_id: "gpt-sovits-v2", state: "downloading", message: "准备下载", downloaded_bytes: 0, total_bytes: 0, path: "" }] }) };
+  const client: ModelLibraryClient = { getStatus: vi.fn().mockResolvedValue(snapshot), scan: vi.fn(), select: vi.fn(), cancel: vi.fn(), download: vi.fn().mockResolvedValue({ ...snapshot, downloads: [{ id: "download-1", model_id: "gpt-sovits-v2proplus", state: "downloading", message: "准备下载", downloaded_bytes: 0, total_bytes: 0, path: "" }] }) };
   const { result } = renderHook(() => useModelLibrary(client, "token", vi.fn()), { wrapper: FeedbackProvider });
   await act(async () => {});
-  await act(async () => { await result.current.run("download", "gpt-sovits-v2"); });
+  await act(async () => { await result.current.run("download", "gpt-sovits-v2proplus"); });
   expect(screen.getByRole("status")).toHaveTextContent("下载请求已提交");
   expect(screen.getByRole("status")).not.toHaveTextContent("下载完成");
 });

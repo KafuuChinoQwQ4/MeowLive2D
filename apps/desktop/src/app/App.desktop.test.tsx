@@ -128,7 +128,7 @@ it("can stop TTS after stopping the main service and blocks it during environmen
     runtime: { running: true, simulation: false, last_error: null },
     environment: { phase: "running", busy: false, message: "推理运行中", logs: [], distros: [], selectedDistro: "Ubuntu",
       backend: { ready: true, engineRoot: "/engine", pythonPath: "/python", modelRoot: "/models", gpu: true, detail: "就绪" },
-      models: [{ id: "gpt-sovits-v2", name: "GPT-SoVITS v2", capability: "training_inference", selected: true, downloaded: true }], progress: 100, inferenceRunning: true },
+      models: [{ id: "gpt-sovits-v2proplus", name: "GPT-SoVITS v2ProPlus", capability: "training_inference", selected: true, downloaded: true }], progress: 100, inferenceRunning: true },
   };
   vi.mocked(getDesktopStatus).mockImplementation(async () => structuredClone(status));
   vi.mocked(setDesktopServiceEnabled).mockImplementation(async (id, enabled) => {

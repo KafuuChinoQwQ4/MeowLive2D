@@ -29,9 +29,19 @@ export const gptRequiredFiles = [
   ['GPT_SoVITS/text/G2PWModel/char_bopomofo_dict.json', 1],
 ];
 
-export async function inspectGptModels(root) {
+export async function inspectGptModels(root, modelId = 'gpt-sovits-v2') {
   const missing = [];
-  for (const [relative, minimum] of gptRequiredFiles) {
+  const weights = {
+    'gpt-sovits-v2': gptRequiredFiles.slice(0, 3),
+    'gpt-sovits-v2pro': ['s1v3.ckpt', 'v2Pro/s2Gv2Pro.pth', 'v2Pro/s2Dv2Pro.pth', 'sv/pretrained_eres2netv2w24s4ep4.ckpt'],
+    'gpt-sovits-v2proplus': ['s1v3.ckpt', 'v2Pro/s2Gv2ProPlus.pth', 'v2Pro/s2Dv2ProPlus.pth', 'sv/pretrained_eres2netv2w24s4ep4.ckpt'],
+    'gpt-sovits-v3': ['s1v3.ckpt', 's2Gv3.pth', 'models--nvidia--bigvgan_v2_24khz_100band_256x/bigvgan_generator.pt', 'models--nvidia--bigvgan_v2_24khz_100band_256x/config.json'],
+    'gpt-sovits-v4': ['s1v3.ckpt', 'gsv-v4-pretrained/s2Gv4.pth', 'gsv-v4-pretrained/vocoder.pth'],
+  }[modelId];
+  if (!weights) return { ready: false, missing: ['未适配的模型版本'] };
+  const required = [...gptRequiredFiles.slice(3), ...weights.map(name => Array.isArray(name) ? name
+    : [`GPT_SoVITS/pretrained_models/${name}`, name.endsWith('.json') ? 1 : 1024 * 1024])];
+  for (const [relative, minimum] of required) {
     try { const info = await stat(join(root, relative)); if (!info.isFile() || info.size < minimum) missing.push(relative); }
     catch { missing.push(relative); }
   }

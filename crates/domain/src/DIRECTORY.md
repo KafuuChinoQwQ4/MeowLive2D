@@ -12,4 +12,4 @@ src/  # 事件、会话、角色、音色和执行状态的领域定义
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: d47aa92fb5a6d8728d79261e4f3b1427e0b391c9d28498d14a8b53569c18e10e -->
+<!-- directory-tree-sha256: dd6c861dc13544b965a1d1385c7ef647c1a8762d0f694ba056f390236bc589d2 -->

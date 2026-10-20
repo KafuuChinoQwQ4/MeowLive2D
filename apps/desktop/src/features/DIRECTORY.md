@@ -49,4 +49,4 @@ features/  # 面向用户的功能模块，各自封装组件与状态
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: d935a2de4406c478d5c83a46769aed6b66eb0c219ddd0e71f384592e88a21a01 -->
+<!-- directory-tree-sha256: f6f7a27525ed370edeeea479d4a2055fc939e6658e4ed0ea30e167890141f876 -->

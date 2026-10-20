@@ -6,15 +6,123 @@
 import { ASR_MODELS } from './model-catalog-asr.mjs';
 export const MODEL_CATALOG = [
   {
-    "id": "gpt-sovits-v2",
-    "name": "GPT-SoVITS v2",
+    "id": "gpt-sovits-v2proplus",
+    "name": "GPT-SoVITS v2ProPlus",
     "languages": "中文 / 英文 / 日文 / 韩文 / 粤语",
-    "description": "已接入的参考音频克隆引擎，适合本项目语音播报。",
+    "description": "默认语音模型，支持参考音频克隆与本地训练。",
     "license": "MIT；附属模型遵循各自许可",
     "homepage": "https://github.com/RVC-Boss/GPT-SoVITS",
     "source_url": "https://huggingface.co/lj1995/GPT-SoVITS",
     "compatibility": "ready",
-    "note": "下载含 v2 权重、中文编码器、语言识别和 G2PW 资源；仍需已有 GPT-SoVITS 引擎代码及 Python 依赖，通过环境检查后可选择启用。",
+    "note": "包含 GPT、Plus 生成器与判别器、说话人编码器及中文资源；需要支持 v2ProPlus 的 GPT-SoVITS 引擎。",
+    "sources": [
+      {
+        "repo": "lj1995/GPT-SoVITS",
+        "prefix": "GPT_SoVITS/pretrained_models",
+        "include": [
+          "README.md",
+          "chinese-hubert-base/",
+          "chinese-roberta-wwm-ext-large/",
+          "s1v3.ckpt",
+          "v2Pro/s2Gv2ProPlus.pth",
+          "v2Pro/s2Dv2ProPlus.pth",
+          "sv/pretrained_eres2netv2w24s4ep4.ckpt"
+        ]
+      },
+      {
+        "repo": "XXXXRT/GPT-SoVITS-Pretrained",
+        "prefix": "GPT_SoVITS",
+        "include": [
+          "pretrained_models/fast_langdetect/lid.176.bin"
+        ]
+      },
+      {
+        "repo": "XXXXRT/GPT-SoVITS-Pretrained",
+        "prefix": "",
+        "include": [
+          "G2PWModel.zip"
+        ]
+      }
+    ],
+    "markers": [
+      "GPT_SoVITS/pretrained_models/chinese-hubert-base/config.json",
+      "GPT_SoVITS/pretrained_models/chinese-hubert-base/preprocessor_config.json",
+      "GPT_SoVITS/pretrained_models/chinese-hubert-base/pytorch_model.bin",
+      "GPT_SoVITS/pretrained_models/chinese-roberta-wwm-ext-large/config.json",
+      "GPT_SoVITS/pretrained_models/chinese-roberta-wwm-ext-large/pytorch_model.bin",
+      "GPT_SoVITS/pretrained_models/chinese-roberta-wwm-ext-large/tokenizer.json",
+      "GPT_SoVITS/pretrained_models/fast_langdetect/lid.176.bin",
+      "G2PWModel.zip",
+      "GPT_SoVITS/pretrained_models/s1v3.ckpt",
+      "GPT_SoVITS/pretrained_models/v2Pro/s2Gv2ProPlus.pth",
+      "GPT_SoVITS/pretrained_models/v2Pro/s2Dv2ProPlus.pth",
+      "GPT_SoVITS/pretrained_models/sv/pretrained_eres2netv2w24s4ep4.ckpt"
+    ]
+  },
+  {
+    "id": "gpt-sovits-v2pro",
+    "name": "GPT-SoVITS v2Pro",
+    "languages": "中文 / 英文 / 日文 / 韩文 / 粤语",
+    "description": "增强参考音色相似度的 GPT-SoVITS 模型。",
+    "license": "MIT；附属模型遵循各自许可",
+    "homepage": "https://github.com/RVC-Boss/GPT-SoVITS",
+    "source_url": "https://huggingface.co/lj1995/GPT-SoVITS",
+    "compatibility": "ready",
+    "note": "可切换用于推理与训练；需要完整预训练权重和说话人编码器。",
+    "sources": [
+      {
+        "repo": "lj1995/GPT-SoVITS",
+        "prefix": "GPT_SoVITS/pretrained_models",
+        "include": [
+          "README.md",
+          "chinese-hubert-base/",
+          "chinese-roberta-wwm-ext-large/",
+          "s1v3.ckpt",
+          "v2Pro/s2Gv2Pro.pth",
+          "v2Pro/s2Dv2Pro.pth",
+          "sv/pretrained_eres2netv2w24s4ep4.ckpt"
+        ]
+      },
+      {
+        "repo": "XXXXRT/GPT-SoVITS-Pretrained",
+        "prefix": "GPT_SoVITS",
+        "include": [
+          "pretrained_models/fast_langdetect/lid.176.bin"
+        ]
+      },
+      {
+        "repo": "XXXXRT/GPT-SoVITS-Pretrained",
+        "prefix": "",
+        "include": [
+          "G2PWModel.zip"
+        ]
+      }
+    ],
+    "markers": [
+      "GPT_SoVITS/pretrained_models/chinese-hubert-base/config.json",
+      "GPT_SoVITS/pretrained_models/chinese-hubert-base/preprocessor_config.json",
+      "GPT_SoVITS/pretrained_models/chinese-hubert-base/pytorch_model.bin",
+      "GPT_SoVITS/pretrained_models/chinese-roberta-wwm-ext-large/config.json",
+      "GPT_SoVITS/pretrained_models/chinese-roberta-wwm-ext-large/pytorch_model.bin",
+      "GPT_SoVITS/pretrained_models/chinese-roberta-wwm-ext-large/tokenizer.json",
+      "GPT_SoVITS/pretrained_models/fast_langdetect/lid.176.bin",
+      "G2PWModel.zip",
+      "GPT_SoVITS/pretrained_models/s1v3.ckpt",
+      "GPT_SoVITS/pretrained_models/v2Pro/s2Gv2Pro.pth",
+      "GPT_SoVITS/pretrained_models/v2Pro/s2Dv2Pro.pth",
+      "GPT_SoVITS/pretrained_models/sv/pretrained_eres2netv2w24s4ep4.ckpt"
+    ]
+  },
+  {
+    "id": "gpt-sovits-v2",
+    "name": "GPT-SoVITS v2",
+    "languages": "中文 / 英文 / 日文 / 韩文 / 粤语",
+    "description": "旧版参考音频克隆模型，保留用于已有音色。",
+    "license": "MIT；附属模型遵循各自许可",
+    "homepage": "https://github.com/RVC-Boss/GPT-SoVITS",
+    "source_url": "https://huggingface.co/lj1995/GPT-SoVITS",
+    "compatibility": "ready",
+    "note": "可切换用于推理与训练；已有音色续训保留原版本。",
     "sources": [
       {
         "repo": "lj1995/GPT-SoVITS",
@@ -63,8 +171,8 @@ export const MODEL_CATALOG = [
     "license": "MIT；附属模型遵循各自许可",
     "homepage": "https://github.com/RVC-Boss/GPT-SoVITS",
     "source_url": "https://huggingface.co/lj1995/GPT-SoVITS",
-    "compatibility": "download_only",
-    "note": "可下载模型文件；本项目尚未接入此引擎，需按官方说明另行安装并适配语音接口。",
+    "compatibility": "ready",
+    "note": "可切换用于推理与 LoRA 训练；需完整基础权重和对应声码器，训练需要支持 PEFT 的引擎。",
     "sources": [
       {
         "repo": "lj1995/GPT-SoVITS",
@@ -116,8 +224,8 @@ export const MODEL_CATALOG = [
     "license": "MIT；附属模型遵循各自许可",
     "homepage": "https://github.com/RVC-Boss/GPT-SoVITS",
     "source_url": "https://huggingface.co/lj1995/GPT-SoVITS",
-    "compatibility": "download_only",
-    "note": "可下载模型文件；本项目尚未接入此引擎，需按官方说明另行安装并适配语音接口。",
+    "compatibility": "ready",
+    "note": "可切换用于推理与 LoRA 训练；需完整基础权重和对应声码器，训练需要支持 PEFT 的引擎。",
     "sources": [
       {
         "repo": "lj1995/GPT-SoVITS",

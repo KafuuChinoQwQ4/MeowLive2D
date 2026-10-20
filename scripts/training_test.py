@@ -75,6 +75,120 @@ class TrainingTests(unittest.TestCase):
         (root / "job.json").write_text(json.dumps(value))
         return value
 
+    def test_all_five_versions_accept_manifest_and_match_assets(self):
+        expected = {"v2": "gsv-v2final-pretrained/s2G2333k.pth", "v2Pro": "v2Pro/s2Gv2Pro.pth",
+                    "v2ProPlus": "v2Pro/s2Gv2ProPlus.pth", "v3": "s2Gv3.pth", "v4": "gsv-v4-pretrained/s2Gv4.pth"}
+        for version, weight in expected.items():
+            with self.subTest(version=version), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                job = self.job(root)
+                job["model_version"] = version
+                (root / "job.json").write_text(json.dumps(job))
+                self.assertEqual(runner.load_job(root / "job.json")[1]["model_version"], version)
+                with patch.object(Path, "exists", return_value=True):
+                    models = engine_workspace.assets(root, version=version)
+                self.assertEqual(models["sovits"], root / "GPT_SoVITS/pretrained_models" / weight)
+                self.assertEqual("discriminator" in models, version not in {"v3", "v4"})
+                self.assertEqual("vocoder" in models, version in {"v3", "v4"})
+
+    def test_plus_job_and_assets_use_matching_version(self):
+        import engine_workspace
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            job = self.job(root)
+            job["model_version"] = "v2ProPlus"
+            (root / "job.json").write_text(json.dumps(job))
+            self.assertEqual(runner.load_job(root / "job.json")[1]["model_version"], "v2ProPlus")
+            self.assertEqual(engine_workspace.GPT, "s1v3.ckpt")
+            self.assertEqual(engine_workspace.SOVITS, "v2Pro/s2Gv2ProPlus.pth")
+
+    def test_cross_version_auxiliaries_are_found_after_runtime_start(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            work = root / "work"
+            work.mkdir()
+            models = root / "models"
+            sources = [str(models / name) for name in ("gpt-sovits-v2proplus", "gpt-sovits-v3", "gpt-sovits-v4")]
+            (work / "model-sources.json").write_text(json.dumps(sources))
+            engine_workspace.link_inference_assets(work)
+            for folder, filename in [("gpt-sovits-v3", "s2Gv3.pth"), ("gpt-sovits-v3", "models--nvidia--bigvgan_v2_24khz_100band_256x/config.json"), ("gpt-sovits-v4", "gsv-v4-pretrained/vocoder.pth"), ("gpt-sovits-v2proplus", engine_workspace.SV)]:
+                source = models / folder / "GPT_SoVITS/pretrained_models" / filename
+                source.parent.mkdir(parents=True, exist_ok=True)
+                source.write_text("downloaded later")
+                engine_workspace.link_inference_assets(work)
+                target = work / "GPT_SoVITS/pretrained_models" / filename
+                self.assertTrue(target.is_symlink())
+                self.assertEqual(target.read_text(), "downloaded later")
+
+    def test_plus_training_uses_wide_decoder_template_and_versioned_logs(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            job = self.job(root)
+            job.update(model_version="v2ProPlus", performance={"batch_size": 1, "data_workers": 0, "cpu_threads": 2, "gpu_index": 0})
+            configs = root / "work/GPT_SoVITS/configs"
+            configs.mkdir(parents=True)
+            (configs / "s2v2ProPlus.json").write_text(json.dumps({"train": {}, "model": {"gin_channels": 1024, "upsample_initial_channel": 768}, "data": {}}))
+            (configs / "s1longer-v2.yaml").write_text(json.dumps({"train": {}, "data": {}}))
+            fake_yaml = types.SimpleNamespace(safe_load=json.loads, safe_dump=lambda value, **_: json.dumps(value))
+            with patch.dict(sys.modules, {"yaml": fake_yaml}):
+                runner.configurations(root, job, root / "work", {key: root / key for key in ("gpt", "sovits", "discriminator")})
+            config = json.loads((root / "s2.json").read_text())
+            self.assertEqual(config["model"]["version"], "v2ProPlus")
+            self.assertEqual(config["model"]["gin_channels"], 1024)
+            self.assertEqual(config["model"]["upsample_initial_channel"], 768)
+            self.assertTrue((root / "prepared/logs_s2_v2ProPlus").is_dir())
+
+    def test_lora_continuation_keeps_base_encoder_and_initializes_previous_adapter(self):
+        for version in ("v3", "v4"):
+            with self.subTest(version=version), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                job = self.job(root)
+                job.update(model_version=version, voice_id="voice", performance={"batch_size": 1, "data_workers": 0, "gpu_index": 0})
+                configs = root / "work/GPT_SoVITS/configs"
+                configs.mkdir(parents=True)
+                (configs / "s2.json").write_text(json.dumps({"train": {}, "model": {}, "data": {}}))
+                (configs / "s1longer-v2.yaml").write_text(json.dumps({"train": {}, "data": {}}))
+                (root / "base").mkdir()
+                base = {"job_id": str(uuid.uuid4()), "voice_id": "voice", "sha256": {}}
+                for key, filename in (("gpt", "gpt.ckpt"), ("sovits", "sovits.pth")):
+                    base[key] = "base/" + filename
+                    payload = (runner.VERSION_MARKERS[version] if key == "sovits" else b"PK") + b"previous"
+                    (root / base[key]).write_bytes(payload)
+                    base["sha256"][key] = hashlib.sha256(payload).hexdigest()
+                job["base"] = base
+                models = {"gpt": root / "original.ckpt", "sovits": root / "base-encoder.pth"}
+                fake_yaml = types.SimpleNamespace(safe_load=json.loads, safe_dump=lambda value, **_: json.dumps(value))
+                with patch.dict(sys.modules, {"yaml": fake_yaml}):
+                    runner.configurations(root, job, root / "work", models)
+                config = json.loads((root / "s2.json").read_text())
+                self.assertEqual(config["train"]["pretrained_s2G"], str(models["sovits"]))
+                self.assertEqual(config["train"]["pretrained_lora"], str(root / "base/sovits-training.pth"))
+                self.assertEqual(config["train"]["lora_rank"], 32)
+                self.assertTrue((root / "base/sovits-training.pth").read_bytes().startswith(b"PK"))
+                self.assertEqual(json.loads((root / "s1.yaml").read_text())["pretrained_s1"], str(root / "base/gpt.ckpt"))
+
+    def test_legacy_continuation_finds_downloaded_v2_without_changing_plus_selection(self):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ, {}, clear=True):
+            root = Path(temp)
+            old = root / "data/models/gpt-sovits-v2"
+            old.mkdir(parents=True)
+            selected = root / "config/local/model-selection.json"
+            selected.parent.mkdir(parents=True)
+            selected.write_text(json.dumps({"model_id": "gpt-sovits-v2proplus", "path": "/selected/plus"}))
+            self.assertEqual(runner.training_model_root(root, "v2", root), str(old))
+            self.assertEqual(runner.training_model_root(root, "v2ProPlus", root), "/selected/plus")
+            with patch.dict(os.environ, {"MEOWLIVE_GPT_SOVITS_MODELS": "/explicit"}):
+                self.assertEqual(runner.training_model_root(root, "v2", root), "/explicit")
+
+    def test_native_training_finds_model_packages_beside_managed_engine(self):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ, {}, clear=True):
+            root = Path(temp)
+            engine = root / "native/engine"
+            engine.mkdir(parents=True)
+            package = engine.parent / "models/gpt-sovits-v4"
+            package.mkdir(parents=True)
+            self.assertEqual(runner.training_model_root(engine, "v4", root / "project"), str(package))
+
     def test_manifest_rejects_unreviewable_text_paths_and_unbounded_parameters(self):
         with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parents[1] / "target") as temp:
             root = Path(temp)

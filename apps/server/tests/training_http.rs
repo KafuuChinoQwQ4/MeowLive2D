@@ -93,6 +93,7 @@ impl DeleteFixture {
                         sovits_epochs: 1,
                         gpt_epochs: 1,
                         performance: TrainingPerformance::default(),
+                        model_version: None,
                     },
                     state: TrainingState::Succeeded,
                     clip_count: 2,

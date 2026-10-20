@@ -13,13 +13,13 @@ export function DesktopLauncherControls({ status, busy, stale, setEnabled, refre
   const { server, runtime, environment } = status;
   const isLinux = status.platform === "linux";
   const serverState: LauncherServiceState = server.stopped ? "stopped" : server.ready ? (server.managed ? "running" : "external") : server.last_error ? "failed" : "starting";
-  const ttsReady = !!environment?.backend.ready && environment.models.some(model => model.id === "gpt-sovits-v2" && model.selected && model.downloaded);
+  const ttsReady = !!environment?.backend.ready && environment.models.some(model => model.id === "gpt-sovits-v2proplus" && model.selected && model.downloaded);
   const service = (id: LauncherServiceId, state: LauncherServiceState, message: string, can_start: boolean, can_stop: boolean): LauncherService =>
     ({ id, state, message, can_start, can_stop, managed: state !== "external", url: "", log_path: "" });
   const items: LauncherService[] = [
     service("server", serverState, server.last_error ?? (server.stopped ? "打开开关启动主服务。" : "主服务运行中。关闭 App 时会自动释放。"), serverState === "stopped" || serverState === "failed", server.ready && server.managed),
     service("tts", environment?.inferenceRunning ? "running" : environment?.phase === "failed" ? "failed" : "stopped",
-      !environment ? "正在等待环境状态，请刷新或重新打开 App。" : environment.busy || environment.phase === "failed" ? environment.message : !ttsReady ? "请先在环境与模型页安装、下载并选用 GPT-SoVITS v2。" : "打开开关启动语音引擎，关闭 App 时会自动释放。",
+      !environment ? "正在等待环境状态，请刷新或重新打开 App。" : environment.busy || environment.phase === "failed" ? environment.message : !ttsReady ? "请先在环境与模型页安装、下载并选用 GPT-SoVITS v2ProPlus。" : "打开开关启动语音引擎，关闭 App 时会自动释放。",
       ttsReady && server.ready, !!environment?.inferenceRunning),
     service("windows", runtime.running ? "running" : runtime.last_error ? "failed" : "stopped",
       isLinux ? "Windows 专属执行端，请在 Windows App 中使用。" : runtime.last_error ?? (runtime.simulation ? "静音模拟：不输出设备声音" : "系统音频输出"), !isLinux && server.ready, !isLinux && runtime.running),

@@ -19,4 +19,4 @@ server/  # Linux / WSL 主服务入口、配置和传输边界
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 23bf35a433e28922e74154a8290e5e566fb4e40e48003c44b53add58cfd814c1 -->
+<!-- directory-tree-sha256: 30c3b116f68a105ecf9a940b062fe9a9b2e6318933f8de00932b98f49bce9eab -->

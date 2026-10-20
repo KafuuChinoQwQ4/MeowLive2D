@@ -40,7 +40,7 @@ export function DesktopEnvironmentPanel({ client, onApplied, onBusyChanged, plat
   const busy = pending || snapshot?.busy === true;
   useEffect(() => { onBusyChanged?.(busy); }, [busy, onBusyChanged]);
   const backendReady = snapshot?.backend.ready === true && (platform === "linux" || distro === snapshot.selectedDistro);
-  const ttsModel = snapshot?.models.find(model => model.id === "gpt-sovits-v2");
+  const ttsModel = snapshot?.models.find(model => model.capability === "training_inference" && model.selected) ?? snapshot?.models.find(model => model.capability === "training_inference" && model.downloaded);
   const ttsSelected = ttsModel?.selected === true && ttsModel.downloaded;
   const query = modelSearch.trim().toLowerCase();
   const filteredModels = snapshot?.models.filter(model => {
@@ -55,7 +55,7 @@ export function DesktopEnvironmentPanel({ client, onApplied, onBusyChanged, plat
     : !distro ? "请选择 WSL2 环境。"
     : snapshot?.selectedDistro !== distro ? "环境已切换，请重新检测。"
     : !backendReady ? "后端未就绪，请展开配置与修复。"
-    : !ttsModel?.downloaded ? "请先下载下方的 GPT-SoVITS v2。"
+    : !ttsModel?.downloaded ? "请先下载下方的 GPT-SoVITS v2ProPlus。"
     : !ttsSelected ? "模型已检测，尚未选用。"
     : "已就绪，可以连接。";
   async function run(action: EnvironmentRequest["action"], modelId?: string) {
@@ -110,7 +110,7 @@ export function DesktopEnvironmentPanel({ client, onApplied, onBusyChanged, plat
         </div>
         <div className="environment-connection-help">
           <p id="environment-connection-hint" className="field-hint">{connectionHint}</p>
-          {backendReady && ttsModel?.downloaded && !ttsSelected && <button disabled={busy || snapshot.inferenceRunning} onClick={() => void run("select_model", ttsModel.id)}>选用已检测模型</button>}
+          {backendReady && ttsModel?.downloaded && !ttsSelected && <button disabled={busy} onClick={() => void run("select_model", ttsModel.id)}>选用已检测模型</button>}
         </div>
         <div className="model-card-actions environment-engine-actions">
           {snapshot.inferenceRunning
@@ -139,7 +139,7 @@ export function DesktopEnvironmentPanel({ client, onApplied, onBusyChanged, plat
       <div className="model-catalog-grid">{visibleModels.map(model => <article className="model-catalog-card" key={model.id}>
         <h3>{model.name}</h3><p>{capabilities[model.capability] ?? model.capability}</p><p>{model.selected ? "已选用" : model.downloaded ? "已下载" : "尚未下载"}</p>
         <div className="model-card-actions"><button disabled={busy || !backendReady || model.downloaded} onClick={() => void run("download_model", model.id)} aria-label={`下载 ${model.name}`}>下载模型</button>
-          <button disabled={busy || !backendReady || !model.downloaded || model.selected || snapshot.inferenceRunning || model.capability === "download_only"} onClick={() => void run("select_model", model.id)} aria-label={`选用 ${model.name}`}>{model.selected ? "已选用" : "选用模型"}</button></div>
+          <button disabled={busy || !backendReady || !model.downloaded || model.selected || model.capability === "download_only"} onClick={() => void run("select_model", model.id)} aria-label={`选用 ${model.name}`}>{model.selected ? "已选用" : "选用模型"}</button></div>
       </article>)}</div>
       {snapshot.models.length === 0 && <p>检测或安装后端后显示可选模型。</p>}
       {snapshot.models.length > 0 && visibleModels.length === 0 && <p>没有匹配的模型。</p>}

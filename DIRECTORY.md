@@ -7,6 +7,7 @@ MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控制面板
 ```text
 MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控制面板
 ├── .github/  # GitHub 自动检查、发布与依赖更新配置
+├── .vscode/  # 项目级 VS Code 配置，减少构建产物与运行数据的扫描开销
 ├── apps/  # 可执行应用入口与依赖组装
 ├── config/  # 独立数据库部署配置与 Linux、Windows 配置示例
 ├── crates/  # 按职责与单向依赖隔离的 Rust 库
@@ -21,6 +22,7 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 可继续查看各子目录的索引：
 
 - [.github/](.github/DIRECTORY.md)：GitHub 自动检查、发布与依赖更新配置
+- [.vscode/](.vscode/DIRECTORY.md)：项目级 VS Code 配置，减少构建产物与运行数据的扫描开销
 - [apps/](apps/DIRECTORY.md)：可执行应用入口与依赖组装
 - [config/](config/DIRECTORY.md)：独立数据库部署配置与 Linux、Windows 配置示例
 - [crates/](crates/DIRECTORY.md)：按职责与单向依赖隔离的 Rust 库
@@ -35,4 +37,4 @@ MeowLive2D/  # MeowLive2D：Rust 主服务、Windows 执行层与 TypeScript 控
 
 文件内容变化会更新当前目录及祖先索引的指纹；用途未变时保留原说明。检查命令 `npm run tree:check` 只检查，不修改文件。
 
-<!-- directory-tree-sha256: 51c1f5d2159bb1188f6745b2d932aaed567f8f33f7897ffb5a7524af84dc0921 -->
+<!-- directory-tree-sha256: 01898eca823beea887d06ff4b635e1d76a6dd0d00562de25c5bdf579cea9aa51 -->

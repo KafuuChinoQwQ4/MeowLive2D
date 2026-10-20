@@ -52,7 +52,7 @@ export function readTraining(v: unknown): TrainingSnapshot {
   const ids = new Set<string>();
   for (const version of v.versions) {
     if (!object(version) || !id(version.id) || ids.has(version.id) || !id(version.job_id) || !id(version.voice_id) || !text(version.name, 80)
-      || version.engine !== "gpt-sovits" || version.model_version !== "v2" || typeof version.auditioned !== "boolean" || typeof version.active !== "boolean"
+      || version.engine !== "gpt-sovits" || !["v2", "v2Pro", "v2ProPlus", "v3", "v4"].includes(String(version.model_version)) || typeof version.auditioned !== "boolean" || typeof version.active !== "boolean"
       || typeof version.saved !== "boolean" || (version.saved && !version.auditioned) || (version.active && !version.saved)
       || typeof version.available !== "boolean" || !number(version.created_at_ms)
       || !jobs.some(j => j.id === version.job_id && j.voice_id === version.voice_id && j.status === "completed" && j.version_id === version.id)) throw invalid();
@@ -69,7 +69,7 @@ export function readPreset(v: unknown): RuntimePresetSnapshot {
   if (v.verified && (v.mode !== "local" || !v.local_only || !object(m) || m.passed !== true)) throw invalid();
   return v as unknown as RuntimePresetSnapshot;
 }
-export function createTrainingClient(options: { baseUrl?: string; fetcher?: typeof fetch; timeoutMs?: number } = {}): TrainingClient {
+export function createTrainingClient(options: { baseUrl?: string; fetcher?: typeof fetch; timeoutMs?: number; resolveModelVersion?: () => Promise<string | undefined> } = {}): TrainingClient {
   const base = (options.baseUrl ?? import.meta.env.VITE_MEOWLIVE_SERVER_URL ?? "http://127.0.0.1:19600").replace(/\/+$/u, "");
   const fetcher = options.fetcher ?? createAuthenticatedFetch(base);
   async function request(path: string, init: RequestInit, signal?: AbortSignal, audio = false): Promise<unknown> {
@@ -107,6 +107,8 @@ export function createTrainingClient(options: { baseUrl?: string; fetcher?: type
     setModelsEnabled: async (enabled, signal) => readModelStatus(await request("/api/training/models", post({ enabled }), signal)),
     snapshot: async signal => readTraining(await request("/api/training", { method: "GET" }, signal)),
     create: async (metadata, files, signal) => {
+      signal?.throwIfAborted();
+      if (!metadata.model_version && options.resolveModelVersion) metadata = { ...metadata, model_version: await options.resolveModelVersion() };
       const data = new FormData(); data.append("metadata", JSON.stringify(metadata)); files.forEach(f => data.append("audio", f));
       return readJob(await request("/api/training/jobs", { method: "POST", body: data }, signal));
     },

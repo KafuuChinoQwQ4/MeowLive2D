@@ -6,6 +6,11 @@ type Controller = ReturnType<typeof useTraining>;
 type VoiceGroup = { id: string; name: string; versions: ModelVersion[] };
 const PAGE_SIZE = 5;
 
+function trainingModel(version: ModelVersion): string {
+  const model = version.model_version?.trim();
+  return model ? `${version.engine === "gpt-sovits" ? "GPT-SoVITS" : version.engine} ${model}`.trim() : "未知";
+}
+
 export function groupTrainingVoices(versions: ModelVersion[], voices: VoiceProfile[]): VoiceGroup[] {
   const groups = new Map<string, VoiceGroup>();
   for (const version of [...versions].reverse().sort((a, b) => b.created_at_ms - a.created_at_ms)) {
@@ -45,6 +50,7 @@ export function TrainingVoiceLibrary({ controller: c, disabled, canSynthesize, t
       <h3 id="saved-voices-heading">已保存的训练音色</h3>
       <p className="muted">先选择音色和版本，再点击确认；下拉选择本身不会切换播报音色。</p>
       <p role="status" className="voice-selection-current">当前使用：{current ? `${c.voices.find(voice => voice.id === current.voice_id)?.name ?? "参考音色缺失"} · ${current.name}` : c.activeVoiceId === undefined || !c.snapshot ? "正在读取…" : "尚未选用训练音色"}</p>
+      {current && <p className="field-hint">当前训练模型：{trainingModel(current)}</p>}
       {savedGroups.length === 0 && <p className="field-hint">完成训练并试听后，即可保存音色。</p>}
       <label>选择已保存音色<select value={selectedGroup?.id ?? ""} disabled={disabled || savedGroups.length === 0}
         onChange={event => { setSelectedVoice(event.target.value); setSelectedId(""); }}>
@@ -52,8 +58,9 @@ export function TrainingVoiceLibrary({ controller: c, disabled, canSynthesize, t
         {savedGroups.map(group => <option key={group.id} value={group.id} disabled={!hasReference(group.id) || !group.versions.some(version => version.available)}>{group.name}{!hasReference(group.id) ? "（参考音频不可用）" : !group.versions.some(version => version.available) ? "（模型不可用）" : ""}</option>)}
       </select></label>
       {selectedGroup && <label>选择已保存版本<select value={selected?.id ?? ""} disabled={disabled} onChange={event => setSelectedId(event.target.value)}>
-        {selectedGroup.versions.map(version => <option key={version.id} value={version.id} disabled={!version.available}>{version.name}{version.id === current?.id ? "（当前使用）" : ""}{!version.available ? "（模型不可用）" : ""}</option>)}
+        {selectedGroup.versions.map(version => <option key={version.id} value={version.id} disabled={!version.available}>{version.name} · {trainingModel(version)}{version.id === current?.id ? "（当前使用）" : ""}{!version.available ? "（模型不可用）" : ""}</option>)}
       </select></label>}
+      {selected && <p className="field-hint">所选训练模型：{trainingModel(selected)}</p>}
       {selected && selected.id !== current?.id && <p className="voice-selection-pending">待确认：{selectedGroup?.name} · {selected.name}</p>}
       <div className="form-actions"><button type="button" className="primary-button"
         disabled={disabled || !selected?.available || !hasReference(selected.voice_id) || current?.id === selected.id}
@@ -84,9 +91,10 @@ function TrainingVoiceCard({ group, controller: c, disabled, canSynthesize, refe
   return <li><strong>{group.name}</strong> · {group.versions.length} 次训练
     {current && <span> · {c.activeVoiceId === group.id ? "当前选用" : "已选版本"}：{current.name}</span>}
     <p>查看版本：{version.name} · {new Date(version.created_at_ms).toLocaleString()}</p>
+    <p className="field-hint">训练模型：{trainingModel(version)}</p>
     <details className="training-details"><summary>查看训练版本（{group.versions.length}）</summary>
       <label>{group.name} 的训练版本<select value={version.id} disabled={disabled} onChange={event => setSelectedId(event.target.value)}>
-        {group.versions.map((item, index) => <option key={item.id} value={item.id}>{item.name}{index === 0 ? "（最新）" : ""}{item.saved ? " · 已保存" : " · 待确认"}</option>)}
+        {group.versions.map((item, index) => <option key={item.id} value={item.id}>{item.name} · {trainingModel(item)}{index === 0 ? "（最新）" : ""}{item.saved ? " · 已保存" : " · 待确认"}</option>)}
       </select></label>
       <p className="field-hint">各版本独立保留，可试听、切换或删除。</p>
     </details>

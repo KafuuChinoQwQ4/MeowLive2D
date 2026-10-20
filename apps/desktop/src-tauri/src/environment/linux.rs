@@ -117,10 +117,10 @@ impl EnvironmentManager {
                 let model = state
                     .models
                     .iter()
-                    .find(|model| model.id == "gpt-sovits-v2")
-                    .ok_or("模型目录中没有 GPT-SoVITS v2")?;
+                    .find(|model| model.capability == "training_inference" && model.selected)
+                    .ok_or("请先选用 GPT-SoVITS 模型")?;
                 if !model.downloaded || !model.selected {
-                    return Err("请先下载并选用 GPT-SoVITS v2".into());
+                    return Err("请先下载并选用 GPT-SoVITS 模型".into());
                 }
                 self.set_busy("running", "正在启动本机语音引擎".into());
                 match run_controller(&["start"], Duration::from_secs(240)) {
@@ -208,8 +208,8 @@ impl EnvironmentManager {
         if !selected.downloaded || selected.capability == "download_only" {
             return Err("该模型尚未下载或仅支持下载，不能选用".into());
         }
-        if state.inference_running {
-            return Err("语音引擎运行中，不能切换模型".into());
+        if selected.capability == "training_inference" {
+            run_controller(&["select", &id], Duration::from_secs(30))?;
         }
         let mut next = self.state.lock().unwrap();
         let capability = selected.capability.clone();
@@ -234,7 +234,8 @@ impl EnvironmentManager {
         )
         .map_err(|error| format!("无法保存模型选择：{error}"))?;
         next.message = format!("已选用 {}", id);
-        Ok(next.clone())
+        drop(next);
+        self.detect()
     }
 
     fn set_busy(&self, phase: &str, message: String) {
@@ -301,7 +302,11 @@ mod tests {
 
     #[test]
     fn model_catalog_matches_controller_contract() {
-        assert!(catalog().iter().any(|model| model.id == "gpt-sovits-v2"));
+        assert!(
+            catalog()
+                .iter()
+                .any(|model| model.id == "gpt-sovits-v2proplus")
+        );
     }
 
     #[test]

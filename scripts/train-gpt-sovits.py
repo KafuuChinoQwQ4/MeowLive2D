@@ -14,8 +14,15 @@ import traceback
 import unicodedata
 import uuid
 import wave
-from engine_workspace import assets, environment, workspace, configure_low_memory, configure_training_loaders
+from engine_workspace import assets, environment, workspace, configure_low_memory, configure_training_loaders, configure_lora_training
 from training_transcription import transcribe_audio_files
+
+
+VERSION_MARKERS = {"v2Pro": b"05", "v2ProPlus": b"06", "v3": b"03", "v4": b"04"}
+
+
+def training_template(version):
+    return {"v2Pro": "s2v2Pro.json", "v2ProPlus": "s2v2ProPlus.json"}.get(version, "s2.json")
 
 
 def emit(state, progress):
@@ -36,8 +43,8 @@ def load_job(path):
     if path.is_symlink() or path.stat().st_size > 512 * 1024:
         raise ValueError("任务清单无效")
     job = json.loads(path.read_text())
-    if job.get("schema") != 1 or job.get("model_version") != "v2" or str(uuid.UUID(job["id"], version=4)) != job["id"]:
-        raise ValueError("仅接受 v2 任务清单")
+    if job.get("schema") != 1 or job.get("model_version") not in {"v2", "v2Pro", "v2ProPlus", "v3", "v4"} or str(uuid.UUID(job["id"], version=4)) != job["id"]:
+        raise ValueError("仅接受已接入的 GPT-SoVITS 任务清单")
     if job.get("artifacts") != {"gpt": "artifacts/gpt.ckpt", "sovits": "artifacts/sovits.pth"}:
         raise ValueError("模型必须保存到固定成对路径")
     if job.get("fp16") is not True:
@@ -191,6 +198,8 @@ def validate_prepared(root, job):
     for clip in job["clips"]:
         name = Path(clip["path"]).name
         files = [f"prepared/4-cnhubert/{name}.pt"]
+        if job["model_version"] in {"v2Pro", "v2ProPlus"}:
+            files.append(f"prepared/7-sv_cn/{name}.pt")
         if clip["language"] == "zh":
             files.append(f"prepared/3-bert/{name}.pt")
         for filename in files:
@@ -204,20 +213,34 @@ def validate_prepared(root, job):
 
 def configurations(root, job, work, models):
     import yaml
+    defaults = models
     models = training_models(root, job, models)
+    if job.get("base") and job["model_version"] != "v2":
+        payload = models["sovits"].read_bytes()
+        if payload[:2] != VERSION_MARKERS[job["model_version"]]:
+            raise ValueError("续训权重与模型版本不匹配")
+        normalized = root / "base/sovits-training.pth"
+        normalized.write_bytes(b"PK" + payload[2:])
+        models["sovits"] = normalized
     prepared = root / "prepared"
-    s2 = json.loads((work / "GPT_SoVITS/configs/s2.json").read_text())
+    version = job["model_version"]
+    template = training_template(version)
+    s2 = json.loads((work / "GPT_SoVITS/configs" / template).read_text())
     performance = job["performance"]
     s2["train"].update(batch_size=performance["batch_size"], epochs=job["sovits_epochs"], fp16_run=True, segment_size=10240,
-                       pretrained_s2G=str(models["sovits"]), pretrained_s2D=str(models["discriminator"]),
+                       pretrained_s2G=str(models["sovits"]), pretrained_s2D=str(models.get("discriminator", "")),
                        if_save_latest=True, if_save_every_weights=True, save_every_epoch=1,
                        gpu_numbers=str(performance["gpu_index"]), text_low_lr_rate=0.4, grad_ckpt=False)
-    s2["model"]["version"] = s2["version"] = "v2"
+    if version in {"v3", "v4"}:
+        s2["train"].update(lora_rank=32, grad_ckpt=performance.get("low_memory", True),
+                           pretrained_s2G=str(defaults["sovits"]),
+                           pretrained_lora=str(models["sovits"]) if job.get("base") else "")
+    s2["model"]["version"] = s2["version"] = version
     s2["data"]["exp_dir"] = str(prepared)
     s2["data"].update(num_workers=performance["data_workers"], persistent_workers=False,
                       prefetch_factor=None)
     s2.update(s2_ckpt_dir=str(prepared), save_weight_dir=str(root / "weights-sovits"), name=job["id"])
-    (prepared / "logs_s2_v2").mkdir(parents=True, exist_ok=True)
+    (prepared / f"logs_s2_{version}").mkdir(parents=True, exist_ok=True)
     s1 = yaml.safe_load((work / "GPT_SoVITS/configs/s1longer-v2.yaml").read_text())
     s1["train"].update(batch_size=performance["batch_size"], epochs=job["gpt_epochs"], precision="16-mixed", save_every_n_epoch=1,
                        if_save_every_weights=True, if_save_latest=True, if_dpo=False,
@@ -245,22 +268,37 @@ def finalize(root, job, work):
     for name, source in outputs.items():
         owned_file(root, str(source.relative_to(root)), 2 * 1024**3)
         with torch.serialization.safe_globals([HParams]):
-            checkpoint = torch.load(source, weights_only=True, map_location="cpu")
+            from io import BytesIO
+            payload = source.read_bytes()
+            if name == "sovits" and job["model_version"] != "v2":
+                if payload[:2] != VERSION_MARKERS[job["model_version"]]:
+                    raise ValueError("训练产物版本标记不匹配")
+                payload = b"PK" + payload[2:]
+            checkpoint = torch.load(BytesIO(payload), weights_only=True, map_location="cpu")
         weights = checkpoint.get("weight")
         if not isinstance(weights, dict) or not weights or not all(isinstance(t, torch.Tensor) and t.numel() and torch.isfinite(t).all() for t in weights.values()):
             raise ValueError("训练权重为空或包含非有限值")
-        if name == "sovits" and tuple(weights["enc_p.text_embedding.weight"].shape) != (732, 192):
+        if name == "sovits" and job["model_version"] not in {"v3", "v4"} and tuple(weights["enc_p.text_embedding.weight"].shape) != (732, 192):
             raise ValueError("SoVITS 权重与 v2 不兼容")
+        if name == "sovits" and job["model_version"] in {"v3", "v4"}:
+            if checkpoint.get("lora_rank") != 32 or not any("lora_" in key for key in weights):
+                raise ValueError("LoRA 产物缺少适配器或秩不匹配")
         config = plain(checkpoint["config"])
         if name == "gpt" and config["model"]["phoneme_vocab_size"] != 732:
             raise ValueError("GPT 权重与 v2 不兼容")
         checkpoint["config"] = config
         destination = root / job["artifacts"][name]
         with destination.open("xb") as handle:
-            torch.save(checkpoint, handle)
+            from io import BytesIO
+            serialized = BytesIO()
+            torch.save(checkpoint, serialized)
+            payload = serialized.getvalue()
+            if name == "sovits" and job["model_version"] != "v2":
+                payload = VERSION_MARKERS[job["model_version"]] + payload[2:]
+            handle.write(payload)
         hashes[name] = hashlib.sha256(destination.read_bytes()).hexdigest()
     with (root / "artifacts/manifest.json").open("x") as handle:
-        json.dump({"job_id": job["id"], "model_version": "v2", "sha256": hashes}, handle, indent=2)
+        json.dump({"job_id": job["id"], "model_version": job["model_version"], "sha256": hashes}, handle, indent=2)
 
 
 def plain(value):
@@ -269,6 +307,27 @@ def plain(value):
     if isinstance(value, (tuple, list)):
         return [plain(item) for item in value]
     return value
+
+
+def training_model_root(engine, version, project_root=None):
+    explicit = os.environ.get("MEOWLIVE_GPT_SOVITS_MODELS")
+    if explicit:
+        return explicit
+    project_root = Path(project_root or Path(__file__).resolve().parents[1])
+    selection_file = project_root / "config/local/model-selection.json"
+    if selection_file.is_file():
+        selection = json.loads(selection_file.read_text())
+        if selection.get("model_id") == "gpt-sovits-" + version.lower():
+            return selection["path"]
+    try:
+        assets(engine, version=version)
+        return None
+    except ValueError:
+        identifier = "gpt-sovits-" + version.lower()
+        candidates = (project_root / "data/models" / identifier,
+                      Path(engine).resolve().parent / "models" / identifier,
+                      Path("/opt/meowlive-voice/models") / identifier)
+        return next((str(path) for path in candidates if path.is_dir()), None)
 
 
 def main():
@@ -288,12 +347,14 @@ def main():
     except Exception:
         print(json.dumps({"state": "failed", "error": "transcription_failed", "progress": 1}), flush=True)
         raise
-    models_root = os.environ.get("MEOWLIVE_GPT_SOVITS_MODELS")
-    models = assets(args.engine_root, models_root)
+    models_root = job.get("model_root") or training_model_root(args.engine_root, job["model_version"])
+    models = assets(args.engine_root, models_root, job["model_version"])
     work = workspace(args.engine_root, root / "work", models_root)
     configure_training_loaders(work)
+    if job["model_version"] in {"v3", "v4"}:
+        configure_lora_training(work)
     configure_low_memory(work, job["performance"]["low_memory"])
-    env = environment(work, models, job["performance"])
+    env = environment(work, models, job["performance"], job["model_version"])
     os.environ.update({k: v for k, v in env.items() if k in {"HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE", "PYTHONDONTWRITEBYTECODE"}})
     import torch
     if not torch.cuda.is_available():
@@ -304,14 +365,17 @@ def main():
     env.update(inp_text=str(dataset), inp_wav_dir=str(root / "clips"), exp_name=job["id"],
                opt_dir=str(root / "prepared"), i_part="0", all_parts="1", is_half="True",
                bert_pretrained_dir=str(models["bert"]), cnhubert_base_dir=str(models["hubert"]),
-               pretrained_s2G=str(models["sovits"]), s2config_path=str(work / "GPT_SoVITS/configs/s2.json"))
+               pretrained_s2G=str(models["sovits"]), s2config_path=str(work / "GPT_SoVITS/configs" / training_template(job["model_version"])))
     for index, name in enumerate(("1-get-text.py", "2-get-hubert-wav32k.py", "3-get-semantic.py")):
         run_stage(work / "GPT_SoVITS/prepare_datasets" / name, [], work, env)
         emit("preparing", 10 + index * 10)
+    if job["model_version"] in {"v2Pro", "v2ProPlus"}:
+        env["sv_path"] = str(models["sv"])
+        run_stage(work / "GPT_SoVITS/prepare_datasets/2-get-sv.py", [], work, env)
     validate_prepared(root, job)
     configurations(root, job, work, models)
     emit("training", 40)
-    run_stage(work / "GPT_SoVITS/s2_train.py", ["--config", str(root / "s2.json")], work, env)
+    run_stage(work / "GPT_SoVITS" / ("s2_train_v3_lora.py" if job["model_version"] in {"v3", "v4"} else "s2_train.py"), ["--config", str(root / "s2.json")], work, env)
     emit("training", 70)
     run_stage(work / "GPT_SoVITS/s1_train.py", ["--config_file", str(root / "s1.yaml")], work, env)
     emit("validating", 95)
