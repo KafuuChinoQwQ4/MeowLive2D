@@ -42,7 +42,7 @@
   },
   "devDependencies": {
     "typescript": "7.0.2",
-    "undici": "^8.11.2"
+    "undici": "^8.12.3"
   },
   "license": "MIT"
 }
